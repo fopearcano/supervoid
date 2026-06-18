@@ -50,33 +50,64 @@ scripts/             Local backup / restore helpers
 
 ## Domain model
 
-`Manuscript` is the spine of the system. Everything else hangs off it:
+`Work` is the **central catalogue entity** — the publishing *project* (a book,
+graphic novel, art book, essay, or future adaptation candidate). `Manuscript`
+is a **text draft/version** of a Work; work-level concerns attach to the Work,
+while editorial concerns attach to the manuscript.
 
 ```
-Author 1──* Manuscript *──1 ProductionRecord
-                │
-   ┌────────────┼───────────────────────────────┐
-   *            *               *                 *
- Review     Contract       ProductionItem    EditorialNote
-   │            │
- WorkflowEvent (audit trail of status transitions)
- Attachment, AIInsight, ManuscriptEntityLink ──* KnowledgeEntity *──* KnowledgeRelationship
+          Author 1──* Work 1──* Manuscript *──1 ProductionRecord
+                       │             │
+   ┌─────────┬─────────┼─────────┬───────────────┬───────────────┐
+   *         *         *         *               1                *
+ Rights   Contract  Review  ProductionItem  GraphicNovel     EditorialNote
+                       │                     Production
+                 WorkflowEvent (audit trail of manuscript status)
+ PublishingCalendarEvent *──1 Work           Attachment, AIInsight
+ Manuscript *──* KnowledgeEntity *──* KnowledgeRelationship
 ```
 
-- **Work type** — `Manuscript.work_type` (`book`, `graphic_novel`, `novella`,
-  `anthology`, `art_book`, `other`) distinguishes product lines while keeping a
-  single shared workflow and production pipeline.
-- **Workflow** — `WorkflowStatus` moves through a validated transition graph
-  (submitted → review → editing → production → published → archived), recorded
-  as `WorkflowEvent`s.
+- **Work** (`works`) — title, subtitle, `work_type`, `genre`, `WorkStatus`
+  lifecycle (concept → in_development → in_production → published → archived…),
+  synopsis, internal pitch, target audience, language, word/page counts, author.
+- **Manuscript** (`manuscripts`) — a text draft of a Work (`work_id`): `version`,
+  `DraftStatus`, submission date, file-metadata placeholder, and the editorial
+  `WorkflowStatus`. Remains the operational unit for the review / workflow /
+  production / knowledge / AI subsystems carried over from the foundation.
+- **Work type** — shared `WorkType` (`book`, `graphic_novel`, `novella`,
+  `anthology`, `art_book`, `essay`, `adaptation_candidate`, `other`)
+  distinguishes product lines over one shared workflow and production pipeline.
+- **Author** — name, pen name, email, phone, website, bio, notes; linked works
+  and manuscripts.
+- **Review** — recommendation (`accept`/`reject`/`revise`/`hold`) plus a rubric
+  (literary quality, visual potential, market potential, originality, editorial
+  effort) and a written report.
+- **Contract** — author + work/manuscript, status, advance, royalty rate,
+  territory, signed and expiration dates.
+- **Rights** (`rights`) — a per-work, per territory/language profile; each right
+  (print, ebook, audiobook, film, adaptation, merchandising) carries a
+  `RightStatus` (available / reserved / optioned / licensed / sold / n-a).
+- **GraphicNovelProduction** (`graphic_novel_productions`) — visual-production
+  board for illustrated works: script → storyboard → character/environment
+  design → page layout → lettering → colouring → final files, each a
+  `StreamStatus`.
 - **Production** — `ProductionRecord` is a 1:1 edition roll-up (ISBN, release
-  date, per-format and per-stage `StreamStatus`); `ProductionItem`s are the
-  granular tasks.
-- **Rights** — currently fields on `Contract` (`rights_territory`,
-  `royalty_rate`, `advance_amount`, `currency`).
+  date, per-format and per-stage `StreamStatus`); `ProductionItem`s are granular
+  tasks (now linkable to a Work, with deadline/status filters).
+- **PublishingCalendarEvent** (`calendar_events`) — dated catalogue events
+  (release, cover reveal, preorder…), optionally tied to a Work; date-range
+  filterable.
+- **EditorialNote** — typed notes against a manuscript, optionally also a Work
+  and/or subject author.
+- **WorkflowEvent** — audit trail of manuscript status transitions.
+- **IntegrationPoint** (`integration_points`) — a persisted, CRUD-able registry
+  of planned/active ecosystem integrations (complements the static descriptors).
 - **Knowledge graph** — typed `KnowledgeEntity` nodes and
   `KnowledgeRelationship` edges, linked to manuscripts; the natural seam for
   LOGOSFORGE narrative structure.
+
+> Back-compat: `work_id` is nullable on carried-over entities, so the editorial
+> subsystems and their tests keep working while the Work hub is layered on top.
 
 ## Request flow
 
@@ -112,6 +143,13 @@ Exposed read-only at `/api/integrations`, `/api/integrations/ecosystem`, and
 `/api/integrations/{key}`. Keeping these as descriptors preserves the
 local-first principle (no required external services) while making the
 extension points explicit and inspectable.
+
+Alongside the static contracts, a persisted **`IntegrationPoint`** registry is
+CRUD-able at `/api/integrations/points` (filterable by `type` and `status`).
+These are operational records — a specific LOGOSFORGE bridge, a SUPERVOID Movies
+adaptation hand-off, an AI Lab or Archive/Knowledge-Graph seam — each with an
+endpoint placeholder. The `/points` routes are declared before the `/{key}`
+catch-all so they are not shadowed by it.
 
 ## Local-first & Postgres
 

@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED
 from app.db import get_session
-from app.models import Author, Contract, Manuscript
+from app.models import Author, Contract, Manuscript, Work
 from app.models.enums import ContractStatus
 from app.schemas import ContractCreate, ContractRead, ContractUpdate
 from app.utils import (
@@ -28,12 +28,15 @@ def list_contracts(
     session: Session = Depends(get_session),
     params: PageParams = Depends(page_params),
     manuscript_id: Optional[str] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
     author_id: Optional[str] = Query(default=None),
     status_: Optional[ContractStatus] = Query(default=None, alias="status"),
 ) -> Page[ContractRead]:
     stmt = select(Contract)
     if manuscript_id is not None:
         stmt = stmt.where(Contract.manuscript_id == manuscript_id)
+    if work_id is not None:
+        stmt = stmt.where(Contract.work_id == work_id)
     if author_id is not None:
         stmt = stmt.where(Contract.author_id == author_id)
     if status_ is not None:
@@ -65,6 +68,8 @@ def create_contract(
 ) -> Contract:
     ensure_exists(session, Manuscript, payload.manuscript_id, name="Manuscript")
     ensure_exists(session, Author, payload.author_id, name="Author")
+    if payload.work_id is not None:
+        ensure_exists(session, Work, payload.work_id, name="Work")
     contract = Contract(**payload.model_dump())
     session.add(contract)
     session.commit()

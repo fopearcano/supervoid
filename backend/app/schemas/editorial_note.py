@@ -10,6 +10,8 @@ from app.schemas._common import TimestampedRead
 
 class EditorialNoteCreate(BaseModel):
     manuscript_id: str
+    work_id: Optional[str] = None
+    author_id: Optional[str] = None
     author_user_id: str
     kind: EditorialNoteKind = EditorialNoteKind.GENERAL
     body: str = Field(min_length=1)
@@ -17,6 +19,8 @@ class EditorialNoteCreate(BaseModel):
 
 
 class EditorialNoteUpdate(BaseModel):
+    work_id: Optional[str] = None
+    author_id: Optional[str] = None
     kind: Optional[EditorialNoteKind] = None
     body: Optional[str] = Field(default=None, min_length=1)
     pinned: Optional[bool] = None
@@ -24,6 +28,8 @@ class EditorialNoteUpdate(BaseModel):
 
 class EditorialNoteRead(TimestampedRead):
     manuscript_id: str
+    work_id: Optional[str]
+    author_id: Optional[str]
     author_user_id: str
     author_user_name: Optional[str] = None
     kind: EditorialNoteKind

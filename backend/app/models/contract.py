@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
@@ -10,12 +10,16 @@ from app.models.enums import ContractStatus
 if TYPE_CHECKING:
     from app.models.author import Author
     from app.models.manuscript import Manuscript
+    from app.models.work import Work
 
 
 class Contract(BaseEntity, table=True):
     __tablename__ = "contracts"
 
     manuscript_id: str = Field(foreign_key="manuscripts.id", index=True)
+    work_id: Optional[str] = Field(
+        default=None, foreign_key="works.id", index=True
+    )
     author_id: str = Field(foreign_key="authors.id", index=True)
     status: ContractStatus = Field(default=ContractStatus.DRAFT, index=True)
     advance_amount: Optional[Decimal] = Field(
@@ -28,7 +32,9 @@ class Contract(BaseEntity, table=True):
     currency: str = Field(default="USD", max_length=3)
     rights_territory: Optional[str] = Field(default=None, max_length=100, index=True)
     signed_at: Optional[datetime] = Field(default=None)
+    expiration_date: Optional[date] = Field(default=None, index=True)
     terms: Optional[str] = Field(default=None)
 
     manuscript: "Manuscript" = Relationship(back_populates="contracts")
+    work: Optional["Work"] = Relationship(back_populates="contracts")
     author: "Author" = Relationship(back_populates="contracts")

@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED
 from app.db import get_session
-from app.models import Author, Manuscript
+from app.models import Author, Manuscript, Work
 from app.models.enums import WorkflowStatus, WorkType
 from app.schemas import ManuscriptCreate, ManuscriptRead, ManuscriptUpdate
 from app.utils import (
@@ -55,6 +55,7 @@ def list_manuscripts(
     ),
     genre: Optional[str] = Query(default=None, description="Filter by genre (exact match)"),
     author_id: Optional[str] = Query(default=None, description="Filter by author id"),
+    work_id: Optional[str] = Query(default=None, description="Filter by work id"),
     sort_by: ManuscriptSortBy = Query(
         default=ManuscriptSortBy.CREATED_AT,
         description="Field to order results by",
@@ -72,6 +73,8 @@ def list_manuscripts(
         stmt = stmt.where(Manuscript.genre == genre)
     if author_id is not None:
         stmt = stmt.where(Manuscript.author_id == author_id)
+    if work_id is not None:
+        stmt = stmt.where(Manuscript.work_id == work_id)
 
     column = _MANUSCRIPT_SORT_COLUMNS[sort_by]
     stmt = stmt.order_by(column.desc() if sort_dir == "desc" else column.asc())
@@ -102,6 +105,8 @@ def create_manuscript(
     payload: ManuscriptCreate, session: Session = Depends(get_session)
 ) -> Manuscript:
     ensure_exists(session, Author, payload.author_id, name="Author")
+    if payload.work_id is not None:
+        ensure_exists(session, Work, payload.work_id, name="Work")
     manuscript = Manuscript(**payload.model_dump())
     session.add(manuscript)
     session.commit()

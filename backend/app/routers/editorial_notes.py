@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED
 from app.db import get_session
-from app.models import EditorialNote, Manuscript, User
+from app.models import Author, EditorialNote, Manuscript, User, Work
 from app.models.enums import EditorialNoteKind
 from app.schemas import EditorialNoteCreate, EditorialNoteRead, EditorialNoteUpdate
 from app.utils import (
@@ -28,6 +28,10 @@ def list_editorial_notes(
     session: Session = Depends(get_session),
     params: PageParams = Depends(page_params),
     manuscript_id: Optional[str] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
+    author_id: Optional[str] = Query(
+        default=None, description="Filter by subject author id"
+    ),
     author_user_id: Optional[str] = Query(default=None),
     kind: Optional[EditorialNoteKind] = Query(default=None),
     pinned: Optional[bool] = Query(default=None),
@@ -35,6 +39,10 @@ def list_editorial_notes(
     stmt = select(EditorialNote)
     if manuscript_id is not None:
         stmt = stmt.where(EditorialNote.manuscript_id == manuscript_id)
+    if work_id is not None:
+        stmt = stmt.where(EditorialNote.work_id == work_id)
+    if author_id is not None:
+        stmt = stmt.where(EditorialNote.author_id == author_id)
     if author_user_id is not None:
         stmt = stmt.where(EditorialNote.author_user_id == author_user_id)
     if kind is not None:
@@ -70,6 +78,10 @@ def create_editorial_note(
 ) -> EditorialNote:
     ensure_exists(session, Manuscript, payload.manuscript_id, name="Manuscript")
     ensure_exists(session, User, payload.author_user_id, name="User")
+    if payload.work_id is not None:
+        ensure_exists(session, Work, payload.work_id, name="Work")
+    if payload.author_id is not None:
+        ensure_exists(session, Author, payload.author_id, name="Author")
     note = EditorialNote(**payload.model_dump())
     session.add(note)
     session.commit()

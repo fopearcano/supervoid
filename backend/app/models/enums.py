@@ -25,6 +25,8 @@ class WorkType(str, Enum):
     NOVELLA = "novella"
     ANTHOLOGY = "anthology"
     ART_BOOK = "art_book"
+    ESSAY = "essay"
+    ADAPTATION_CANDIDATE = "adaptation_candidate"
     OTHER = "other"
 
 
@@ -47,6 +49,7 @@ class ReviewVerdict(str, Enum):
     ACCEPT = "accept"
     REJECT = "reject"
     REVISE = "revise"
+    HOLD = "hold"
 
 
 class ContractStatus(str, Enum):
@@ -156,3 +159,82 @@ class ManuscriptLinkRole(str, Enum):
     SET_IN = "set_in"
     DERIVED_FROM = "derived_from"
     OTHER = "other"
+
+
+class WorkStatus(str, Enum):
+    """Lifecycle of a Work (the publishing project), distinct from the
+    manuscript-level editorial workflow.
+
+    A Work is the central catalogue entity; its status tracks where the
+    project sits across acquisition, production and release.
+    """
+
+    CONCEPT = "concept"
+    PLANNED = "planned"
+    IN_DEVELOPMENT = "in_development"
+    IN_PRODUCTION = "in_production"
+    PUBLISHED = "published"
+    ON_HOLD = "on_hold"
+    CANCELLED = "cancelled"
+    ARCHIVED = "archived"
+
+
+class DraftStatus(str, Enum):
+    """Maturity of a specific manuscript draft/version."""
+
+    OUTLINE = "outline"
+    FIRST_DRAFT = "first_draft"
+    REVISED_DRAFT = "revised_draft"
+    FINAL_DRAFT = "final_draft"
+    DELIVERED = "delivered"
+
+
+class RightStatus(str, Enum):
+    """Status of an individual right within a rights profile."""
+
+    AVAILABLE = "available"  # open to license
+    RESERVED = "reserved"  # held back, not offered
+    OPTIONED = "optioned"  # under option, not yet licensed
+    LICENSED = "licensed"  # licensed to a third party
+    SOLD = "sold"  # outright sale / assigned
+    NOT_APPLICABLE = "not_applicable"
+
+
+class CalendarEventType(str, Enum):
+    """Categories of entry on the publishing calendar."""
+
+    ANNOUNCEMENT = "announcement"
+    COVER_REVEAL = "cover_reveal"
+    PREORDER = "preorder"
+    RELEASE = "release"
+    REPRINT = "reprint"
+    LAUNCH_EVENT = "launch_event"
+    SIGNING = "signing"
+    OTHER = "other"
+
+
+class CalendarEventStatus(str, Enum):
+    """Lifecycle of a publishing calendar entry."""
+
+    PLANNED = "planned"
+    CONFIRMED = "confirmed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class IntegrationPointType(str, Enum):
+    """The ecosystem system a persisted integration point targets."""
+
+    LOGOSFORGE = "logosforge"  # the separate writing/narrative subsystem
+    SUPERVOID_MOVIES = "supervoid_movies"  # future screen-adaptation division
+    AI_LAB = "ai_lab"
+    ARCHIVE_KNOWLEDGE_GRAPH = "archive_knowledge_graph"
+    OTHER = "other"
+
+
+class IntegrationPointStatus(str, Enum):
+    """Operational status of a persisted integration point."""
+
+    PLANNED = "planned"
+    ACTIVE = "active"
+    DISABLED = "disabled"

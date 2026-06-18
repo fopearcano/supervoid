@@ -9,20 +9,32 @@ from app.schemas._common import TimestampedRead
 
 class AuthorCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=200)
+    pen_name: Optional[str] = Field(default=None, max_length=200)
     email: Optional[str] = Field(default=None, max_length=255)
+    phone: Optional[str] = Field(default=None, max_length=50)
+    website: Optional[str] = Field(default=None, max_length=300)
     country: Optional[str] = Field(default=None, max_length=100)
     biography: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class AuthorUpdate(BaseModel):
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    pen_name: Optional[str] = Field(default=None, max_length=200)
     email: Optional[str] = Field(default=None, max_length=255)
+    phone: Optional[str] = Field(default=None, max_length=50)
+    website: Optional[str] = Field(default=None, max_length=300)
     country: Optional[str] = Field(default=None, max_length=100)
     biography: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class AuthorRead(TimestampedRead):
     full_name: str
+    pen_name: Optional[str]
     email: Optional[str]
+    phone: Optional[str]
+    website: Optional[str]
     country: Optional[str]
     biography: Optional[str]
+    notes: Optional[str]

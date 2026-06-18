@@ -17,11 +17,17 @@ from app.auth.security import hash_password
 from app.db import engine, init_db
 from app.models import (
     Author,
+    CalendarEventStatus,
+    CalendarEventType,
     Contract,
     ContractStatus,
     EditorialNote,
     EditorialNoteKind,
     EntityKind,
+    GraphicNovelProduction,
+    IntegrationPoint,
+    IntegrationPointStatus,
+    IntegrationPointType,
     KnowledgeEntity,
     KnowledgeRelationship,
     Manuscript,
@@ -31,14 +37,19 @@ from app.models import (
     ProductionItemStatus,
     ProductionRecord,
     ProductionStage,
+    PublishingCalendarEvent,
     RelationshipKind,
     Review,
     ReviewVerdict,
+    Rights,
+    RightStatus,
     StreamStatus,
     User,
     UserRole,
+    Work,
     WorkflowEvent,
     WorkflowStatus,
+    WorkStatus,
     WorkType,
 )
 from app.services.knowledge import slugify
@@ -206,6 +217,81 @@ def _seed_manuscripts(
     return manuscripts
 
 
+# Maturity of the manuscript workflow mapped onto the Work lifecycle.
+_WORK_STATUS_BY_MS_KEY = {
+    "salt_atlases": WorkStatus.PUBLISHED,
+    "letters_dim": WorkStatus.IN_PRODUCTION,
+    "silent_workshop": WorkStatus.IN_DEVELOPMENT,
+    "algebra_birds": WorkStatus.IN_DEVELOPMENT,
+    "quintus": WorkStatus.CONCEPT,
+}
+
+
+def _seed_works(
+    session: Session,
+    authors: dict[str, Author],
+    manuscripts: dict[str, Manuscript],
+) -> dict[str, Work]:
+    """Promote each demo manuscript to a catalogue Work and link them, then
+    add one future-adaptation-candidate Work for the SUPERVOID Movies seam."""
+
+    works: dict[str, Work] = {}
+    for key, ms in manuscripts.items():
+        works[key] = Work(
+            title=ms.title,
+            subtitle=ms.subtitle,
+            work_type=ms.work_type,
+            genre=ms.genre,
+            status=_WORK_STATUS_BY_MS_KEY.get(key, WorkStatus.CONCEPT),
+            synopsis=ms.synopsis,
+            language=ms.language,
+            word_count=ms.word_count,
+            author_id=ms.author_id,
+        )
+
+    # A book and a graphic novel get a little extra catalogue detail.
+    works["salt_atlases"].internal_pitch = (
+        "Lead non-fiction title; a literary atlas with strong gift-market appeal."
+    )
+    works["salt_atlases"].target_audience = "Literary non-fiction; map and travel readers."
+    works["salt_atlases"].page_count = 288
+    works["silent_workshop"].internal_pitch = (
+        "Flagship graphic novel; quiet, prestige, awards-track."
+    )
+    works["silent_workshop"].target_audience = "Adult literary comics readers."
+    works["silent_workshop"].page_count = 176
+
+    # Future adaptation candidate — pairs with the SUPERVOID Movies seam.
+    works["workshop_screen"] = Work(
+        title="The Silent Workshop — Screen Treatment",
+        subtitle="Adaptation candidate",
+        work_type=WorkType.ADAPTATION_CANDIDATE,
+        genre="Drama",
+        status=WorkStatus.CONCEPT,
+        synopsis=(
+            "Exploratory screen treatment of The Silent Workshop, flagged for "
+            "the SUPERVOID Movies division to evaluate."
+        ),
+        internal_pitch="Prestige limited-series potential; rights currently held in-house.",
+        target_audience="Screen development / co-production partners.",
+        language="en",
+        author_id=authors["carrick"].id,
+    )
+
+    session.add_all(works.values())
+    session.commit()
+    for w in works.values():
+        session.refresh(w)
+
+    # Link each text manuscript back to its Work.
+    for key, ms in manuscripts.items():
+        ms.work_id = works[key].id
+        session.add(ms)
+    session.commit()
+
+    return works
+
+
 def _event(
     manuscript: Manuscript,
     to_status: WorkflowStatus,
@@ -290,28 +376,47 @@ def _seed_workflow_events(
 def _seed_reviews(
     session: Session,
     manuscripts: dict[str, Manuscript],
+    works: dict[str, Work],
     users: dict[str, User],
 ) -> None:
     reviews = [
         Review(
             manuscript_id=manuscripts["silent_workshop"].id,
+            work_id=works["silent_workshop"].id,
             reviewer_id=users["jonas"].id,
             verdict=ReviewVerdict.REVISE,
             summary=(
                 "A spare, beautifully restrained novella. The middle third "
                 "drifts; the closing letters should arrive earlier."
             ),
+            written_report=(
+                "Structurally the central correspondence sags between pages "
+                "60 and 110; the emotional payload of the final letters would "
+                "land harder brought forward. Art direction is exceptional."
+            ),
             rating=4,
+            literary_quality_score=4,
+            visual_potential_score=5,
+            market_potential_score=3,
+            originality_score=4,
+            editorial_effort_score=3,
         ),
         Review(
             manuscript_id=manuscripts["silent_workshop"].id,
+            work_id=works["silent_workshop"].id,
             reviewer_id=users["cecilia"].id,
             verdict=ReviewVerdict.ACCEPT,
             summary="An assured debut, ready with minor structural notes.",
             rating=4,
+            literary_quality_score=4,
+            visual_potential_score=5,
+            market_potential_score=4,
+            originality_score=4,
+            editorial_effort_score=2,
         ),
         Review(
             manuscript_id=manuscripts["algebra_birds"].id,
+            work_id=works["algebra_birds"].id,
             reviewer_id=users["jonas"].id,
             verdict=ReviewVerdict.ACCEPT,
             summary=(
@@ -319,13 +424,35 @@ def _seed_reviews(
                 "acceptance with light development work."
             ),
             rating=5,
+            literary_quality_score=5,
+            visual_potential_score=4,
+            market_potential_score=3,
+            originality_score=5,
+            editorial_effort_score=3,
+        ),
+        Review(
+            manuscript_id=manuscripts["quintus"].id,
+            work_id=works["quintus"].id,
+            reviewer_id=users["bartholomew"].id,
+            verdict=ReviewVerdict.HOLD,
+            summary="Promising voice; hold pending a second structural read.",
+            rating=3,
+            literary_quality_score=4,
+            market_potential_score=2,
+            originality_score=4,
+            editorial_effort_score=4,
         ),
         Review(
             manuscript_id=manuscripts["letters_dim"].id,
+            work_id=works["letters_dim"].id,
             reviewer_id=users["helena"].id,
             verdict=ReviewVerdict.ACCEPT,
             summary="Marquee voice. Proceeding to acquisition.",
             rating=5,
+            literary_quality_score=5,
+            market_potential_score=4,
+            originality_score=4,
+            editorial_effort_score=2,
         ),
     ]
     session.add_all(reviews)
@@ -335,11 +462,14 @@ def _seed_reviews(
 def _seed_contracts(
     session: Session,
     manuscripts: dict[str, Manuscript],
+    works: dict[str, Work],
     authors: dict[str, Author],
 ) -> None:
+    today = date.today()
     contracts = [
         Contract(
             manuscript_id=manuscripts["salt_atlases"].id,
+            work_id=works["salt_atlases"].id,
             author_id=authors["aldoria"].id,
             status=ContractStatus.SIGNED,
             advance_amount=Decimal("4500.00"),
@@ -347,10 +477,12 @@ def _seed_contracts(
             currency="EUR",
             rights_territory="world",
             signed_at=utcnow() - timedelta(days=300),
+            expiration_date=today + timedelta(days=365 * 6),
             terms="Standard trade contract, first edition only.",
         ),
         Contract(
             manuscript_id=manuscripts["letters_dim"].id,
+            work_id=works["letters_dim"].id,
             author_id=authors["veldt"].id,
             status=ContractStatus.SIGNED,
             advance_amount=Decimal("7500.00"),
@@ -358,9 +490,11 @@ def _seed_contracts(
             currency="EUR",
             rights_territory="europe",
             signed_at=utcnow() - timedelta(days=180),
+            expiration_date=today + timedelta(days=365 * 7),
         ),
         Contract(
             manuscript_id=manuscripts["algebra_birds"].id,
+            work_id=works["algebra_birds"].id,
             author_id=authors["bellecour"].id,
             status=ContractStatus.DRAFT,
             advance_amount=Decimal("3000.00"),
@@ -376,12 +510,14 @@ def _seed_contracts(
 def _seed_production_items(
     session: Session,
     manuscripts: dict[str, Manuscript],
+    works: dict[str, Work],
     users: dict[str, User],
 ) -> None:
     today = date.today()
     items = [
         ProductionItem(
             manuscript_id=manuscripts["salt_atlases"].id,
+            work_id=works["salt_atlases"].id,
             assignee_id=users["kazu"].id,
             stage=ProductionStage.COVER_DESIGN,
             status=ProductionItemStatus.DONE,
@@ -390,6 +526,7 @@ def _seed_production_items(
         ),
         ProductionItem(
             manuscript_id=manuscripts["salt_atlases"].id,
+            work_id=works["salt_atlases"].id,
             assignee_id=users["ines"].id,
             stage=ProductionStage.PRINTING,
             status=ProductionItemStatus.DONE,
@@ -397,6 +534,7 @@ def _seed_production_items(
         ),
         ProductionItem(
             manuscript_id=manuscripts["letters_dim"].id,
+            work_id=works["letters_dim"].id,
             assignee_id=users["kazu"].id,
             stage=ProductionStage.LAYOUT,
             status=ProductionItemStatus.IN_PROGRESS,
@@ -405,6 +543,7 @@ def _seed_production_items(
         ),
         ProductionItem(
             manuscript_id=manuscripts["letters_dim"].id,
+            work_id=works["letters_dim"].id,
             assignee_id=users["kazu"].id,
             stage=ProductionStage.COVER_DESIGN,
             status=ProductionItemStatus.PENDING,
@@ -418,11 +557,15 @@ def _seed_production_items(
 def _seed_editorial_notes(
     session: Session,
     manuscripts: dict[str, Manuscript],
+    works: dict[str, Work],
+    authors: dict[str, Author],
     users: dict[str, User],
 ) -> None:
     notes = [
         EditorialNote(
             manuscript_id=manuscripts["silent_workshop"].id,
+            work_id=works["silent_workshop"].id,
+            author_id=authors["carrick"].id,
             author_user_id=users["cecilia"].id,
             kind=EditorialNoteKind.STRUCTURAL,
             body=(
@@ -433,6 +576,7 @@ def _seed_editorial_notes(
         ),
         EditorialNote(
             manuscript_id=manuscripts["algebra_birds"].id,
+            work_id=works["algebra_birds"].id,
             author_user_id=users["jonas"].id,
             kind=EditorialNoteKind.GENERAL,
             body=(
@@ -442,6 +586,7 @@ def _seed_editorial_notes(
         ),
         EditorialNote(
             manuscript_id=manuscripts["letters_dim"].id,
+            work_id=works["letters_dim"].id,
             author_user_id=users["tomas"].id,
             kind=EditorialNoteKind.LINE,
             body=(
@@ -500,6 +645,164 @@ def _seed_production_records(
         ),
     ]
     session.add_all(records)
+    session.commit()
+
+
+def _seed_rights(session: Session, works: dict[str, Work]) -> None:
+    today = date.today()
+    rights = [
+        # The Salt Atlases (book) — primary world English edition held in-house.
+        Rights(
+            work_id=works["salt_atlases"].id,
+            territory="World",
+            language="English",
+            print_rights=RightStatus.LICENSED,
+            ebook_rights=RightStatus.LICENSED,
+            audiobook_rights=RightStatus.AVAILABLE,
+            film_rights=RightStatus.AVAILABLE,
+            adaptation_rights=RightStatus.AVAILABLE,
+            merchandising_rights=RightStatus.NOT_APPLICABLE,
+            holder="SUPERVOID Publishing",
+            notes="Primary edition rights held in-house; translation open.",
+        ),
+        # A separate translation window, currently under option.
+        Rights(
+            work_id=works["salt_atlases"].id,
+            territory="World",
+            language="French",
+            print_rights=RightStatus.OPTIONED,
+            ebook_rights=RightStatus.OPTIONED,
+            audiobook_rights=RightStatus.AVAILABLE,
+            film_rights=RightStatus.NOT_APPLICABLE,
+            adaptation_rights=RightStatus.NOT_APPLICABLE,
+            merchandising_rights=RightStatus.NOT_APPLICABLE,
+            expiration_date=today + timedelta(days=180),
+            notes="French-language option with Éditions du Phare.",
+        ),
+        # The Silent Workshop (graphic novel) — screen rights reserved for SV Movies.
+        Rights(
+            work_id=works["silent_workshop"].id,
+            territory="World",
+            language="all",
+            print_rights=RightStatus.RESERVED,
+            ebook_rights=RightStatus.RESERVED,
+            audiobook_rights=RightStatus.NOT_APPLICABLE,
+            film_rights=RightStatus.RESERVED,
+            adaptation_rights=RightStatus.RESERVED,
+            merchandising_rights=RightStatus.AVAILABLE,
+            holder="SUPERVOID Publishing",
+            notes="Film/adaptation reserved pending SUPERVOID Movies evaluation.",
+        ),
+    ]
+    session.add_all(rights)
+    session.commit()
+
+
+def _seed_graphic_novel_production(
+    session: Session, works: dict[str, Work]
+) -> None:
+    production = GraphicNovelProduction(
+        work_id=works["silent_workshop"].id,
+        volume_number=1,
+        script_status=StreamStatus.COMPLETE,
+        storyboard_status=StreamStatus.IN_PROGRESS,
+        character_design_status=StreamStatus.COMPLETE,
+        environment_design_status=StreamStatus.IN_PROGRESS,
+        page_layout_status=StreamStatus.PENDING,
+        lettering_status=StreamStatus.NOT_PLANNED,
+        coloring_status=StreamStatus.NOT_PLANNED,
+        final_files_status=StreamStatus.NOT_PLANNED,
+        notes="Single-volume graphic novel; interiors in greyscale wash.",
+    )
+    session.add(production)
+    session.commit()
+
+
+def _seed_calendar_events(session: Session, works: dict[str, Work]) -> None:
+    today = date.today()
+    events = [
+        PublishingCalendarEvent(
+            work_id=works["salt_atlases"].id,
+            title="The Salt Atlases — on sale",
+            event_type=CalendarEventType.RELEASE,
+            date=today - timedelta(days=30),
+            description="Trade hardcover release.",
+            status=CalendarEventStatus.COMPLETED,
+        ),
+        PublishingCalendarEvent(
+            work_id=works["letters_dim"].id,
+            title="Letters to a Dim Province — cover reveal",
+            event_type=CalendarEventType.COVER_REVEAL,
+            date=today + timedelta(days=20),
+            description="Reveal across trade and social channels.",
+            status=CalendarEventStatus.CONFIRMED,
+        ),
+        PublishingCalendarEvent(
+            work_id=works["letters_dim"].id,
+            title="Letters to a Dim Province — on sale",
+            event_type=CalendarEventType.RELEASE,
+            date=today + timedelta(days=120),
+            description="Hardcover first edition.",
+            status=CalendarEventStatus.PLANNED,
+        ),
+        PublishingCalendarEvent(
+            work_id=works["silent_workshop"].id,
+            title="The Silent Workshop — preorder opens",
+            event_type=CalendarEventType.PREORDER,
+            date=today + timedelta(days=60),
+            status=CalendarEventStatus.PLANNED,
+        ),
+        PublishingCalendarEvent(
+            work_id=None,
+            title="Autumn catalogue deadline",
+            event_type=CalendarEventType.OTHER,
+            date=today + timedelta(days=45),
+            description="House-wide: all autumn metadata locked.",
+            status=CalendarEventStatus.PLANNED,
+        ),
+    ]
+    session.add_all(events)
+    session.commit()
+
+
+def _seed_integration_points(session: Session) -> None:
+    points = [
+        IntegrationPoint(
+            name="LOGOSFORGE — manuscript import",
+            type=IntegrationPointType.LOGOSFORGE,
+            status=IntegrationPointStatus.PLANNED,
+            endpoint="logosforge://export/manuscripts",
+            notes=(
+                "Bridge to the separate LOGOSFORGE writing subsystem; pull "
+                "finished drafts into SUPERVOID Publishing as manuscripts."
+            ),
+        ),
+        IntegrationPoint(
+            name="SUPERVOID Movies — adaptation hand-off",
+            type=IntegrationPointType.SUPERVOID_MOVIES,
+            status=IntegrationPointStatus.PLANNED,
+            endpoint="supervoid-movies://adaptations/intake",
+            notes=(
+                "Future division; hand off works flagged as adaptation "
+                "candidates (e.g. The Silent Workshop) for screen development."
+            ),
+        ),
+        IntegrationPoint(
+            name="AI Lab — editorial assistance",
+            type=IntegrationPointType.AI_LAB,
+            status=IntegrationPointStatus.PLANNED,
+            endpoint=None,
+            notes="Editorial AI features run locally; AI Lab seam reserved.",
+        ),
+        IntegrationPoint(
+            name="Archive / Knowledge Graph",
+            type=IntegrationPointType.ARCHIVE_KNOWLEDGE_GRAPH,
+            status=IntegrationPointStatus.ACTIVE,
+            endpoint="/api/knowledge",
+            notes="Editorial knowledge graph available in-app.",
+        ),
+    ]
+    session.add_all(points)
     session.commit()
 
 
@@ -650,20 +953,27 @@ def run() -> None:
         users = _seed_users(session)
         authors = _seed_authors(session)
         manuscripts = _seed_manuscripts(session, authors)
+        works = _seed_works(session, authors, manuscripts)
         _seed_workflow_events(session, manuscripts, users)
-        _seed_reviews(session, manuscripts, users)
-        _seed_contracts(session, manuscripts, authors)
-        _seed_production_items(session, manuscripts, users)
-        _seed_editorial_notes(session, manuscripts, users)
+        _seed_reviews(session, manuscripts, works, users)
+        _seed_contracts(session, manuscripts, works, authors)
+        _seed_rights(session, works)
+        _seed_graphic_novel_production(session, works)
+        _seed_production_items(session, manuscripts, works, users)
+        _seed_editorial_notes(session, manuscripts, works, authors, users)
         _seed_production_records(session, manuscripts)
+        _seed_calendar_events(session, works)
+        _seed_integration_points(session)
         _seed_knowledge_graph(session, manuscripts)
 
     print(
         "Seeded SUPERVOID Publishing: "
         f"{len(users)} users (password '{DEMO_PASSWORD}' for all), "
-        f"{len(authors)} authors, {len(manuscripts)} manuscripts, "
-        "with reviews, workflow events, contracts, production items, "
-        "production records, notes, and a starter knowledge graph."
+        f"{len(authors)} authors, {len(works)} works, "
+        f"{len(manuscripts)} manuscripts, "
+        "with reviews, workflow events, contracts, rights, a graphic-novel "
+        "production board, production items, production records, notes, "
+        "calendar events, integration points, and a starter knowledge graph."
     )
 
 

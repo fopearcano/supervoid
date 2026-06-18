@@ -17,23 +17,34 @@ Status legend: ✅ done · 🟡 in place / partial · ⚪ planned
 
 ## Phase 1 — Editorial core (carried over) 🟡
 
-- ✅ Authors, manuscripts, reviews, contracts, editorial notes, attachments.
+- ✅ **Work** as the central catalogue entity; manuscripts are its text drafts
+  (`work_id`, version, draft status, submission date, file-metadata placeholder).
+- ✅ Authors (pen name, phone, website, notes), manuscripts, contracts,
+  editorial notes (now also link a Work / subject author), attachments.
+- ✅ Reviews extended with a scoring rubric (literary quality, visual potential,
+  market potential, originality, editorial effort) + a `hold` recommendation.
 - ✅ Workflow engine with validated transitions and an audit trail.
 - ✅ Production pipeline (records + items), publishing calendar, search/archive.
-- ✅ Work types — **Books** and **Graphic novels** as first-class formats.
+- ✅ Work types — **Books**, **Graphic novels**, art books, essays and
+  adaptation candidates as first-class formats.
 - 🟡 Dashboard analytics — expand indicators and deadline tracking.
 
-## Phase 2 — Rights & contracts depth ⚪
+## Phase 2 — Rights & contracts depth 🟡
 
-- ⚪ Promote rights from `Contract` fields to a dedicated **Rights** module
-  (territory, language, format, term windows, reversion, sub-licensing).
+- ✅ Dedicated **Rights** module (`/api/rights`): per-work, per territory/language
+  profiles with a `RightStatus` for each right (print, ebook, audiobook, film,
+  adaptation, merchandising), holder and expiration; contracts gained an
+  `expiration_date` and a `work_id` link.
+- ⚪ Term windows, reversion and sub-licensing chains.
 - ⚪ Royalty statements and advance reconciliation.
 - ⚪ Contract templates and signature status timeline.
 
-## Phase 3 — Visual production for graphic novels ⚪
+## Phase 3 — Visual production for graphic novels 🟡
 
+- ✅ **GraphicNovelProduction** board (`/api/graphic-novel-productions`): script
+  → storyboard → character/environment design → page layout → lettering →
+  colouring → final files, each a `StreamStatus`, with volume/issue numbers.
 - ⚪ Page/panel/spread tracking distinct from prose layout stages.
-- ⚪ Art-status streams (pencils, inks, colours, letters) on `ProductionRecord`.
 - ⚪ Cover and interior asset versioning via the attachments layer.
 
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪

@@ -45,6 +45,11 @@ contracts in `backend/app/integrations/` and exposed read-only at:
 - `GET /api/integrations/ecosystem` — the SUPERVOID ENTANGLED ecosystem map
 - `GET /api/integrations/{key}`     — a single integration (e.g. `logosforge`)
 
+A persisted, editable registry of integration points (a specific LOGOSFORGE
+bridge, a SUPERVOID Movies adaptation hand-off, an AI Lab or Archive seam) is
+CRUD-able at `GET/POST /api/integrations/points` and filterable by `type` and
+`status` — complementing the static contracts above.
+
 Further documentation:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture & module map
@@ -242,16 +247,22 @@ SQLite (or PostgreSQL) by `init_db()`.
 
 ### Entities
 
-| Entity            | Purpose                                                                                  |
-| ----------------- | ---------------------------------------------------------------------------------------- |
-| `User`            | Staff account with a role (see [Authentication](#authentication)).                       |
-| `Author`          | External contributor; distinct from staff `User`.                                        |
-| `Manuscript`      | The work itself, carrying a current workflow status and metadata.                        |
-| `Review`          | A reader's verdict on a manuscript (`accept` / `reject` / `revise`) with optional rating.|
-| `WorkflowEvent`   | Append-only timeline of status transitions for a manuscript.                             |
-| `Contract`        | Agreement between an `Author` and the house for a given `Manuscript`.                    |
-| `ProductionItem`  | A unit of production work — layout, cover design, prepress, printing.                    |
-| `EditorialNote`   | Free-form note attached to a manuscript by a staff member.                               |
+| Entity                    | Purpose                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
+| `User`                    | Staff account with a role (see [Authentication](#authentication)).                            |
+| `Author`                  | External contributor — name, pen name, contact, bio, notes; distinct from staff `User`.       |
+| `Work`                    | **Central catalogue entity** — the project (book, graphic novel, art book, essay, adaptation candidate) with a `WorkStatus` lifecycle, pitch, audience, language and counts. |
+| `Manuscript`              | A text draft/version of a `Work` (version, draft status, submission date, file-metadata placeholder) carrying the editorial workflow status. |
+| `Review`                  | Recommendation (`accept` / `reject` / `revise` / `hold`) with a scoring rubric (literary, visual, market, originality, editorial effort) and a written report. |
+| `WorkflowEvent`           | Append-only timeline of status transitions for a manuscript.                                  |
+| `Contract`                | Agreement between an `Author` and the house for a work/manuscript (advance, royalty, signed/expiration dates). |
+| `Rights`                  | A per-work, per territory/language rights profile with a `RightStatus` for each right.        |
+| `GraphicNovelProduction`  | Visual-production board for an illustrated `Work` (script → final-files streams).             |
+| `ProductionItem`          | A unit of production work — layout, cover design, prepress, printing.                         |
+| `ProductionRecord`        | 1:1 edition roll-up per manuscript (ISBN, release date, per-format/stage status).             |
+| `PublishingCalendarEvent` | A dated catalogue event (release, cover reveal, preorder…), optionally tied to a `Work`.      |
+| `EditorialNote`           | Typed note against a manuscript, optionally also a `Work` and/or subject `Author`.            |
+| `IntegrationPoint`        | Persisted, CRUD-able registry of planned/active ecosystem integrations.                       |
 
 Every entity inherits a `BaseEntity` mixin providing:
 
@@ -262,19 +273,29 @@ Every entity inherits a `BaseEntity` mixin providing:
 ### Relationships
 
 ```
+Author 1—* Work
 Author 1—* Manuscript
 Author 1—* Contract
-User   1—* Review            (reviewer)
-User   1—* WorkflowEvent     (actor, nullable)
-User   1—* EditorialNote     (author_user)
-User   1—* ProductionItem    (assignee, nullable)
 
-Manuscript 1—* Review
-Manuscript 1—* WorkflowEvent
-Manuscript 1—* Contract
-Manuscript 1—* ProductionItem
-Manuscript 1—* EditorialNote
+Work 1—* Manuscript
+Work 1—* Rights
+Work 1—* Contract
+Work 1—* Review
+Work 1—* ProductionItem
+Work 1—* PublishingCalendarEvent
+Work 1—* EditorialNote
+Work 1—1 GraphicNovelProduction
+
+Manuscript 1—* Review / WorkflowEvent / Contract / ProductionItem / EditorialNote
+Manuscript 1—1 ProductionRecord
+Manuscript *—* KnowledgeEntity   (via ManuscriptEntityLink)
+
+User 1—* Review (reviewer) / WorkflowEvent (actor) / EditorialNote (author_user) / ProductionItem (assignee)
 ```
+
+> The `work_id` foreign key is **nullable** on the carried-over editorial
+> entities (manuscript, contract, review, production item, note), so the
+> foundation's subsystems keep working as the `Work` hub is layered on top.
 
 ### Workflow statuses
 
@@ -289,8 +310,35 @@ endpoints, and UI.
 
 ### Other enums
 
-`UserRole`, `ReviewVerdict`, `ContractStatus`, `ProductionStage`,
-`ProductionItemStatus`, `EditorialNoteKind`.
+`UserRole`, `WorkType` (`book`, `graphic_novel`, `novella`, `anthology`,
+`art_book`, `essay`, `adaptation_candidate`, `other`), `WorkStatus`,
+`DraftStatus`, `ReviewVerdict` (`accept`/`reject`/`revise`/`hold`),
+`ContractStatus`, `RightStatus`, `StreamStatus`, `ProductionStage`,
+`ProductionItemStatus`, `CalendarEventType`, `CalendarEventStatus`,
+`EditorialNoteKind`, `IntegrationPointType`, `IntegrationPointStatus`.
+
+### Core REST resources
+
+Every resource exposes the same CRUD shape — `GET /api/<resource>` (paginated
+list), `GET /api/<resource>/{id}`, `POST`, `PATCH /{id}`, `DELETE /{id}` — with
+reads public and writes gated by role. Notable list filters:
+
+| Resource | Path | Filters |
+| -------- | ---- | ------- |
+| Works | `/api/works` | `work_type`, `status`, `genre`, `author_id`, sort |
+| Manuscripts | `/api/manuscripts` | `status`, `work_type`, `genre`, `author_id`, `work_id`, sort |
+| Graphic-novel production | `/api/graphic-novel-productions` | `work_id` |
+| Reviews | `/api/reviews` | `manuscript_id`, `work_id`, `reviewer_id` |
+| Contracts | `/api/contracts` | `manuscript_id`, `work_id`, `author_id`, `status` |
+| Rights | `/api/rights` | `work_id`, `territory`, `language` |
+| Production items | `/api/production-items` | `manuscript_id`, `work_id`, `assignee_id`, `stage`, `status`, `due_before`, `due_after` |
+| Calendar events | `/api/calendar-events` | `work_id`, `event_type`, `status`, `date_from`, `date_to` |
+| Editorial notes | `/api/editorial-notes` | `manuscript_id`, `work_id`, `author_id`, `author_user_id`, `kind`, `pinned` |
+| Integration points | `/api/integrations/points` | `type`, `status` |
+
+Authors (`/api/authors`), attachments (`/api/attachments`), workflow
+(`/api/workflow`, `/api/workflow-events`) and production records
+(`/api/production-records`) round out the surface.
 
 ---
 

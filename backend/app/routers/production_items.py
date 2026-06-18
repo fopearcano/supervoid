@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
@@ -7,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED
 from app.db import get_session
-from app.models import Manuscript, ProductionItem, User
+from app.models import Manuscript, ProductionItem, User, Work
 from app.models.enums import ProductionItemStatus, ProductionStage
 from app.schemas import ProductionItemCreate, ProductionItemRead, ProductionItemUpdate
 from app.utils import (
@@ -28,19 +29,32 @@ def list_production_items(
     session: Session = Depends(get_session),
     params: PageParams = Depends(page_params),
     manuscript_id: Optional[str] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
     assignee_id: Optional[str] = Query(default=None),
     stage: Optional[ProductionStage] = Query(default=None),
     status_: Optional[ProductionItemStatus] = Query(default=None, alias="status"),
+    due_before: Optional[date] = Query(
+        default=None, description="Only items due on/before this date"
+    ),
+    due_after: Optional[date] = Query(
+        default=None, description="Only items due on/after this date"
+    ),
 ) -> Page[ProductionItemRead]:
     stmt = select(ProductionItem)
     if manuscript_id is not None:
         stmt = stmt.where(ProductionItem.manuscript_id == manuscript_id)
+    if work_id is not None:
+        stmt = stmt.where(ProductionItem.work_id == work_id)
     if assignee_id is not None:
         stmt = stmt.where(ProductionItem.assignee_id == assignee_id)
     if stage is not None:
         stmt = stmt.where(ProductionItem.stage == stage)
     if status_ is not None:
         stmt = stmt.where(ProductionItem.status == status_)
+    if due_before is not None:
+        stmt = stmt.where(ProductionItem.due_date <= due_before)
+    if due_after is not None:
+        stmt = stmt.where(ProductionItem.due_date >= due_after)
     stmt = stmt.order_by(ProductionItem.created_at.desc())
 
     items, total = paginate(session, stmt, params)
@@ -69,6 +83,8 @@ def create_production_item(
     payload: ProductionItemCreate, session: Session = Depends(get_session)
 ) -> ProductionItem:
     ensure_exists(session, Manuscript, payload.manuscript_id, name="Manuscript")
+    if payload.work_id is not None:
+        ensure_exists(session, Work, payload.work_id, name="Work")
     if payload.assignee_id is not None:
         ensure_exists(session, User, payload.assignee_id, name="User")
     item = ProductionItem(**payload.model_dump())

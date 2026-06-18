@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED
 from app.db import get_session
-from app.models import Manuscript, Review, User
+from app.models import Manuscript, Review, User, Work
 from app.schemas import ReviewCreate, ReviewRead, ReviewUpdate
 from app.utils import (
     Page,
@@ -27,11 +27,14 @@ def list_reviews(
     session: Session = Depends(get_session),
     params: PageParams = Depends(page_params),
     manuscript_id: Optional[str] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
     reviewer_id: Optional[str] = Query(default=None),
 ) -> Page[ReviewRead]:
     stmt = select(Review)
     if manuscript_id is not None:
         stmt = stmt.where(Review.manuscript_id == manuscript_id)
+    if work_id is not None:
+        stmt = stmt.where(Review.work_id == work_id)
     if reviewer_id is not None:
         stmt = stmt.where(Review.reviewer_id == reviewer_id)
     stmt = stmt.order_by(Review.created_at.desc())
@@ -61,6 +64,8 @@ def create_review(
 ) -> Review:
     ensure_exists(session, Manuscript, payload.manuscript_id, name="Manuscript")
     ensure_exists(session, User, payload.reviewer_id, name="User")
+    if payload.work_id is not None:
+        ensure_exists(session, Work, payload.work_id, name="Work")
     review = Review(**payload.model_dump())
     session.add(review)
     session.commit()

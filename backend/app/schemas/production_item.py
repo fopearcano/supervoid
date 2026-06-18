@@ -11,6 +11,7 @@ from app.schemas._common import TimestampedRead
 
 class ProductionItemCreate(BaseModel):
     manuscript_id: str
+    work_id: Optional[str] = None
     assignee_id: Optional[str] = None
     stage: ProductionStage
     status: ProductionItemStatus = ProductionItemStatus.PENDING
@@ -19,6 +20,7 @@ class ProductionItemCreate(BaseModel):
 
 
 class ProductionItemUpdate(BaseModel):
+    work_id: Optional[str] = None
     assignee_id: Optional[str] = None
     stage: Optional[ProductionStage] = None
     status: Optional[ProductionItemStatus] = None
@@ -28,6 +30,7 @@ class ProductionItemUpdate(BaseModel):
 
 class ProductionItemRead(TimestampedRead):
     manuscript_id: str
+    work_id: Optional[str]
     assignee_id: Optional[str]
     assignee_name: Optional[str] = None
     stage: ProductionStage
