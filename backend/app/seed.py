@@ -52,7 +52,19 @@ from app.models import (
     WorkStatus,
     WorkType,
 )
+from app.models import (  # public reader projection
+    HotspotType,
+    MediaAssetType,
+    PublicHotspot,
+    PublicMediaAsset,
+    PublishedChapter,
+    PublishedPage,
+    PublishedStatus,
+    PublishedVolume,
+    PublishedWork,
+)
 from app.services.knowledge import slugify
+from app.services.public_reader_service import publish_work_to_public_reader
 from app.models.base import utcnow
 
 # A single demo password keyed for every seeded user; documented in the README.
@@ -943,6 +955,188 @@ def _seed_knowledge_graph(
     session.commit()
 
 
+def _seed_public_reader(session: Session, works: dict[str, Work]) -> None:
+    """Seed the public Graphic Novel Webviewer demo.
+
+    Demonstrates the publication bridge (private Work -> PublishedWork shell)
+    then curates the public-only volume/chapters/pages/media/hotspots by hand.
+    Page images are local placeholder SVGs; audio/video are referenced
+    placeholders the reader degrades over gracefully.
+    """
+    # Public media assets (audio/video). Page art is referenced by path on the
+    # page rows, not as media-asset rows.
+    theme = PublicMediaAsset(
+        type=MediaAssetType.AUDIO,
+        title="The Silent Workshop — Main Theme",
+        file_path="/public/demo/audio/theme.mp3",
+        loop=True,
+        duration=180,
+        credits="SUPERVOID Sound (placeholder)",
+    )
+    chapter_two_theme = PublicMediaAsset(
+        type=MediaAssetType.AUDIO,
+        title="Chapter II — Night Bindery",
+        file_path="/public/demo/audio/chapter-2.mp3",
+        loop=True,
+        duration=200,
+        credits="SUPERVOID Sound (placeholder)",
+    )
+    intro_video = PublicMediaAsset(
+        type=MediaAssetType.VIDEO,
+        title="The Silent Workshop — Intro",
+        file_path="/public/demo/video/intro.mp4",
+        poster_image="/public/demo/video/intro-poster.svg",
+        duration=24,
+        credits="SUPERVOID Motion (placeholder)",
+    )
+    hotspot_audio = PublicMediaAsset(
+        type=MediaAssetType.AUDIO,
+        title="Press cylinder (ambient)",
+        file_path="/public/demo/audio/press.mp3",
+        duration=12,
+    )
+    hotspot_video = PublicMediaAsset(
+        type=MediaAssetType.VIDEO,
+        title="Type being set",
+        file_path="/public/demo/video/typesetting.mp4",
+        poster_image="/public/demo/video/intro-poster.svg",
+        duration=15,
+    )
+    session.add_all(
+        [theme, chapter_two_theme, intro_video, hotspot_audio, hotspot_video]
+    )
+    session.commit()
+    for asset in (theme, chapter_two_theme, intro_video, hotspot_audio, hotspot_video):
+        session.refresh(asset)
+
+    # Published work shell via the bridge (public metadata only), then curate.
+    src = works.get("silent_workshop")
+    if src is not None:
+        pub = publish_work_to_public_reader(session, src.id)
+    else:  # pragma: no cover - demo always has the graphic novel work
+        pub = PublishedWork(slug="the-silent-workshop", title="The Silent Workshop")
+        session.add(pub)
+        session.commit()
+        session.refresh(pub)
+
+    pub.slug = "the-silent-workshop"
+    pub.title = "The Silent Workshop"
+    pub.subtitle = "A correspondence in ink"
+    pub.public_synopsis = (
+        "A printer and a binder write to each other for forty years and never "
+        "meet — a quiet graphic novel about craft, distance, and the marks we "
+        "leave on paper."
+    )
+    pub.cover_image = "/public/demo/covers/silent-workshop.svg"
+    pub.status = PublishedStatus.PUBLISHED
+    pub.publication_date = date.today() - timedelta(days=14)
+    pub.author_credit = "Saoirse Carrick"
+    pub.artist_credit = "Saoirse Carrick"
+    pub.tags = ["graphic novel", "literary", "noir", "craft"]
+    pub.music_track_id = theme.id
+    pub.video_intro_id = intro_video.id
+    session.add(pub)
+    session.commit()
+    session.refresh(pub)
+
+    volume = PublishedVolume(
+        published_work_id=pub.id,
+        title="Volume One",
+        volume_number=1,
+        public_description="Letters unsent, and the work that filled the silence.",
+        cover_image="/public/demo/covers/silent-workshop-vol1.svg",
+        publication_date=pub.publication_date,
+        music_track_id=theme.id,
+    )
+    session.add(volume)
+    session.commit()
+    session.refresh(volume)
+
+    chapter_one = PublishedChapter(
+        published_volume_id=volume.id,
+        title="The First Letter",
+        chapter_number=1,
+        public_description="An introduction in ink.",
+        music_track_id=theme.id,
+        video_intro_id=intro_video.id,
+    )
+    chapter_two = PublishedChapter(
+        published_volume_id=volume.id,
+        title="Night Bindery",
+        chapter_number=2,
+        public_description="Work after dark.",
+        music_track_id=chapter_two_theme.id,
+    )
+    session.add_all([chapter_one, chapter_two])
+    session.commit()
+    for chapter in (chapter_one, chapter_two):
+        session.refresh(chapter)
+
+    def _page(chapter: PublishedChapter, n: int, **over) -> PublishedPage:
+        return PublishedPage(
+            published_chapter_id=chapter.id,
+            page_number=n,
+            image_path=f"/public/demo/pages/page-{n:03d}.svg",
+            alt_text=f"The Silent Workshop, page {n}",
+            width=1400,
+            height=2000,
+            **over,
+        )
+
+    pages = [
+        _page(chapter_one, 1),
+        _page(chapter_one, 2),
+        _page(chapter_one, 3, video_overlay_id=intro_video.id),
+        _page(chapter_two, 4, music_track_id=chapter_two_theme.id),
+        _page(chapter_two, 5),
+        _page(chapter_two, 6),
+    ]
+    session.add_all(pages)
+    session.commit()
+    for page in pages:
+        session.refresh(page)
+
+    hotspots = [
+        PublicHotspot(
+            published_page_id=pages[0].id, type=HotspotType.INFO,
+            x=12, y=14, width=26, height=10, title="The Workshop",
+            content="A jobbing print shop on a harbour street.",
+        ),
+        PublicHotspot(
+            published_page_id=pages[0].id, type=HotspotType.CHARACTER,
+            x=58, y=42, width=24, height=18, title="The Printer",
+            content="Forty years at the same press; he never posted a reply.",
+        ),
+        PublicHotspot(
+            published_page_id=pages[1].id, type=HotspotType.LOCATION,
+            x=20, y=56, width=32, height=14, title="The Harbour",
+            content="Where the letters were posted, and never answered.",
+        ),
+        PublicHotspot(
+            published_page_id=pages[2].id, type=HotspotType.LORE,
+            x=14, y=20, width=30, height=12, title="On Movable Type",
+            content="A short note on setting type by hand, letter by letter.",
+        ),
+        PublicHotspot(
+            published_page_id=pages[2].id, type=HotspotType.VIDEO,
+            x=55, y=58, width=32, height=22, title="Watch: type being set",
+            video_id=hotspot_video.id,
+        ),
+        PublicHotspot(
+            published_page_id=pages[3].id, type=HotspotType.AUDIO,
+            x=32, y=30, width=22, height=22, title="Listen: the press",
+            audio_track_id=hotspot_audio.id,
+        ),
+        PublicHotspot(
+            published_page_id=pages[4].id, type=HotspotType.EXTERNAL_LINK,
+            x=40, y=70, width=28, height=10, title="About SUPERVOID",
+            target_url="https://example.invalid/supervoid",
+        ),
+    ]
+    session.add_all(hotspots)
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -965,6 +1159,7 @@ def run() -> None:
         _seed_calendar_events(session, works)
         _seed_integration_points(session)
         _seed_knowledge_graph(session, manuscripts)
+        _seed_public_reader(session, works)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -973,7 +1168,9 @@ def run() -> None:
         f"{len(manuscripts)} manuscripts, "
         "with reviews, workflow events, contracts, rights, a graphic-novel "
         "production board, production items, production records, notes, "
-        "calendar events, integration points, and a starter knowledge graph."
+        "calendar events, integration points, a starter knowledge graph, and "
+        "a public Graphic Novel Webviewer demo (1 published work, 1 volume, "
+        "2 chapters, 6 pages, media + hotspots)."
     )
 
 

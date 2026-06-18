@@ -29,6 +29,26 @@ Status legend: ✅ done · 🟡 in place / partial · ⚪ planned
   adaptation candidates as first-class formats.
 - 🟡 Dashboard analytics — expand indicators and deadline tracking.
 
+## Public Graphic Novel Webviewer 🟡
+
+A public, read-only reader layered on the private system through a public-safe
+API. See [`PUBLIC_VIEWER.md`](PUBLIC_VIEWER.md).
+
+- ✅ Public projection models (`PublishedWork/Volume/Chapter/Page`,
+  `PublicHotspot`, `PublicMediaAsset`) — no private fields by construction.
+- ✅ Read-only `/public` API (separate from `/api`, unauthenticated, GET-only)
+  with visibility rules (published / unlisted / hidden).
+- ✅ Publication bridge `publish_work_to_public_reader` (public metadata only).
+- ✅ Immersive reader: single / double / scroll / cinematic modes, zoom & fit,
+  fullscreen, keyboard + touch, progress, volume/chapter selectors.
+- ✅ Gated background music (page→chapter→volume→work) and HTML5 video
+  (intro / page overlay / hotspot / ambient), with graceful degradation.
+- ✅ Curated public hotspots (info / character / location / lore / link / audio
+  / video) and a dark, cinematic SUPERVOID identity + shared design tokens.
+- ⚪ Real panel-by-panel cinematic mode (coords per panel), guided reading.
+- ⚪ A small curation UI in the admin app for building published works.
+- ⚪ Image/asset pipeline (derivatives, CDN) beyond local placeholders.
+
 ## Phase 2 — Rights & contracts depth 🟡
 
 - ✅ Dedicated **Rights** module (`/api/rights`): per-work, per territory/language

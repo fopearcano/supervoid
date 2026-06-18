@@ -29,22 +29,21 @@ backend/
     auth/            Password hashing, JWT, DI dependencies (roles)
     models/          SQLModel domain entities + enums
     schemas/         Pydantic request/response payloads
-    routers/         HTTP routers (one module per resource)
-    services/        Business logic (workflow, knowledge, AI, exports, storage)
+    routers/         HTTP routers (one per resource) + public_reader (/public)
+    services/        Business logic (workflow, knowledge, AI, exports, storage,
+                     public_reader_service)
     integrations/    Ecosystem integration contracts (LOGOSFORGE, Movies)
+    static/demo/     Local placeholder media for the public reader
     utils/           crud, logging, request-id middleware, pagination
   tests/             Pytest suite
 frontend/
   src/
-    main.tsx         React entrypoint
-    App.tsx          Root component + view routing
-    pages/           Page-level views
-    components/      Reusable UI primitives
-    layouts/         Application shell
-    api/             Typed API client (fetch wrappers)
-    types/           Shared TypeScript types + label maps
-    auth/            Auth context
-docs/                Architecture, roadmap, branding, migration notes
+    main.tsx         Entry — admin App, or PublicViewerApp for /reader*
+    App.tsx          Private admin root + view routing
+    pages/ components/ layouts/ api/ types/ auth/   Private admin app
+    styles/          Shared SUPERVOID design tokens (supervoid-tokens.css)
+    public-viewer/   Public Graphic Novel Webviewer (own pages/player/api/types)
+docs/                Architecture, roadmap, branding, migration, public viewer
 scripts/             Local backup / restore helpers
 ```
 
@@ -150,6 +149,31 @@ These are operational records — a specific LOGOSFORGE bridge, a SUPERVOID Movi
 adaptation hand-off, an AI Lab or Archive/Knowledge-Graph seam — each with an
 endpoint placeholder. The `/points` routes are declared before the `/{key}`
 catch-all so they are not shadowed by it.
+
+## Public Graphic Novel Webviewer (public layer)
+
+A public, read-only reader for published graphic novels sits on top of the
+private system through a narrow, public-safe surface — same identity, none of
+the private data. Full detail in [`PUBLIC_VIEWER.md`](PUBLIC_VIEWER.md).
+
+- **Separate projection.** `PublishedWork → PublishedVolume → PublishedChapter →
+  PublishedPage → PublicHotspot`, plus `PublicMediaAsset` (image/audio/video).
+  These tables carry only public fields — no contracts, rights, notes, workflow,
+  production, or private files exist on them. The link back to the private
+  `Work` (`source_work_id`) is stored but never serialised.
+- **Publication bridge.** `publish_work_to_public_reader(work_id)` copies only
+  public metadata from a private `Work`; everything else is curated by hand.
+- **URL separation.** Private API stays under `/api`; the public API is a
+  separate, unauthenticated, GET-only router at `/public` (writes → 405), with
+  demo media under `/public/demo`. The reader UI is a separate, code-split
+  frontend tree at `/reader/*`.
+- **Visibility.** Only `PUBLISHED` works are listed; `UNLISTED` is by-slug only;
+  `DRAFT`/`ARCHIVED` and their deep ids return 404.
+- **Media discipline.** Audio is gated behind an Enter overlay (user gesture);
+  ambient video is muted-autoplay only; missing/blocked media degrades quietly.
+
+The `player/` module (cinematic viewer, audio/video players, hotspots, gated
+playback) is content-agnostic by design — the seam SUPERVOID Movies can reuse.
 
 ## Local-first & Postgres
 

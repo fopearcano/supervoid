@@ -238,3 +238,42 @@ class IntegrationPointStatus(str, Enum):
     PLANNED = "planned"
     ACTIVE = "active"
     DISABLED = "disabled"
+
+
+# --- Public Graphic Novel Webviewer ----------------------------------------
+# These back the *public* reader projection only. They are deliberately kept
+# separate from the private editorial enums above so nothing internal leaks
+# into the public-facing layer.
+
+
+class PublishedStatus(str, Enum):
+    """Visibility of a published-reader record.
+
+    Only ``PUBLISHED`` titles are listed publicly; ``UNLISTED`` is reachable
+    by direct slug but not enumerated; ``DRAFT`` / ``ARCHIVED`` are hidden.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    UNLISTED = "unlisted"
+    ARCHIVED = "archived"
+
+
+class MediaAssetType(str, Enum):
+    """Kind of public media asset referenced by the reader."""
+
+    IMAGE = "image"
+    AUDIO = "audio"
+    VIDEO = "video"
+
+
+class HotspotType(str, Enum):
+    """Curated, public-only interactive hotspot kinds."""
+
+    INFO = "info"
+    CHARACTER = "character"
+    LOCATION = "location"
+    LORE = "lore"
+    EXTERNAL_LINK = "external_link"
+    AUDIO = "audio"
+    VIDEO = "video"

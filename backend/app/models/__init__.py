@@ -20,11 +20,14 @@ from app.models.enums import (
     EditorialNoteKind,
     EntityKind,
     ExportFormat,
+    HotspotType,
     IntegrationPointStatus,
     IntegrationPointType,
     ManuscriptLinkRole,
+    MediaAssetType,
     ProductionItemStatus,
     ProductionStage,
+    PublishedStatus,
     RelationshipKind,
     ReviewVerdict,
     RightStatus,
@@ -42,6 +45,12 @@ from app.models.manuscript import Manuscript
 from app.models.manuscript_entity_link import ManuscriptEntityLink
 from app.models.production_item import ProductionItem
 from app.models.production_record import ProductionRecord
+from app.models.public_hotspot import PublicHotspot
+from app.models.public_media_asset import PublicMediaAsset
+from app.models.published_chapter import PublishedChapter
+from app.models.published_page import PublishedPage
+from app.models.published_volume import PublishedVolume
+from app.models.published_work import PublishedWork
 from app.models.review import Review
 from app.models.rights import Rights
 from app.models.user import User
@@ -59,6 +68,7 @@ __all__ = [
     "DraftStatus",
     "EntityKind",
     "GraphicNovelProduction",
+    "HotspotType",
     "IntegrationPoint",
     "IntegrationPointStatus",
     "IntegrationPointType",
@@ -66,6 +76,14 @@ __all__ = [
     "KnowledgeRelationship",
     "ManuscriptEntityLink",
     "ManuscriptLinkRole",
+    "MediaAssetType",
+    "PublicHotspot",
+    "PublicMediaAsset",
+    "PublishedChapter",
+    "PublishedPage",
+    "PublishedStatus",
+    "PublishedVolume",
+    "PublishedWork",
     "PublishingCalendarEvent",
     "RelationshipKind",
     "Contract",

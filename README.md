@@ -54,8 +54,32 @@ Further documentation:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture & module map
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased roadmap, including the LOGOSFORGE and Movies bridges
+- [`docs/PUBLIC_VIEWER.md`](docs/PUBLIC_VIEWER.md) — the public Graphic Novel Webviewer
 - [`docs/SUPERVOID_BRANDING.md`](docs/SUPERVOID_BRANDING.md) — naming, voice, and visual identity
 - [`docs/MIGRATION_NOTES.md`](docs/MIGRATION_NOTES.md) — migration report from `logosforge-pub`
+
+---
+
+## Public Graphic Novel Webviewer
+
+A **public, read-only** reader for published graphic novels lives alongside the
+private admin system — same dark, cinematic identity, none of the private data.
+
+- **Reader UI** at `/reader`, `/reader/:slug`, `/reader/:slug/:volumeId/:chapterId`
+  (a separate, code-split frontend tree under `frontend/src/public-viewer/`).
+- **Public API** at `/public/*` (read-only, unauthenticated, served outside the
+  private `/api` prefix). Endpoints: `works`, `works/{slug}`,
+  `works/{slug}/volumes`, `volumes/{id}/chapters`, `chapters/{id}/pages`,
+  `pages/{id}`, `pages/{id}/hotspots`, `media/{id}`.
+- **Publication bridge** `publish_work_to_public_reader(work_id)` copies only
+  public metadata from a private `Work`; volumes/pages/media are curated.
+- Immersive reader: single / double / vertical-scroll / cinematic modes, zoom &
+  fit, fullscreen, keyboard + touch, gated background **music**, HTML5 **video**
+  (intro / overlay / hotspot / ambient), and curated public **hotspots**.
+
+The viewer consumes only the explicitly published projection — it can never
+reach contracts, rights, editorial notes, workflow, production status, or private
+files. See [`docs/PUBLIC_VIEWER.md`](docs/PUBLIC_VIEWER.md).
 
 ---
 
@@ -76,22 +100,21 @@ backend/
     config.py      Settings (env-driven)
     seed.py        Schema initialisation + sample data
     auth/          Password hashing, JWT, DI dependencies
-    models/        SQLModel domain entities + enums
-    routers/       HTTP routers (auth, health, meta, …)
-    services/      Business logic
-    schemas/       Request/response payloads
+    models/        SQLModel domain entities + enums (+ Published* public layer)
+    routers/       Private /api routers + public_reader.py (mounted at /public)
+    services/      Business logic (+ public_reader_service: bridge + queries)
+    schemas/       Request/response payloads (+ public_reader: public-safe)
+    static/demo/   Local placeholder media for the public reader
     utils/         Cross-cutting helpers
-  tests/           Pytest suite (model + router + auth)
+  tests/           Pytest suite (model + router + auth + public reader)
 
 frontend/
   src/
-    main.tsx       React entrypoint
-    App.tsx        Root component
-    pages/         Page components (Dashboard)
-    components/    Reusable UI primitives
-    layouts/       Application shell
-    api/           Typed API client
-    types/         Shared TypeScript types
+    main.tsx       Entry — mounts admin App, or PublicViewerApp for /reader*
+    App.tsx        Private admin root
+    pages/ components/ layouts/ api/ types/   Private admin app
+    styles/        supervoid-tokens.css (shared identity tokens)
+    public-viewer/ Public Graphic Novel Webviewer (own pages/player/api/types)
 ```
 
 ---

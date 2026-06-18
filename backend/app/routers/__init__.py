@@ -20,6 +20,7 @@ from app.routers import (
     meta,
     production_items,
     production_records,
+    public_reader,
     reviews,
     rights,
     search,
@@ -80,6 +81,7 @@ __all__ = [
     "meta",
     "production_items",
     "production_records",
+    "public_reader",
     "reviews",
     "rights",
     "search",
@@ -87,3 +89,8 @@ __all__ = [
     "workflow_events",
     "works",
 ]
+
+# NOTE: ``public_reader`` is intentionally NOT in ALL_ROUTERS. The private API
+# routers above are all mounted under the ``/api`` prefix; the public reader is
+# mounted separately and unprefixed at ``/public`` in main.py, keeping the
+# public/private surfaces cleanly separated at the URL level too.

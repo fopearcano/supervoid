@@ -1,0 +1,50 @@
+/*
+ * SUPERVOID shared design tokens.
+ *
+ * The Tailwind theme (tailwind.config.js) remains the primary source of truth
+ * for the private admin app. This file mirrors those values as plain CSS custom
+ * properties so the public Graphic Novel Webviewer — and any future SUPERVOID
+ * surface (e.g. SUPERVOID Movies) — can share one cinematic, archival identity
+ * without depending on Tailwind utility classes alone.
+ */
+:root {
+  /* Ink — graphite blacks, from quiet elevation down to the void. */
+  --sv-ink-50: #e8e6df;
+  --sv-ink-100: #c9c6bc;
+  --sv-ink-200: #9c988c;
+  --sv-ink-300: #6f6c63;
+  --sv-ink-400: #3d3b36;
+  --sv-ink-500: #26241f;
+  --sv-ink-600: #1c1a16;
+  --sv-ink-650: #181612;
+  --sv-ink-700: #141310;
+  --sv-ink-800: #0d0c0a;
+  --sv-ink-900: #070605;
+
+  /* Parchment — restrained, paper-toned foregrounds. */
+  --sv-parchment: #e8e3d3;
+  --sv-parchment-muted: #b8b2a2;
+  --sv-parchment-dim: #7a7466;
+  --sv-parchment-shadow: #56524a;
+
+  /* Accent — warmed brass. The single highlight; used sparingly. */
+  --sv-accent: #b08456;
+  --sv-accent-soft: #82643f;
+  --sv-accent-deep: #5a4632;
+
+  /* Hairline rule + oxblood signal for trouble states. */
+  --sv-rule: #272520;
+  --sv-signal: #a8736a;
+
+  /* Type pairing — literary serif + quiet sans + archival mono. */
+  --sv-font-serif: 'EB Garamond', 'Cormorant Garamond', Georgia, serif;
+  --sv-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --sv-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Reader-specific cinematic tokens. */
+  --sv-reader-bg: var(--sv-ink-900);
+  --sv-reader-chrome: rgba(7, 6, 5, 0.82);
+  --sv-reader-page-shadow: 0 24px 80px -24px rgba(0, 0, 0, 0.9);
+  --sv-reader-transition: 360ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --sv-letterbox: 8vh;
+}

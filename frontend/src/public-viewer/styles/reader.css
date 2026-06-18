@@ -1,0 +1,123 @@
+/*
+ * Public Graphic Novel Webviewer — viewer-specific styling.
+ * Cinematic, dark, archival. Reuses the shared tokens; adds the few things
+ * Tailwind utilities don't cover cleanly (range slider, hotspots, transitions).
+ */
+
+.sv-reader-root {
+  background: var(--sv-reader-bg);
+  min-height: 100%;
+}
+
+/* Smooth page transitions between spreads. */
+.sv-page-fade {
+  animation: sv-fade var(--sv-reader-transition);
+}
+@keyframes sv-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The dark page plate behind each rendered page image. */
+.sv-page-plate {
+  box-shadow: var(--sv-reader-page-shadow);
+  background:
+    linear-gradient(180deg, var(--sv-ink-700), var(--sv-ink-900));
+}
+
+/* Cinematic mode letterboxing. */
+.sv-letterbox {
+  padding-block: var(--sv-letterbox);
+}
+
+/* --- Hotspots ----------------------------------------------------------- */
+.sv-hotspot {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--sv-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--sv-accent) 8%, transparent);
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease;
+  border-radius: 1px;
+}
+.sv-hotspot:hover,
+.sv-hotspot:focus-visible {
+  background: color-mix(in srgb, var(--sv-accent) 20%, transparent);
+  border-color: var(--sv-accent);
+  outline: none;
+}
+.sv-hotspot__dot {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--sv-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sv-accent) 25%, transparent);
+  animation: sv-pulse 2.6s ease-in-out infinite;
+}
+@keyframes sv-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+.sv-hotspots-hidden .sv-hotspot {
+  display: none;
+}
+
+/* --- Range sliders (volume / progress) ---------------------------------- */
+.sv-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: var(--sv-ink-400);
+  border-radius: 9999px;
+  cursor: pointer;
+}
+.sv-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--sv-accent);
+}
+.sv-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--sv-accent);
+}
+
+/* Hide chrome elegantly. */
+.sv-chrome {
+  transition: opacity var(--sv-reader-transition), transform var(--sv-reader-transition);
+}
+.sv-chrome--hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* Continuous (vertical scroll) reading column. */
+.sv-scroll-column {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sv-ink-400) transparent;
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .sv-page-fade,
+  .sv-hotspot__dot {
+    animation: none;
+  }
+  .sv-chrome {
+    transition: none;
+  }
+}

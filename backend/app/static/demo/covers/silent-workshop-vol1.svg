@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1500" viewBox="0 0 1000 1500">
+  <defs>
+    <radialGradient id="cg" cx="0.5" cy="0.35" r="0.9">
+      <stop offset="0" stop-color="#181612"/>
+      <stop offset="1" stop-color="#070605"/>
+    </radialGradient>
+  </defs>
+  <rect width="1000" height="1500" fill="url(#cg)"/>
+  <rect x="56" y="56" width="888" height="1388" fill="none" stroke="#b08456" stroke-width="1.5" opacity="0.7"/>
+  <text x="500" y="150" fill="#7a7466" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="22" letter-spacing="10" text-anchor="middle">SUPERVOID · GRAPHIC NOVEL</text>
+  <text x="500" y="710" fill="#e8e3d3" font-family="Georgia, 'EB Garamond', serif" font-size="92" text-anchor="middle">Volume One</text>
+  <text x="500" y="790" fill="#7a7466" font-family="Georgia, 'EB Garamond', serif" font-size="40" font-style="italic" text-anchor="middle">Letters Unsent</text>
+  <line x1="380" y1="1320" x2="620" y2="1320" stroke="#b08456" stroke-width="1.5"/>
+  <text x="500" y="1370" fill="#7a7466" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="20" letter-spacing="6" text-anchor="middle">SAOIRSE CARRICK</text>
+</svg>

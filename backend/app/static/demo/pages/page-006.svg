@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="2000" viewBox="0 0 1400 2000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#141310"/>
+      <stop offset="1" stop-color="#070605"/>
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="2000" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1320" height="1920" fill="none" stroke="#272520" stroke-width="2"/>
+  <rect x="90" y="110" width="1220" height="640" fill="#181612" stroke="#272520"/>
+  <rect x="90" y="770" width="600" height="600" fill="#181612" stroke="#272520"/>
+  <rect x="710" y="770" width="600" height="600" fill="#181612" stroke="#272520"/>
+  <rect x="90" y="1390" width="1220" height="480" fill="#181612" stroke="#272520"/>
+  <text x="700" y="1000" fill="#7a7466" font-family="Georgia, 'EB Garamond', serif" font-size="120" font-style="italic" text-anchor="middle" opacity="0.5">06</text>
+  <text x="90" y="1930" fill="#7a7466" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="26" letter-spacing="6">THE SILENT WORKSHOP</text>
+  <text x="1310" y="1930" fill="#b08456" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="26" letter-spacing="6" text-anchor="end">PAGE 06</text>
+</svg>

@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.db import init_db
-from app.routers import ALL_ROUTERS
+from app.routers import ALL_ROUTERS, public_reader
 from app.utils.logging import configure_logging, get_logger
 from app.utils.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
+
+# Local-first demo media for the public reader (placeholder pages, posters).
+PUBLIC_DEMO_DIR = Path(__file__).resolve().parent / "static" / "demo"
 
 log = get_logger("app.main")
 
@@ -60,6 +65,17 @@ def create_app() -> FastAPI:
 
     for router_module in ALL_ROUTERS:
         app.include_router(router_module.router, prefix=settings.api_prefix)
+
+    # Public Graphic Novel Webviewer — read-only, unauthenticated, and NOT
+    # under the private /api prefix. Mounted at /public alongside its
+    # local-first demo media (placeholder page images / posters).
+    app.include_router(public_reader.router)
+    if PUBLIC_DEMO_DIR.is_dir():
+        app.mount(
+            "/public/demo",
+            StaticFiles(directory=PUBLIC_DEMO_DIR),
+            name="public-demo",
+        )
 
     @app.exception_handler(IntegrityError)
     async def _integrity_error_handler(
