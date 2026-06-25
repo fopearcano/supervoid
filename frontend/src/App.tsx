@@ -14,6 +14,7 @@ import { AdaptationDossiersPage } from '@/pages/AdaptationDossiersPage';
 import { WorkTransmediaPage } from '@/pages/WorkTransmediaPage';
 import { ProductionTasksPage } from '@/pages/ProductionTasksPage';
 import { AssetLibraryPage } from '@/pages/AssetLibraryPage';
+import { GraphicNovelStudioPage } from '@/pages/GraphicNovelStudioPage';
 
 type View =
   | { name: 'dashboard' }
@@ -23,6 +24,7 @@ type View =
   | { name: 'production' }
   | { name: 'production-tasks' }
   | { name: 'asset-library' }
+  | { name: 'gn-studio' }
   | { name: 'calendar' }
   | { name: 'production-item'; id: string }
   | { name: 'story-worlds' }
@@ -77,6 +79,7 @@ export default function App() {
         )}
         {view.name === 'production-tasks' && <ProductionTasksPage />}
         {view.name === 'asset-library' && <AssetLibraryPage />}
+        {view.name === 'gn-studio' && <GraphicNovelStudioPage />}
         {view.name === 'calendar' && (
           <ReleaseCalendar onOpenManuscript={openManuscript} />
         )}

@@ -6,6 +6,7 @@ from app.models.base import BaseEntity
 from app.models.enums import StreamStatus
 
 if TYPE_CHECKING:
+    from app.models.graphic_novel_hierarchy import GraphicNovelVolume
     from app.models.work import Work
 
 
@@ -37,3 +38,7 @@ class GraphicNovelProduction(BaseEntity, table=True):
     notes: Optional[str] = Field(default=None)
 
     work: "Work" = Relationship(back_populates="graphic_novel_production")
+    volumes: list["GraphicNovelVolume"] = Relationship(
+        back_populates="production",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )

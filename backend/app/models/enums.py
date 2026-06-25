@@ -637,3 +637,67 @@ class LicenceReviewState(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     EXPIRED = "expired"
+
+
+# --- Graphic-novel production hierarchy -------------------------------------
+# A detailed breakdown beneath GraphicNovelProduction (which stays the
+# high-level summary): Volume → Chapter → Sequence → Page → Panel → element.
+
+
+class GNStatus(str, Enum):
+    """Workflow status of a node in the graphic-novel hierarchy."""
+
+    PLANNED = "planned"
+    IN_PROGRESS = "in_progress"
+    IN_REVIEW = "in_review"
+    COMPLETE = "complete"
+    ON_HOLD = "on_hold"
+
+
+class PageSide(str, Enum):
+    LEFT = "left"  # verso
+    RIGHT = "right"  # recto
+    SINGLE = "single"
+
+
+class CameraFraming(str, Enum):
+    ESTABLISHING = "establishing"
+    EXTREME_WIDE = "extreme_wide"
+    WIDE = "wide"
+    FULL = "full"
+    MEDIUM = "medium"
+    MEDIUM_CLOSE = "medium_close"
+    CLOSE_UP = "close_up"
+    EXTREME_CLOSE_UP = "extreme_close_up"
+    INSERT = "insert"
+    OTHER = "other"
+
+
+class CameraAngle(str, Enum):
+    EYE_LEVEL = "eye_level"
+    HIGH = "high"
+    LOW = "low"
+    BIRDS_EYE = "birds_eye"
+    WORMS_EYE = "worms_eye"
+    DUTCH = "dutch"
+    OVER_SHOULDER = "over_shoulder"
+    POV = "pov"
+    OTHER = "other"
+
+
+class PanelElementType(str, Enum):
+    CHARACTER = "character"
+    PROP = "prop"
+    LOCATION = "location"
+    TEXT = "text"
+
+
+class CurationStatus(str, Enum):
+    """Where a page sits in the deliberate hand-off to the public reader. The
+    public reader is NEVER written automatically — these are curation states
+    only; an editor performs the actual publish separately."""
+
+    NOT_READY = "not_ready"
+    READY_FOR_CURATION = "ready_for_curation"
+    IN_CURATION = "in_curation"
+    HANDED_OFF = "handed_off"

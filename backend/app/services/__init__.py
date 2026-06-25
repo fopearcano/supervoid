@@ -3,6 +3,7 @@
 from app.services import (
     assets,
     exports,
+    graphic_novel,
     knowledge,
     policy,
     production,
@@ -14,6 +15,7 @@ from app.services import (
 __all__ = [
     "assets",
     "exports",
+    "graphic_novel",
     "knowledge",
     "policy",
     "production",

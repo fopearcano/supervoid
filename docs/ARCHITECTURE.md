@@ -90,10 +90,11 @@ while editorial concerns attach to the manuscript.
 - **Rights** (`rights`) — a per-work, per territory/language profile; each right
   (print, ebook, audiobook, film, adaptation, merchandising) carries a
   `RightStatus` (available / reserved / optioned / licensed / sold / n-a).
-- **GraphicNovelProduction** (`graphic_novel_productions`) — visual-production
-  board for illustrated works: script → storyboard → character/environment
-  design → page layout → lettering → colouring → final files, each a
-  `StreamStatus`.
+- **GraphicNovelProduction** (`graphic_novel_productions`) — the high-level
+  visual-production summary for illustrated works (script → storyboard →
+  character/environment design → page layout → lettering → colouring → final
+  files, each a `StreamStatus`). Detailed statuses roll up into it from the
+  production hierarchy below (see *Graphic-novel production hierarchy*).
 - **Production** — `ProductionRecord` is a 1:1 edition roll-up (ISBN, release
   date, per-format and per-stage `StreamStatus`); `ProductionItem` has evolved
   into a general cross-medium production **task** (see *Production task system*
@@ -327,6 +328,47 @@ Surface (`/assets`, fully private — every route requires auth):
 Approval of a version and commercial-use review are human actions; nothing here
 auto-approves. The private UI adds an **Asset Library** browser with version
 history, preview/download, provenance and licence panels.
+
+## Graphic-novel production hierarchy
+
+`GraphicNovelProduction` stays the high-level summary; beneath it sits a detailed
+breakdown so a graphic novel can be planned and tracked panel by panel::
+
+    GraphicNovelProduction → Volume → Chapter → Sequence → Page → Panel → element
+
+- Every level (`gn_volumes`, `gn_chapters`, `gn_sequences`, `gn_pages`,
+  `gn_panels`) has a stable `position` (for reorder) and a `GNStatus`.
+- **`GraphicNovelPage`** — page number, spread membership + page side, script,
+  visual brief, dialogue summary, lettering/colour/final `StreamStatus`, print
+  geometry (width/height/bleed/safe-area mm), linked **master asset** (Asset
+  Library), and a deliberate `curation_status` + `published_page_id` mapping.
+- **`GraphicNovelPanel`** — panel number, normalised x/y/width/height, script
+  beat, dialogue, captions, sound effects, camera framing & angle, lens
+  metadata, continuity notes, storyboard & final asset-version links (for
+  comparison), and an approval status.
+- **`GraphicNovelPanelElement`** — characters, props, locations and text within
+  a panel. Characters/props/locations reference a `KnowledgeEntity` (and
+  `GraphicNovelPageEntityLink` does the same at page level) — characters and
+  locations are linked, never duplicated, into the production hierarchy.
+
+The service (`app/services/graphic_novel.py`) provides the **roll-up** of
+detailed statuses into the summary, **completion percentages**, **page/spread
+validation** (panel bounds, page-number uniqueness, spread integrity),
+**print/digital readiness** checks, **duplication** (page & panel, deep-copying
+panels/elements), **reordering**, and **storyboard↔final comparison**.
+
+Surfaces (private API): CRUD for each level (`/graphic-novel-productions/{id}/
+volumes`, `/gn-volumes/{id}/chapters`, … `/gn-pages/{id}/panels`,
+`/gn-panels/{id}/elements`), `…/reorder`, `…/duplicate`, page/panel
+`…/validate`, `…/comparison`, and production-level `/progress`, `/validate`,
+`/readiness`, `/recalculate`, `/tree`, and `/curation-handoff`.
+
+**Curation hand-off, not publish.** `/curation-handoff` proposes which pages are
+ready for the public reader and (with `?commit=true`) marks them
+`READY_FOR_CURATION` — it **never writes the public reader**. Publishing remains
+the separate, deliberate public-projection step. The private UI adds a
+**Graphic-novel studio**: a volume/chapter/page/panel navigator, a visual
+page-board, a panel coordinate editor, and progress/readiness views.
 
 ## Integration layer (ecosystem seams)
 

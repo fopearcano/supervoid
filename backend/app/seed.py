@@ -82,6 +82,20 @@ from app.models import (  # collaboration / project-scoped access
     ProjectRole,
 )
 from app.models import ApprovalRequest  # production task system
+from app.models import (  # graphic-novel hierarchy
+    CameraAngle,
+    CameraFraming,
+    GNStatus,
+    GraphicNovelChapter,
+    GraphicNovelPage,
+    GraphicNovelPageEntityLink,
+    GraphicNovelPanel,
+    GraphicNovelPanelElement,
+    GraphicNovelSequence,
+    GraphicNovelVolume,
+    PageSide,
+    PanelElementType,
+)
 from app.models import (  # asset library
     Asset,
     AssetApprovalStatus,
@@ -97,6 +111,7 @@ from app.models import (  # asset library
     ProvenanceKind,
     ProvenanceRecord,
 )
+from app.services import graphic_novel as gn_service
 from app.services import policy
 from app.services import production as production_service
 from app.services import production_templates
@@ -1567,6 +1582,142 @@ def _seed_asset_library(
     session.commit()
 
 
+def _seed_graphic_novel_hierarchy(
+    session: Session,
+    works: dict[str, Work],
+) -> None:
+    """Seed a small but complete production breakdown for the flagship graphic
+    novel: volume → chapter → sequence → pages → panels → elements, with
+    knowledge-graph entity links (no character/location duplication) and a
+    storyboard↔final comparison. Rolls up into the summary at the end."""
+    gn_work = works.get("silent_workshop")
+    if gn_work is None:  # pragma: no cover
+        return
+    production = session.exec(
+        select(GraphicNovelProduction).where(
+            GraphicNovelProduction.work_id == gn_work.id
+        )
+    ).first()
+    if production is None:  # pragma: no cover
+        return
+
+    # Knowledge-graph entities the panels reference (characters / locations).
+    def _entity(name: str, kind: EntityKind) -> KnowledgeEntity:
+        slug = slugify(name)
+        existing = session.exec(
+            select(KnowledgeEntity).where(KnowledgeEntity.slug == slug)
+        ).first()
+        if existing is not None:
+            return existing
+        ent = KnowledgeEntity(name=name, slug=slug, kind=kind)
+        session.add(ent)
+        session.flush()
+        return ent
+
+    anselm = _entity("Anselm the Printer", EntityKind.CHARACTER)
+    workshop = _entity("The Workshop", EntityKind.PLACE)
+
+    # The cover asset's versions, for the storyboard↔final comparison demo.
+    cover = session.exec(
+        select(Asset).where(Asset.title == "The Silent Workshop — Cover")
+    ).first()
+    cover_versions = sorted(cover.versions, key=lambda v: v.version_number) if cover else []
+    storyboard_v = cover_versions[0].id if len(cover_versions) > 0 else None
+    final_v = cover_versions[1].id if len(cover_versions) > 1 else None
+
+    volume = GraphicNovelVolume(
+        production_id=production.id, volume_number=1, title="Volume One",
+        status=GNStatus.IN_PROGRESS, position=0,
+    )
+    session.add(volume)
+    session.flush()
+    chapter = GraphicNovelChapter(
+        volume_id=volume.id, chapter_number=1, title="The First Letter",
+        status=GNStatus.IN_PROGRESS, position=0,
+    )
+    session.add(chapter)
+    session.flush()
+    sequence = GraphicNovelSequence(
+        chapter_id=chapter.id, sequence_number=1, title="Night at the press",
+        status=GNStatus.IN_PROGRESS, position=0,
+    )
+    session.add(sequence)
+    session.flush()
+
+    # Page 1 — well advanced; print geometry set.
+    page1 = GraphicNovelPage(
+        sequence_id=sequence.id, page_number=1, position=0, status=GNStatus.COMPLETE,
+        page_side=PageSide.SINGLE,
+        script="Anselm sets the last line of type as the harbour bell rings.",
+        visual_brief="Warm key light from the press lamp; deep shadow.",
+        dialogue_summary="Anselm reflects on forty years of unanswered letters.",
+        lettering_status=StreamStatus.COMPLETE,
+        colour_status=StreamStatus.COMPLETE,
+        final_status=StreamStatus.COMPLETE,
+        print_width_mm=170, print_height_mm=240, bleed_mm=3, safe_area_mm=5,
+        master_asset_id=cover.id if cover else None,
+    )
+    # Page 2 — in progress.
+    page2 = GraphicNovelPage(
+        sequence_id=sequence.id, page_number=2, position=1, status=GNStatus.IN_PROGRESS,
+        page_side=PageSide.SINGLE,
+        script="A reply that never comes; the press falls silent.",
+        lettering_status=StreamStatus.IN_PROGRESS,
+        colour_status=StreamStatus.PENDING,
+        final_status=StreamStatus.NOT_PLANNED,
+        print_width_mm=170, print_height_mm=240, bleed_mm=3, safe_area_mm=5,
+    )
+    session.add_all([page1, page2])
+    session.flush()
+
+    # Panels on page 1.
+    p1 = GraphicNovelPanel(
+        page_id=page1.id, panel_number=1, position=0, status=GNStatus.COMPLETE,
+        x=0.05, y=0.05, width=0.9, height=0.45,
+        script_beat="Establishing the workshop at night.",
+        captions="Forty winters at the same press.",
+        camera_framing=CameraFraming.ESTABLISHING, camera_angle=CameraAngle.HIGH,
+        approval_status=AssetApprovalStatus.APPROVED,
+        storyboard_asset_version_id=storyboard_v,
+        final_asset_version_id=final_v,
+    )
+    p2 = GraphicNovelPanel(
+        page_id=page1.id, panel_number=2, position=1, status=GNStatus.COMPLETE,
+        x=0.05, y=0.52, width=0.43, height=0.43,
+        dialogue="“Still nothing.”",
+        camera_framing=CameraFraming.CLOSE_UP, camera_angle=CameraAngle.EYE_LEVEL,
+    )
+    session.add_all([p1, p2])
+    session.flush()
+
+    # Panel elements: character + location (entity refs) + a caption text.
+    session.add_all([
+        GraphicNovelPanelElement(
+            panel_id=p1.id, element_type=PanelElementType.LOCATION,
+            entity_id=workshop.id, position=0,
+        ),
+        GraphicNovelPanelElement(
+            panel_id=p2.id, element_type=PanelElementType.CHARACTER,
+            entity_id=anselm.id, position=0, x=0.2, y=0.2, width=0.5, height=0.7,
+        ),
+        GraphicNovelPanelElement(
+            panel_id=p2.id, element_type=PanelElementType.TEXT,
+            text_content="Still nothing.", label="dialogue", position=1,
+        ),
+    ])
+
+    # Page-level entity links (characters/locations on the page).
+    session.add_all([
+        GraphicNovelPageEntityLink(page_id=page1.id, entity_id=anselm.id, role="lead"),
+        GraphicNovelPageEntityLink(page_id=page1.id, entity_id=workshop.id, role="setting"),
+    ])
+    session.flush()
+
+    # Roll the detailed statuses up into the high-level summary.
+    gn_service.recalculate_production(session, production)
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1594,6 +1745,7 @@ def run() -> None:
         _seed_collaboration(session, users, works)
         _seed_production_tasks(session, works, users)
         _seed_asset_library(session, works, authors, users)
+        _seed_graphic_novel_hierarchy(session, works)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1610,7 +1762,9 @@ def run() -> None:
         "audit trail), and a production task breakdown (graphic-novel template "
         "applied: milestones, tasks, dependencies, and a pending approval), and "
         "the Asset Library (a versioned cover with provenance + a near-expiry "
-        "licence, plus a human-made character design)."
+        "licence, plus a human-made character design), and a graphic-novel "
+        "production hierarchy (1 volume → chapter → sequence → 2 pages → panels "
+        "with knowledge-entity links and a storyboard↔final comparison)."
     )
 
 

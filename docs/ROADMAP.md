@@ -113,9 +113,25 @@ Project-scoped collaboration layered on top of (never replacing) the global
 
 - ✅ **GraphicNovelProduction** board (`/api/graphic-novel-productions`): script
   → storyboard → character/environment design → page layout → lettering →
-  colouring → final files, each a `StreamStatus`, with volume/issue numbers.
-- ⚪ Page/panel/spread tracking distinct from prose layout stages.
-- ⚪ Cover and interior asset versioning via the attachments layer.
+  colouring → final files, each a `StreamStatus`, with volume/issue numbers —
+  now the **high-level summary** over the detailed hierarchy below.
+- ✅ **Production hierarchy** (Volume → Chapter → Sequence → Page → Panel →
+  element) with stable ordering and status at every level. See *Graphic-novel
+  production hierarchy* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+  - ✅ Rich page fields (spread/side, script, visual brief, dialogue summary,
+    lettering/colour/final, print geometry, master asset, public mapping) and
+    panel fields (normalised x/y/w/h, beats, dialogue/captions/SFX, camera
+    framing/angle/lens, continuity, storyboard & final asset versions, approval).
+  - ✅ Panel elements (characters/props/locations/text); knowledge-entity links
+    on pages and panels — characters/locations linked, never duplicated.
+  - ✅ Page/spread validation, automatic roll-up into the summary, completion
+    percentages, drag/reorder, page & panel duplication, storyboard↔final
+    comparison, and print/digital readiness checks.
+  - ✅ Frontend studio: navigator, visual page-board, panel coordinate editor,
+    progress & readiness views. Alembic `0006`, seed and tests.
+  - ✅ **Curation hand-off, not publish**: a deliberate hand-off proposes/marks
+    pages ready for the public reader but never writes it directly.
+- ⚪ Cover and interior asset versioning is now handled by the Asset Library.
 
 ## Production task system (cross-medium) 🟡
 
