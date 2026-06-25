@@ -22,8 +22,12 @@ import { RightsDeskPage } from '@/pages/RightsDeskPage';
 import { ContactsPage } from '@/pages/ContactsPage';
 import { EditionsPage } from '@/pages/EditionsPage';
 import { CurationPage } from '@/pages/CurationPage';
+import { CommandCentrePage } from '@/pages/CommandCentrePage';
+import { WorkCommandPage } from '@/pages/WorkCommandPage';
 
 type View =
+  | { name: 'command' }
+  | { name: 'work-command'; id: string }
   | { name: 'dashboard' }
   | { name: 'manuscript'; id: string }
   | { name: 'search' }
@@ -52,11 +56,13 @@ const ID_VIEWS: AppView[] = [
   'production-item',
   'story-world',
   'work-transmedia',
+  'work-command',
 ];
 
 export default function App() {
-  const [view, setView] = useState<View>({ name: 'dashboard' });
+  const [view, setView] = useState<View>({ name: 'command' });
 
+  const openWorkCommand = (id: string) => setView({ name: 'work-command', id });
   const openManuscript = (id: string) => setView({ name: 'manuscript', id });
   const openProductionItem = (id: string) =>
     setView({ name: 'production-item', id });
@@ -72,6 +78,15 @@ export default function App() {
   return (
     <AuthProvider>
       <AppShell onNavigate={navigate} activeView={view.name}>
+        {view.name === 'command' && (
+          <CommandCentrePage onOpenWork={openWorkCommand} />
+        )}
+        {view.name === 'work-command' && (
+          <WorkCommandPage
+            workId={view.id}
+            onBack={() => setView({ name: 'command' })}
+          />
+        )}
         {view.name === 'dashboard' && (
           <Dashboard onOpenManuscript={openManuscript} />
         )}

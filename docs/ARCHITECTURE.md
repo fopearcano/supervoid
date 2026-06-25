@@ -601,6 +601,33 @@ public schema regardless of status, reached only through the private API).
   cinematic mode frames each panel in order and falls back to full-page display
   when a page has no panels.
 
+## Operational command centre
+
+A private, read-only aggregation surface (`/api/command-centre`, authenticated)
+that unifies every domain into one archival dashboard — built one-person-first,
+team-ready. `app/services/command_centre.py` rolls up the existing services
+rather than re-deriving logic (rights / licence warnings, provenance
+completeness, production blocked-detection).
+
+- **Seven sections, one endpoint each** so the overview loads cheaply and the
+  rest disclose progressively: *studio overview* (story worlds, active works,
+  divisions, graphic-novel and screen progress, releases, adaptation dossiers);
+  *my work* (assignments, overdue, blocked, requested reviews, approval queue —
+  scoped to the current user, with unassigned work folded in for the solo
+  operator); *agent inbox* (findings by severity, pending proposals, failed
+  runs, recent analyses); *asset health* (missing files, incomplete provenance,
+  expiring licences, unapproved versions, public assets missing credits);
+  *business alerts* (rights expiries, contract deadlines, distribution
+  readiness, contact follow-ups, upcoming releases); *division views*
+  (Publishing / Pictures / Interactive / cross-media); and a per-Work *command
+  page* gathering narrative, production, assets, collaborators, rights, editions,
+  adaptations, public release and agent history.
+- **Generic, small shapes** (`Metric`, `AlertItem`, `TaskBrief`) keep payloads
+  light and the UI uniform.
+- The frontend is the studio landing: an archival hero with key indicators plus
+  collapsible, lazily-loaded sections (progressive disclosure) — not a generic
+  SaaS dashboard. Items deep-link into the Work command page.
+
 ## Local-first & Postgres
 
 Defaults require nothing external: SQLite on disk, `dry_run` AI, no network.

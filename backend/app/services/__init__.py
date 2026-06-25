@@ -3,6 +3,7 @@
 from app.services import (
     agents,
     assets,
+    command_centre,
     curation,
     distribution,
     exports,
@@ -22,6 +23,7 @@ from app.services import (
 __all__ = [
     "agents",
     "assets",
+    "command_centre",
     "curation",
     "distribution",
     "exports",

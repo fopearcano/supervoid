@@ -3,6 +3,8 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { LoginPanel } from '@/components/LoginPanel';
 
 export type AppView =
+  | 'command'
+  | 'work-command'
   | 'dashboard'
   | 'manuscript'
   | 'search'
@@ -56,7 +58,7 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
         <div className="mx-auto flex max-w-editorial flex-wrap items-end justify-between gap-x-10 gap-y-6 px-10 pb-7 pt-12">
           <button
             type="button"
-            onClick={() => onNavigate('dashboard')}
+            onClick={() => onNavigate('command')}
             className="flex flex-col items-start gap-2 text-left transition-opacity hover:opacity-90 focus:outline-none"
           >
             <Eyebrow>SUPERVOID ENTANGLED · Editio MMXXVI</Eyebrow>
@@ -74,6 +76,11 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
               <span
                 aria-hidden
                 className="absolute left-0 top-1/2 hidden h-7 w-px -translate-y-1/2 bg-rule sm:block"
+              />
+              <NavLink
+                label="Studio"
+                active={activeView === 'command' || activeView === 'work-command'}
+                onClick={() => onNavigate('command')}
               />
               <NavLink
                 label="Story Worlds"

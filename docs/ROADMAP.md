@@ -248,6 +248,20 @@ See *Operational business layer* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - ⚪ Real tested upload adapters per channel, royalty statements, and a sales
   dashboard.
 
+## Operational command centre ✅
+
+The unifying dashboard over the whole studio — one-person-first, team-ready. See
+*Operational command centre* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+- ✅ Studio overview, my work, agent inbox, asset health, business alerts,
+  division views, and a per-Work command page — each a read-only endpoint under
+  `/api/command-centre`, reusing existing services rather than re-deriving them.
+- ✅ Archival, cinematic UI as the studio landing, with progressive disclosure
+  (collapsible, lazily-loaded sections) so the solo workflow isn't overwhelmed,
+  and deep links into the Work command page.
+- ✅ 10 tests, including per-user scoping for *my work*. No new tables — pure
+  aggregation over the existing domains.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:
