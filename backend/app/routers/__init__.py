@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.routers import (
     adaptation_dossiers,
+    agents,
     ai,
     approvals,
     assets,
@@ -82,6 +83,7 @@ ALL_ROUTERS = (
     assets,
     exports,
     ai,
+    agents,
     knowledge,
     _manuscript_links,
 )
@@ -89,6 +91,7 @@ ALL_ROUTERS = (
 __all__ = [
     "ALL_ROUTERS",
     "adaptation_dossiers",
+    "agents",
     "ai",
     "approvals",
     "assets",

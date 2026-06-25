@@ -777,3 +777,60 @@ class ShotMovement(str, Enum):
     STEADICAM = "steadicam"
     AERIAL = "aerial"
     OTHER = "other"
+
+
+# --- Supervised studio-agent framework -------------------------------------
+# Evolves the manuscript AI layer into governed agents whose runs, findings and
+# proposed actions are persisted. Read-only analysis runs immediately; mutations
+# become proposals that a human must approve before execution.
+
+
+class AgentMutability(str, Enum):
+    """How much an agent is allowed to affect the system."""
+
+    READ_ONLY = "read_only"  # analysis only; may never propose mutations
+    PROPOSE_ONLY = "propose_only"  # may emit proposals, never auto-mutate
+
+
+class AgentRunStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class FindingSeverity(str, Enum):
+    INFO = "info"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class AgentRiskLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class ProposalStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXECUTED = "executed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class AgentToolKind(str, Enum):
+    """The class of a registered tool, which governs how its output is handled.
+
+    ``read_only`` tools may run during analysis; ``mutation`` and ``external``
+    tools can only ever produce proposals that require explicit approval.
+    """
+
+    READ_ONLY = "read_only"
+    MUTATION = "mutation"
+    EXTERNAL = "external"

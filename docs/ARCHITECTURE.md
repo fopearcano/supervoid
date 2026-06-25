@@ -409,6 +409,44 @@ This makes the SUPERVOID Movies integration descriptor **operational**
 repository. The private UI adds a **Screen studio** (dossiers, scenes, shots,
 export).
 
+## Supervised studio-agent framework
+
+The manuscript AI layer (`/api/ai`, `AIInsight`) is preserved unchanged; on top
+of it sits a governed agent framework where every run, finding and proposed
+action is persisted.
+
+- **Code-registered** (`app/services/agents`): `AgentDefinition`s (key, name,
+  supported entity types, required permissions, allowed tools, mutability,
+  default provider/model, enabled) and a **tool registry** of read-only,
+  proposal-only mutation, and external tools — each with a risk level and
+  permission declarations.
+- **Persisted**: `AgentRun` (agent, requester, target, provider/model, input
+  snapshot, status, timestamps, result, error, token/cost metadata, correlation
+  id), `AgentFinding` (severity, category, target, message, evidence,
+  confidence, resolved), `AgentActionProposal` (tool, payload, reason, risk,
+  approval status + actors, execution result), and `PromptTemplate` +
+  `PromptTemplateVersion` (append-only version tracking).
+
+Rules enforced by the runner (`app/services/agents/runner.py`):
+
+- read-only analysis executes immediately (findings persisted);
+- mutations become **proposals** — handlers never touch the database;
+- destructive / publishing / rights / external tools are
+  `always_requires_approval` and need an **admin** sign-off; execution is
+  refused unless the proposal is APPROVED;
+- every run preserves its input snapshot and output;
+- providers keep dry-run support (the default `DryRunProvider`);
+- no secrets in prompts, snapshots, payloads or results (recursive `redact`);
+- retry creates a **new** run (`retry_of_id`) — history is never overwritten.
+
+Surface (`/api`, private — the whole router is `AUTHED`): `/agents` +
+`/agents/tools` (registry), `POST /agents/{key}/run`, `/agent-runs` (+ detail,
+`/retry`), `/agent-findings` (inbox, `/resolve`), `/agent-proposals`
+(`/approve`, `/reject`, `/execute`), and `/prompt-templates` (+ `/versions`).
+Declared agent permissions are checked through the policy service (admin
+bypasses; project scopes resolve against the target work). The private UI adds
+an **Agent Centre** (registry, run, history, findings inbox, proposals).
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

@@ -5,6 +5,13 @@ metadata registry, so `init_db()` can materialise them against the
 configured database engine.
 """
 from app.models.adaptation_dossier import AdaptationDossier
+from app.models.agent import (
+    AgentActionProposal,
+    AgentFinding,
+    AgentRun,
+    PromptTemplate,
+    PromptTemplateVersion,
+)
 from app.models.ai_insight import AIInsight
 from app.models.approval_request import ApprovalRequest
 from app.models.asset import Asset, AssetLink, AssetVersion
@@ -15,6 +22,10 @@ from app.models.contract import Contract
 from app.models.editorial_note import EditorialNote
 from app.models.enums import (
     AdaptationStatus,
+    AgentMutability,
+    AgentRiskLevel,
+    AgentRunStatus,
+    AgentToolKind,
     AIFeature,
     ApprovalDecision,
     ApprovalStatus,
@@ -36,6 +47,7 @@ from app.models.enums import (
     EditorialNoteKind,
     EntityKind,
     ExportFormat,
+    FindingSeverity,
     GNStatus,
     HotspotType,
     IntegrationPointStatus,
@@ -52,6 +64,7 @@ from app.models.enums import (
     PanelElementType,
     PermissionScope,
     ProductionActivityType,
+    ProposalStatus,
     ProductionItemStatus,
     ProductionPriority,
     ProductionStage,
@@ -130,8 +143,19 @@ from app.models.workflow_event import WorkflowEvent
 __all__ = [
     "AdaptationDossier",
     "AdaptationStatus",
+    "AgentActionProposal",
+    "AgentFinding",
+    "AgentMutability",
+    "AgentRiskLevel",
+    "AgentRun",
+    "AgentRunStatus",
+    "AgentToolKind",
     "AIFeature",
     "AIInsight",
+    "FindingSeverity",
+    "PromptTemplate",
+    "PromptTemplateVersion",
+    "ProposalStatus",
     "ApprovalDecision",
     "ApprovalRequest",
     "ApprovalStatus",

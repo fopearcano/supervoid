@@ -122,6 +122,8 @@ from app.models import (  # SUPERVOID Pictures
     Shot,
     ShotMovement,
 )
+from app.models import PromptTemplate, PromptTemplateVersion  # agent framework
+from app.services import agents as agent_svc
 from app.services import graphic_novel as gn_service
 from app.services import policy
 from app.services import screen as screen_service
@@ -1816,6 +1818,50 @@ def _seed_screen_pictures(
     session.commit()
 
 
+def _seed_agents(
+    session: Session,
+    manuscripts: dict[str, Manuscript],
+    works: dict[str, Work],
+    users: dict[str, User],
+) -> None:
+    """Seed the supervised studio-agent framework: a read-only analysis run
+    (immediate findings), a propose-only run (a pending, human-gated proposal),
+    and a versioned prompt template. Runs go through the real (dry-run) runner."""
+    admin = users["helena"]
+
+    consistency = agent_svc.get_agent("manuscript_consistency")
+    ms = manuscripts.get("quintus")
+    if consistency is not None and ms is not None:
+        agent_svc.run_agent(
+            session, definition=consistency, user=admin,
+            target_type="manuscript", target_id=ms.id,
+        )
+
+    advisor = agent_svc.get_agent("work_metadata_advisor")
+    work = works.get("quintus")
+    if advisor is not None and work is not None:
+        agent_svc.run_agent(
+            session, definition=advisor, user=admin,
+            target_type="work", target_id=work.id,
+        )
+    session.commit()
+
+    template = PromptTemplate(
+        key="manuscript.summary",
+        name="Manuscript summary",
+        description="System prompt for the editorial summary feature.",
+        current_version=1,
+    )
+    session.add(template)
+    session.flush()
+    session.add(PromptTemplateVersion(
+        template_id=template.id, version=1, created_by_id=admin.id,
+        body="You are an editorial assistant. Summarise the manuscript faithfully.",
+        notes="Initial version.",
+    ))
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1845,6 +1891,7 @@ def run() -> None:
         _seed_asset_library(session, works, authors, users)
         _seed_graphic_novel_hierarchy(session, works)
         _seed_screen_pictures(session, works)
+        _seed_agents(session, manuscripts, works, users)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1865,7 +1912,9 @@ def run() -> None:
         "production hierarchy (1 volume → chapter → sequence → 2 pages → panels "
         "with knowledge-entity links and a storyboard↔final comparison), and a "
         "SUPERVOID Pictures screen project from the adaptation dossier (a scene "
-        "with two shots, one mapping a graphic-novel storyboard panel)."
+        "with two shots, one mapping a graphic-novel storyboard panel), and the "
+        "supervised agent framework (a read-only analysis run with findings, a "
+        "propose-only run with a gated proposal, and a versioned prompt template)."
     )
 
 

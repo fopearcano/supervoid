@@ -12,6 +12,7 @@ export type AppView =
   | 'asset-library'
   | 'gn-studio'
   | 'pictures-studio'
+  | 'agent-centre'
   | 'calendar'
   | 'production-item'
   | 'story-worlds'
@@ -110,6 +111,11 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                 label="Pictures"
                 active={activeView === 'pictures-studio'}
                 onClick={() => onNavigate('pictures-studio')}
+              />
+              <NavLink
+                label="Agents"
+                active={activeView === 'agent-centre'}
+                onClick={() => onNavigate('agent-centre')}
               />
               <NavLink
                 label="Adaptations"

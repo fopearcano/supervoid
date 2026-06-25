@@ -176,6 +176,23 @@ backward compatibility; assets are a separate, durable layer.
   stays on the curated public projection.
 - ⚪ Image-dimension/duration auto-extraction; thumbnail generation; S3 adapter.
 
+## Supervised studio-agent framework 🟡
+
+The manuscript AI layer evolved into governed agents. The existing `/api/ai`
+endpoints and `AIInsight` records are preserved. See *Supervised studio-agent
+framework* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+- ✅ Code-registered `AgentDefinition`s and a tool registry (read-only /
+  proposal-only mutation / external, with risk + permission declarations).
+- ✅ Persisted `AgentRun`, `AgentFinding`, `AgentActionProposal`, and
+  `PromptTemplate` + versions.
+- ✅ Read-only analysis runs immediately; mutations become gated proposals;
+  destructive / publishing / rights / external actions require admin approval;
+  snapshots + outputs preserved; dry-run kept; no secrets; retry = new run.
+- ✅ Registry, run, history, findings inbox, proposal approve/reject/execute
+  endpoints; Alembic `0008`, seed, tests, and a private Agent Centre UI.
+- ⚪ Streaming runs, scheduled/triggered agents, and per-tool real executors.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:
