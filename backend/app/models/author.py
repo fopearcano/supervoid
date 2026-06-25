@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from app.models.contract import Contract
     from app.models.editorial_note import EditorialNote
     from app.models.manuscript import Manuscript
+    from app.models.story_world import StoryWorld
     from app.models.work import Work
 
 
@@ -27,3 +28,4 @@ class Author(BaseEntity, table=True):
     manuscripts: list["Manuscript"] = Relationship(back_populates="author")
     contracts: list["Contract"] = Relationship(back_populates="author")
     editorial_notes: list["EditorialNote"] = Relationship(back_populates="author")
+    owned_story_worlds: list["StoryWorld"] = Relationship(back_populates="owner")

@@ -63,6 +63,18 @@ from app.models import (  # public reader projection
     PublishedVolume,
     PublishedWork,
 )
+from app.models import (  # IP / transmedia layer
+    AdaptationDossier,
+    AdaptationStatus,
+    CanonState,
+    Medium,
+    RightsClearanceState,
+    StorySeries,
+    StorySeriesStatus,
+    StoryWorld,
+    StoryWorldStatus,
+    StudioDivision,
+)
 from app.services.knowledge import slugify
 from app.services.public_reader_service import publish_work_to_public_reader
 from app.models.base import utcnow
@@ -1137,6 +1149,92 @@ def _seed_public_reader(session: Session, works: dict[str, Work]) -> None:
     session.commit()
 
 
+def _seed_transmedia(
+    session: Session,
+    works: dict[str, Work],
+    authors: dict[str, Author],
+) -> None:
+    """Seed the IP / transmedia layer above Work: a story world with a series,
+    Works placed into it across divisions, and an adaptation dossier."""
+    world = StoryWorld(
+        name="The Silent Workshop",
+        slug="the-silent-workshop",
+        description=(
+            "An intimate universe of printers, binders and the letters that "
+            "pass between them — SUPERVOID's flagship craft-noir property."
+        ),
+        canon_summary=(
+            "Canon follows the printer Anselm and the binder he never meets. "
+            "The graphic novel is primary canon; screen treatments are "
+            "alternate-canon explorations."
+        ),
+        status=StoryWorldStatus.ACTIVE,
+        visual_identity_notes=(
+            "Greyscale wash, brass accents, hand-set type motifs; quiet, "
+            "archival, never neon."
+        ),
+        default_language="en",
+        owner_id=authors["carrick"].id,
+    )
+    session.add(world)
+    session.commit()
+    session.refresh(world)
+
+    series = StorySeries(
+        story_world_id=world.id,
+        title="The Workshop Cycle",
+        description="The core sequence of Silent Workshop stories.",
+        sequence_order=1,
+        status=StorySeriesStatus.ONGOING,
+    )
+    session.add(series)
+    session.commit()
+    session.refresh(series)
+
+    # Place the graphic novel as primary canon in the world/series.
+    gn = works["silent_workshop"]
+    gn.story_world_id = world.id
+    gn.story_series_id = series.id
+    gn.series_order = 1
+    gn.primary_division = StudioDivision.PUBLISHING
+    gn.primary_medium = Medium.GRAPHIC_NOVEL
+    gn.canon_status = CanonState.CANON
+    session.add(gn)
+
+    # The screen-treatment Work is an alternate-canon pictures Work derived
+    # from the graphic novel.
+    screen = works["workshop_screen"]
+    screen.story_world_id = world.id
+    screen.primary_division = StudioDivision.PICTURES
+    screen.primary_medium = Medium.FILM
+    screen.canon_status = CanonState.ALTERNATE
+    screen.source_work_id = gn.id
+    session.add(screen)
+    session.commit()
+
+    dossier = AdaptationDossier(
+        source_work_id=gn.id,
+        target_work_id=screen.id,
+        target_medium=Medium.FILM,
+        target_division=StudioDivision.PICTURES,
+        status=AdaptationStatus.IN_DEVELOPMENT,
+        logline=(
+            "A printer's forty-year correspondence becomes a feature about "
+            "distance, craft, and the marks we leave on paper."
+        ),
+        format="Feature film",
+        intended_scope="~110 minutes",
+        rights_clearance=RightsClearanceState.IN_PROGRESS,
+        creative_notes=(
+            "Hold to the greyscale palette; the unanswered letters are the "
+            "spine. Explore a near-silent first act."
+        ),
+        source_revision="Graphic novel v1",
+    )
+    session.add(dossier)
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1160,6 +1258,7 @@ def run() -> None:
         _seed_integration_points(session)
         _seed_knowledge_graph(session, manuscripts)
         _seed_public_reader(session, works)
+        _seed_transmedia(session, works, authors)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1168,9 +1267,10 @@ def run() -> None:
         f"{len(manuscripts)} manuscripts, "
         "with reviews, workflow events, contracts, rights, a graphic-novel "
         "production board, production items, production records, notes, "
-        "calendar events, integration points, a starter knowledge graph, and "
+        "calendar events, integration points, a starter knowledge graph, "
         "a public Graphic Novel Webviewer demo (1 published work, 1 volume, "
-        "2 chapters, 6 pages, media + hotspots)."
+        "2 chapters, 6 pages, media + hotspots), and the IP/transmedia layer "
+        "(1 story world, 1 series, an adaptation dossier)."
     )
 
 

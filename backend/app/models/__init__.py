@@ -4,6 +4,7 @@ Importing this package registers every SQLModel table with the shared
 metadata registry, so `init_db()` can materialise them against the
 configured database engine.
 """
+from app.models.adaptation_dossier import AdaptationDossier
 from app.models.ai_insight import AIInsight
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -11,10 +12,12 @@ from app.models.calendar_event import PublishingCalendarEvent
 from app.models.contract import Contract
 from app.models.editorial_note import EditorialNote
 from app.models.enums import (
+    AdaptationStatus,
     AIFeature,
     AttachmentKind,
     CalendarEventStatus,
     CalendarEventType,
+    CanonState,
     ContractStatus,
     DraftStatus,
     EditorialNoteKind,
@@ -25,13 +28,18 @@ from app.models.enums import (
     IntegrationPointType,
     ManuscriptLinkRole,
     MediaAssetType,
+    Medium,
     ProductionItemStatus,
     ProductionStage,
     PublishedStatus,
     RelationshipKind,
     ReviewVerdict,
+    RightsClearanceState,
     RightStatus,
+    StorySeriesStatus,
+    StoryWorldStatus,
     StreamStatus,
+    StudioDivision,
     UserRole,
     WorkflowStatus,
     WorkStatus,
@@ -53,11 +61,15 @@ from app.models.published_volume import PublishedVolume
 from app.models.published_work import PublishedWork
 from app.models.review import Review
 from app.models.rights import Rights
+from app.models.story_series import StorySeries
+from app.models.story_world import StoryWorld
 from app.models.user import User
 from app.models.work import Work
 from app.models.workflow_event import WorkflowEvent
 
 __all__ = [
+    "AdaptationDossier",
+    "AdaptationStatus",
     "AIFeature",
     "AIInsight",
     "Attachment",
@@ -65,6 +77,7 @@ __all__ = [
     "Author",
     "CalendarEventStatus",
     "CalendarEventType",
+    "CanonState",
     "DraftStatus",
     "EntityKind",
     "GraphicNovelProduction",
@@ -100,6 +113,13 @@ __all__ = [
     "ReviewVerdict",
     "Rights",
     "RightStatus",
+    "RightsClearanceState",
+    "Medium",
+    "StudioDivision",
+    "StorySeries",
+    "StorySeriesStatus",
+    "StoryWorld",
+    "StoryWorldStatus",
     "StreamStatus",
     "User",
     "UserRole",

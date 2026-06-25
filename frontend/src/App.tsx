@@ -8,6 +8,10 @@ import { ArchivePage } from '@/pages/ArchivePage';
 import { ProductionBoard } from '@/pages/ProductionBoard';
 import { ReleaseCalendar } from '@/pages/ReleaseCalendar';
 import { ProductionItemView } from '@/pages/ProductionItemView';
+import { StoryWorldsPage } from '@/pages/StoryWorldsPage';
+import { StoryWorldDetailPage } from '@/pages/StoryWorldDetailPage';
+import { AdaptationDossiersPage } from '@/pages/AdaptationDossiersPage';
+import { WorkTransmediaPage } from '@/pages/WorkTransmediaPage';
 
 type View =
   | { name: 'dashboard' }
@@ -16,7 +20,19 @@ type View =
   | { name: 'archive' }
   | { name: 'production' }
   | { name: 'calendar' }
-  | { name: 'production-item'; id: string };
+  | { name: 'production-item'; id: string }
+  | { name: 'story-worlds' }
+  | { name: 'story-world'; id: string }
+  | { name: 'adaptations' }
+  | { name: 'work-transmedia'; id: string };
+
+// Views that require an id and so are reached via drill-down, not the nav bar.
+const ID_VIEWS: AppView[] = [
+  'manuscript',
+  'production-item',
+  'story-world',
+  'work-transmedia',
+];
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'dashboard' });
@@ -24,9 +40,12 @@ export default function App() {
   const openManuscript = (id: string) => setView({ name: 'manuscript', id });
   const openProductionItem = (id: string) =>
     setView({ name: 'production-item', id });
+  const openWorld = (id: string) => setView({ name: 'story-world', id });
+  const openWorkTransmedia = (id: string) =>
+    setView({ name: 'work-transmedia', id });
 
   const navigate = (target: AppView) => {
-    if (target === 'manuscript' || target === 'production-item') return;
+    if (ID_VIEWS.includes(target)) return;
     setView({ name: target } as View);
   };
 
@@ -60,6 +79,26 @@ export default function App() {
             itemId={view.id}
             onBack={() => setView({ name: 'production' })}
             onOpenManuscript={openManuscript}
+          />
+        )}
+        {view.name === 'story-worlds' && (
+          <StoryWorldsPage onOpenWorld={openWorld} />
+        )}
+        {view.name === 'story-world' && (
+          <StoryWorldDetailPage
+            worldId={view.id}
+            onBack={() => setView({ name: 'story-worlds' })}
+            onOpenWork={openWorkTransmedia}
+          />
+        )}
+        {view.name === 'adaptations' && (
+          <AdaptationDossiersPage onOpenWork={openWorkTransmedia} />
+        )}
+        {view.name === 'work-transmedia' && (
+          <WorkTransmediaPage
+            workId={view.id}
+            onBack={() => setView({ name: 'story-worlds' })}
+            onOpenWork={openWorkTransmedia}
           />
         )}
       </AppShell>

@@ -9,7 +9,11 @@ export type AppView =
   | 'archive'
   | 'production'
   | 'calendar'
-  | 'production-item';
+  | 'production-item'
+  | 'story-worlds'
+  | 'story-world'
+  | 'adaptations'
+  | 'work-transmedia';
 
 interface AppShellProps {
   children: ReactNode;
@@ -62,6 +66,15 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                 className="absolute left-0 top-1/2 hidden h-7 w-px -translate-y-1/2 bg-rule sm:block"
               />
               <NavLink
+                label="Story Worlds"
+                active={
+                  activeView === 'story-worlds' ||
+                  activeView === 'story-world' ||
+                  activeView === 'work-transmedia'
+                }
+                onClick={() => onNavigate('story-worlds')}
+              />
+              <NavLink
                 label="Manuscripts"
                 active={activeView === 'dashboard' || activeView === 'manuscript'}
                 onClick={() => onNavigate('dashboard')}
@@ -73,6 +86,11 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                   activeView === 'production-item'
                 }
                 onClick={() => onNavigate('production')}
+              />
+              <NavLink
+                label="Adaptations"
+                active={activeView === 'adaptations'}
+                onClick={() => onNavigate('adaptations')}
               />
               <NavLink
                 label="Calendar"

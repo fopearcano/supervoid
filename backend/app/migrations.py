@@ -12,6 +12,7 @@ from typing import Optional
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect
 from sqlmodel import SQLModel
 
@@ -65,7 +66,7 @@ def ensure_migrated(url: Optional[str] = None) -> str:
       head`` (the current schema *is* the baseline; never recreate tables).
     - Empty DB -> ``upgrade head`` (creates the full schema).
 
-    Returns one of ``upgraded`` / ``stamped`` / ``created``.
+    Returns one of ``upgraded`` / ``stamped`` / ``migrated`` / ``created``.
     """
     target_url = url or settings.database_url
     engine = create_engine(target_url)
@@ -81,9 +82,17 @@ def ensure_migrated(url: Optional[str] = None) -> str:
         command.upgrade(cfg, "head")
         return "upgraded"
     if has_legacy:
-        # Pre-existing populated database — adopt it at the baseline.
-        command.stamp(cfg, "head")
-        return "stamped"
+        # Pre-existing populated database with no version table. If its schema
+        # already matches the current models, adopt it at head (stamp). If it
+        # is an older schema, stamp the baseline and upgrade it forward — never
+        # recreating existing tables/data either way.
+        if not verify_schema(target_url):
+            command.stamp(cfg, "head")
+            return "stamped"
+        base = ScriptDirectory.from_config(cfg).get_bases()[0]
+        command.stamp(cfg, base)
+        command.upgrade(cfg, "head")
+        return "migrated"
     command.upgrade(cfg, "head")
     return "created"
 

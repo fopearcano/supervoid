@@ -49,6 +49,32 @@ API. See [`PUBLIC_VIEWER.md`](PUBLIC_VIEWER.md).
 - ⚪ A small curation UI in the admin app for building published works.
 - ⚪ Image/asset pipeline (derivatives, CDN) beyond local placeholders.
 
+## IP & transmedia studio layer 🟡
+
+The bounded context above `Work` that turns the catalogue into an IP-centred
+transmedia studio. `Work` stays central; this sits above it. See
+[`STUDIO_SYSTEM_IMPLEMENTATION_PLAN.md`](STUDIO_SYSTEM_IMPLEMENTATION_PLAN.md)
+phases A–B.
+
+- ✅ **StoryWorld** (IP/universe: canon, status, visual identity, owner, optional
+  parent) and **StorySeries** (ordered series within a world).
+- ✅ **Work** extended (additive, nullable): `story_world_id`, `story_series_id`,
+  `series_order`, `primary_division`, `primary_medium`, `canon_status`,
+  self-referential `source_work_id`.
+- ✅ **AdaptationDossier** — source Work → target medium/division, lifecycle,
+  logline, format, scope, rights-clearance, notes, source revision, optional
+  linked target Work.
+- ✅ Enums: `StudioDivision` (publishing/pictures/interactive/audio/cross-media),
+  `Medium`, `CanonState`, `AdaptationStatus`, `RightsClearanceState`,
+  `StoryWorldStatus`, `StorySeriesStatus`.
+- ✅ CRUD + filtering APIs, Alembic migration `0002_transmedia`, seed examples,
+  backend tests, and private frontend sections (Story Worlds, Series, Adaptation
+  Dossiers, Work-level transmedia overview).
+- ✅ Kept as a bounded context in the monolith with extraction seams
+  (`AdaptationDossier`, `Work.source_work_id`) — no separate Movies service.
+- ⚪ Per-medium production trees (page/panel/scene/shot), assets + provenance,
+  supervised agents (later studio-plan phases C+).
+
 ## Phase 2 — Rights & contracts depth 🟡
 
 - ✅ Dedicated **Rights** module (`/api/rights`): per-work, per territory/language

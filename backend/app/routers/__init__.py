@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 from app.routers import (
+    adaptation_dossiers,
     ai,
     attachments,
     auth,
@@ -24,6 +25,8 @@ from app.routers import (
     reviews,
     rights,
     search,
+    story_series,
+    story_worlds,
     workflow,
     workflow_events,
     works,
@@ -42,8 +45,11 @@ ALL_ROUTERS = (
     auth,
     dashboard,
     search,
+    story_worlds,
+    story_series,
     authors,
     works,
+    adaptation_dossiers,
     manuscripts,
     graphic_novel_productions,
     reviews,
@@ -64,6 +70,7 @@ ALL_ROUTERS = (
 
 __all__ = [
     "ALL_ROUTERS",
+    "adaptation_dossiers",
     "ai",
     "attachments",
     "auth",
@@ -85,6 +92,8 @@ __all__ = [
     "reviews",
     "rights",
     "search",
+    "story_series",
+    "story_worlds",
     "workflow",
     "workflow_events",
     "works",

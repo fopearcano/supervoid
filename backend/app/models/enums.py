@@ -277,3 +277,84 @@ class HotspotType(str, Enum):
     EXTERNAL_LINK = "external_link"
     AUDIO = "audio"
     VIDEO = "video"
+
+
+# --- IP / transmedia studio layer (above Work) -----------------------------
+# These turn the catalogue into an IP-centred transmedia studio. Work remains
+# the central production/catalogue entity; these sit above and around it.
+
+
+class StudioDivision(str, Enum):
+    """A creative division of the studio (the medium family a Work belongs to)."""
+
+    PUBLISHING = "publishing"
+    PICTURES = "pictures"
+    INTERACTIVE = "interactive"
+    AUDIO = "audio"
+    CROSS_MEDIA = "cross_media"
+
+
+class Medium(str, Enum):
+    """A concrete delivery medium for a Work or an adaptation target."""
+
+    BOOK = "book"
+    GRAPHIC_NOVEL = "graphic_novel"
+    FILM = "film"
+    SHORT_FILM = "short_film"
+    SERIES = "series"
+    ANIMATION = "animation"
+    AUDIO_DRAMA = "audio_drama"
+    WEB_EXPERIENCE = "web_experience"
+    GAME = "game"
+    OTHER = "other"
+
+
+class CanonState(str, Enum):
+    """How a Work stands relative to its story world's canon."""
+
+    CANON = "canon"
+    SOFT_CANON = "soft_canon"
+    ALTERNATE = "alternate"
+    NON_CANON = "non_canon"
+    UNDECIDED = "undecided"
+
+
+class AdaptationStatus(str, Enum):
+    """Lifecycle of an adaptation dossier."""
+
+    PROPOSED = "proposed"
+    OPTIONED = "optioned"
+    IN_DEVELOPMENT = "in_development"
+    IN_PRODUCTION = "in_production"
+    RELEASED = "released"
+    ON_HOLD = "on_hold"
+    ABANDONED = "abandoned"
+
+
+class RightsClearanceState(str, Enum):
+    """Rights-clearance state for an adaptation."""
+
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    CLEARED = "cleared"
+    BLOCKED = "blocked"
+    NOT_REQUIRED = "not_required"
+
+
+class StoryWorldStatus(str, Enum):
+    """Lifecycle of a story world / IP."""
+
+    DEVELOPING = "developing"
+    ACTIVE = "active"
+    DORMANT = "dormant"
+    ARCHIVED = "archived"
+
+
+class StorySeriesStatus(str, Enum):
+    """Lifecycle of a series within a story world."""
+
+    PLANNED = "planned"
+    ONGOING = "ongoing"
+    COMPLETE = "complete"
+    ON_HOLD = "on_hold"
+    ARCHIVED = "archived"

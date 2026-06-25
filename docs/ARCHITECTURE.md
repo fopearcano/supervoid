@@ -112,6 +112,49 @@ while editorial concerns attach to the manuscript.
 > Back-compat: `work_id` is nullable on carried-over entities, so the editorial
 > subsystems and their tests keep working while the Work hub is layered on top.
 
+## IP / transmedia layer (a bounded context above Work)
+
+A studio context sits *above* the catalogue. `Work` remains the central
+production/catalogue entity; the IP layer groups Works into universes and tracks
+adaptations across divisions. It is a **bounded context inside the modular
+monolith** — its own models, schemas and routers, related to `Work` only by
+nullable foreign keys — so a future SUPERVOID Pictures/Interactive/Audio surface
+can be extracted along the `AdaptationDossier` / `Work.source_work_id` seams
+without a rewrite (no separate service is introduced now).
+
+```
+            StoryWorld 1──* StorySeries
+                │  (parent_id self-ref for meta-universes)
+                *                 *
+              Work  ◀── story_series_id / story_world_id (nullable)
+                │
+   source_work_id (self-ref)        AdaptationDossier
+   Work ◀───────────────────  source_work_id ──┐
+   Work ◀── target_work_id (optional) ──────────┘  (medium + division + lifecycle)
+```
+
+- **StoryWorld** (`story_worlds`) — an IP / narrative universe: name, slug,
+  description, canon summary, `StoryWorldStatus`, visual-identity notes, default
+  language, owner (Author), optional parent world. Owns identity and canon.
+- **StorySeries** (`story_series`) — an ordered series within a world (title,
+  description, `sequence_order`, `StorySeriesStatus`).
+- **Work placement** — Works gain nullable `story_world_id` / `story_series_id` /
+  `series_order`, a `primary_division` (`StudioDivision`), `primary_medium`
+  (`Medium`), `canon_status` (`CanonState`), and a self-referential
+  `source_work_id` (the originating Work, when derived/adapted).
+- **AdaptationDossier** (`adaptation_dossiers`) — a development dossier adapting a
+  source Work into a `target_medium` / `target_division`: `AdaptationStatus`
+  lifecycle, logline, format, intended scope, `RightsClearanceState`, creative
+  notes, source revision, and an optional `target_work_id` once a concrete Work
+  is created. `GET /api/works/{id}/transmedia` composes a Work's world, series,
+  source, derived works and dossiers into one overview.
+
+All enums (`StudioDivision`, `Medium`, `CanonState`, `AdaptationStatus`,
+`RightsClearanceState`, `StoryWorldStatus`, `StorySeriesStatus`) live in
+`models/enums.py`. Frontend sections: **Story Worlds** (list + detail, with the
+**Series** panel and the world's Works), **Adaptation Dossiers**, and a
+**Work-level transmedia overview**.
+
 ## Request flow
 
 ```

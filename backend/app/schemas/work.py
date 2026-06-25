@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import WorkStatus, WorkType
+from app.models.enums import CanonState, Medium, StudioDivision, WorkStatus, WorkType
 from app.schemas._common import TimestampedRead
 
 
@@ -21,6 +21,14 @@ class WorkCreate(BaseModel):
     word_count: Optional[int] = Field(default=None, ge=0)
     page_count: Optional[int] = Field(default=None, ge=0)
     author_id: str
+    # IP / transmedia placement
+    story_world_id: Optional[str] = None
+    story_series_id: Optional[str] = None
+    series_order: Optional[int] = None
+    primary_division: StudioDivision = Field(default=StudioDivision.PUBLISHING)
+    primary_medium: Optional[Medium] = None
+    canon_status: CanonState = Field(default=CanonState.CANON)
+    source_work_id: Optional[str] = None
 
 
 class WorkUpdate(BaseModel):
@@ -36,6 +44,13 @@ class WorkUpdate(BaseModel):
     word_count: Optional[int] = Field(default=None, ge=0)
     page_count: Optional[int] = Field(default=None, ge=0)
     author_id: Optional[str] = None
+    story_world_id: Optional[str] = None
+    story_series_id: Optional[str] = None
+    series_order: Optional[int] = None
+    primary_division: Optional[StudioDivision] = None
+    primary_medium: Optional[Medium] = None
+    canon_status: Optional[CanonState] = None
+    source_work_id: Optional[str] = None
 
 
 class WorkRead(TimestampedRead):
@@ -51,3 +66,10 @@ class WorkRead(TimestampedRead):
     word_count: Optional[int]
     page_count: Optional[int]
     author_id: str
+    story_world_id: Optional[str]
+    story_series_id: Optional[str]
+    series_order: Optional[int]
+    primary_division: StudioDivision
+    primary_medium: Optional[Medium]
+    canon_status: CanonState
+    source_work_id: Optional[str]
