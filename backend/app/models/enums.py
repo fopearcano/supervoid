@@ -358,3 +358,66 @@ class StorySeriesStatus(str, Enum):
     COMPLETE = "complete"
     ON_HOLD = "on_hold"
     ARCHIVED = "archived"
+
+
+# --- Collaboration: project-scoped access control --------------------------
+# These sit ALONGSIDE the global UserRole (which is unchanged). A user's global
+# role still governs studio-wide/admin actions; project membership governs
+# access to a specific Work or StoryWorld.
+
+
+class ProjectRole(str, Enum):
+    """A collaborator's role on a specific project (Work or StoryWorld)."""
+
+    OWNER = "owner"
+    DIRECTOR = "director"
+    EDITOR = "editor"
+    WRITER = "writer"
+    ARTIST = "artist"
+    LETTERER = "letterer"
+    COLOURIST = "colourist"
+    ANIMATOR = "animator"
+    SOUND_DESIGNER = "sound_designer"
+    TECHNICIAN = "technician"
+    PRODUCTION_MANAGER = "production_manager"
+    MARKETING = "marketing"
+    REVIEWER = "reviewer"
+    VIEWER = "viewer"
+
+
+class MembershipStatus(str, Enum):
+    """Lifecycle of a project membership."""
+
+    INVITED = "invited"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    DECLINED = "declined"
+    REVOKED = "revoked"
+
+
+class PermissionScope(str, Enum):
+    """A protected operation the policy service can authorise on a project."""
+
+    VIEW_PROJECT = "view_project"
+    EDIT_NARRATIVE = "edit_narrative"
+    EDIT_VISUAL_ASSETS = "edit_visual_assets"
+    MANAGE_PRODUCTION = "manage_production"
+    UPLOAD_ASSETS = "upload_assets"
+    REVIEW = "review"
+    APPROVE = "approve"
+    MANAGE_COLLABORATORS = "manage_collaborators"
+    PUBLISH = "publish"
+    MANAGE_RIGHTS = "manage_rights"
+    MANAGE_MARKETING = "manage_marketing"
+
+
+class MembershipAuditAction(str, Enum):
+    """An auditable change to a project membership."""
+
+    INVITED = "invited"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    ROLE_CHANGED = "role_changed"
+    SUSPENDED = "suspended"
+    REACTIVATED = "reactivated"
+    REVOKED = "revoked"

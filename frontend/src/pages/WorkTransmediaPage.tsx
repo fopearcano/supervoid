@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/api/client';
 import { fetchWorkTransmedia } from '@/api/transmedia';
+import { CollaboratorsPanel } from '@/components/CollaboratorsPanel';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
 import {
@@ -210,6 +211,11 @@ export function WorkTransmediaPage({ workId, onBack, onOpenWork }: Props) {
           </ul>
         )}
       </section>
+
+      {/* Collaborators (private; this Work, plus any inherited from its world) */}
+      <CollaboratorsPanel
+        scope={{ kind: 'work', workId: work.id, storyWorldId: work.story_world_id }}
+      />
     </div>
   );
 }

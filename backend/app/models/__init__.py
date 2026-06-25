@@ -29,8 +29,12 @@ from app.models.enums import (
     ManuscriptLinkRole,
     MediaAssetType,
     Medium,
+    MembershipAuditAction,
+    MembershipStatus,
+    PermissionScope,
     ProductionItemStatus,
     ProductionStage,
+    ProjectRole,
     PublishedStatus,
     RelationshipKind,
     ReviewVerdict,
@@ -51,7 +55,9 @@ from app.models.knowledge_entity import KnowledgeEntity
 from app.models.knowledge_relationship import KnowledgeRelationship
 from app.models.manuscript import Manuscript
 from app.models.manuscript_entity_link import ManuscriptEntityLink
+from app.models.membership_audit import MembershipAudit
 from app.models.production_item import ProductionItem
+from app.models.project_membership import ProjectMembership
 from app.models.production_record import ProductionRecord
 from app.models.public_hotspot import PublicHotspot
 from app.models.public_media_asset import PublicMediaAsset
@@ -90,6 +96,12 @@ __all__ = [
     "ManuscriptEntityLink",
     "ManuscriptLinkRole",
     "MediaAssetType",
+    "MembershipAudit",
+    "MembershipAuditAction",
+    "MembershipStatus",
+    "PermissionScope",
+    "ProjectMembership",
+    "ProjectRole",
     "PublicHotspot",
     "PublicMediaAsset",
     "PublishedChapter",

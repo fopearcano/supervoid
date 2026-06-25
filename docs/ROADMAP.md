@@ -75,6 +75,30 @@ phases A–B.
 - ⚪ Per-medium production trees (page/panel/scene/shot), assets + provenance,
   supervised agents (later studio-plan phases C+).
 
+## Collaboration & project-scoped access control 🟡
+
+Project-scoped collaboration layered on top of (never replacing) the global
+`UserRole`. See *Collaboration & project-scoped access control* in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+- ✅ **ProjectMembership** — user ↔ Work and/or StoryWorld, with a project role,
+  lifecycle status (invited/active/suspended/declined/revoked), invited/accepted
+  timestamps, created-by and notes; world memberships cascade to their Works.
+- ✅ 14 project roles and 11 permission scopes; the role → scope matrix and
+  strongest-role resolution live in the **policy service**.
+- ✅ **Policy service** (`app/services/policy.py`) combines global role +
+  membership + ownership + operation; reusable `require_scope` dependency and
+  `ensure_can` helper — no permission checks scattered across routers.
+- ✅ **User management** (`/api/users`, admin): create/list/get/patch,
+  activate/deactivate, password rotation (admin-or-self).
+- ✅ **Collaboration API**: invitations, accept/decline, role change,
+  suspend/reactivate/revoke, `/me/projects`, and `/collaboration/roles`.
+- ✅ **MembershipAudit** — append-only, decoupled audit trail of every change.
+- ✅ Alembic migration `0003_collaboration`, seed memberships, backend tests
+  (policy truth-table + API + cross-project isolation), and a private
+  **Collaborators panel** inside each Work and StoryWorld.
+- ⚪ Email/notification on invite; bulk invite; per-scope custom role overrides.
+
 ## Phase 2 — Rights & contracts depth 🟡
 
 - ✅ Dedicated **Rights** module (`/api/rights`): per-work, per territory/language

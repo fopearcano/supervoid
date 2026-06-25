@@ -75,6 +75,13 @@ from app.models import (  # IP / transmedia layer
     StoryWorldStatus,
     StudioDivision,
 )
+from app.models import (  # collaboration / project-scoped access
+    MembershipAuditAction,
+    MembershipStatus,
+    ProjectMembership,
+    ProjectRole,
+)
+from app.services import policy
 from app.services.knowledge import slugify
 from app.services.public_reader_service import publish_work_to_public_reader
 from app.models.base import utcnow
@@ -1235,6 +1242,101 @@ def _seed_transmedia(
     session.commit()
 
 
+def _seed_collaboration(
+    session: Session,
+    users: dict[str, User],
+    works: dict[str, Work],
+) -> None:
+    """Seed project-scoped collaboration: memberships on the Silent Workshop
+    story world (which cascade to its works) and on the graphic-novel Work
+    itself, plus the audit trail those changes produce.
+
+    Demonstrates the layering: ``UserRole`` still governs studio-wide actions,
+    while these memberships grant access to specific projects.
+    """
+    world = session.exec(
+        select(StoryWorld).where(StoryWorld.slug == "the-silent-workshop")
+    ).first()
+    gn = works.get("silent_workshop")
+
+    def _membership(
+        user: User,
+        role: ProjectRole,
+        *,
+        work_id: str | None = None,
+        story_world_id: str | None = None,
+        status: MembershipStatus = MembershipStatus.ACTIVE,
+        created_by: User | None = None,
+        notes: str | None = None,
+    ) -> ProjectMembership:
+        m = ProjectMembership(
+            user_id=user.id,
+            work_id=work_id,
+            story_world_id=story_world_id,
+            role=role,
+            status=status,
+            accepted_at=(utcnow() if status == MembershipStatus.ACTIVE else None),
+            created_by_id=created_by.id if created_by else None,
+            notes=notes,
+        )
+        session.add(m)
+        session.flush()
+        policy.record_audit(
+            session,
+            action=MembershipAuditAction.INVITED,
+            subject_user_id=user.id,
+            actor_id=created_by.id if created_by else None,
+            membership=m,
+            role=role,
+            to_status=MembershipStatus.INVITED,
+        )
+        if status == MembershipStatus.ACTIVE:
+            policy.record_audit(
+                session,
+                action=MembershipAuditAction.ACCEPTED,
+                subject_user_id=user.id,
+                actor_id=user.id,
+                membership=m,
+                from_status=MembershipStatus.INVITED,
+                to_status=MembershipStatus.ACTIVE,
+            )
+        return m
+
+    admin = users["helena"]
+
+    if world is not None:
+        # World-level memberships cascade to every Work in the world.
+        _membership(
+            users["cecilia"], ProjectRole.OWNER,
+            story_world_id=world.id, created_by=admin,
+            notes="World lead for the Silent Workshop property.",
+        )
+        _membership(
+            users["kazu"], ProjectRole.PRODUCTION_MANAGER,
+            story_world_id=world.id, created_by=admin,
+        )
+
+    if gn is not None:
+        # Work-level memberships, scoped to the graphic novel only.
+        _membership(
+            users["jonas"], ProjectRole.EDITOR,
+            work_id=gn.id, created_by=users["cecilia"],
+        )
+        _membership(
+            users["mireille"], ProjectRole.MARKETING,
+            work_id=gn.id, created_by=users["cecilia"],
+        )
+        # A still-pending invitation, to show the INVITED state in the UI.
+        _membership(
+            users["bartholomew"], ProjectRole.REVIEWER,
+            work_id=gn.id, status=MembershipStatus.INVITED,
+            created_by=users["cecilia"],
+            notes="Structural review pass — invitation pending.",
+        )
+
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1259,6 +1361,7 @@ def run() -> None:
         _seed_knowledge_graph(session, manuscripts)
         _seed_public_reader(session, works)
         _seed_transmedia(session, works, authors)
+        _seed_collaboration(session, users, works)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1269,8 +1372,10 @@ def run() -> None:
         "production board, production items, production records, notes, "
         "calendar events, integration points, a starter knowledge graph, "
         "a public Graphic Novel Webviewer demo (1 published work, 1 volume, "
-        "2 chapters, 6 pages, media + hotspots), and the IP/transmedia layer "
-        "(1 story world, 1 series, an adaptation dossier)."
+        "2 chapters, 6 pages, media + hotspots), the IP/transmedia layer "
+        "(1 story world, 1 series, an adaptation dossier), and project "
+        "collaboration (5 memberships across a world and a work, with an "
+        "audit trail)."
     )
 
 

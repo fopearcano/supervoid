@@ -8,6 +8,7 @@ import {
   patchStorySeries,
   patchStoryWorld,
 } from '@/api/transmedia';
+import { CollaboratorsPanel } from '@/components/CollaboratorsPanel';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
 import {
@@ -242,6 +243,9 @@ export function StoryWorldDetailPage({ worldId, onBack, onOpenWork }: Props) {
           ))}
         </ul>
       </section>
+
+      {/* Collaborators (private; cascades to every Work in this world) */}
+      <CollaboratorsPanel scope={{ kind: 'world', worldId: world.id }} />
     </div>
   );
 }

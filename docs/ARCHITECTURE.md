@@ -108,6 +108,10 @@ while editorial concerns attach to the manuscript.
 - **Knowledge graph** — typed `KnowledgeEntity` nodes and
   `KnowledgeRelationship` edges, linked to manuscripts; the natural seam for
   LOGOSFORGE narrative structure.
+- **ProjectMembership / MembershipAudit** (`project_memberships`,
+  `membership_audits`) — project-scoped collaboration on a Work and/or
+  StoryWorld, plus an append-only audit trail. See *Collaboration &
+  project-scoped access control* below.
 
 > Back-compat: `work_id` is nullable on carried-over entities, so the editorial
 > subsystems and their tests keep working while the Work hub is layered on top.
@@ -169,10 +173,63 @@ registers integrity/`Exception` handlers that return correlation-tagged JSON.
 
 ## Authentication & roles
 
-JWT bearer tokens; roles are `admin`, `editor`, `reviewer`,
-`production_manager`, `marketing`, `archive_reader`. Dependency helpers
-(`AUTHED`, `ADMIN_ONLY`, …) guard write and privileged routes; reads are
+JWT bearer tokens; the **global** `UserRole` is one of `admin`, `editor`,
+`reviewer`, `production_manager`, `marketing`, `archive_reader`. Dependency
+helpers (`AUTHED`, `ADMIN_ONLY`, …) guard write and privileged routes; reads are
 generally public for the local archive experience.
+
+User accounts are managed at `/api/users` (admin-only): list/create/get/patch,
+`activate`/`deactivate`, and `rotate-password` (admin-or-self). `/api/auth`
+remains responsible only for issuing tokens and reporting the current user.
+
+## Collaboration & project-scoped access control
+
+The global `UserRole` governs studio-wide actions; it is **not** replaced.
+Layered on top is **project-scoped** access control so collaborators can be
+given access to a specific Work or StoryWorld without becoming studio admins.
+
+- **`ProjectMembership`** — a user's membership on a project (a `work_id`
+  and/or `story_world_id`), carrying a project `role`, a lifecycle `status`
+  (`invited` → `active`, plus `suspended`/`declined`/`revoked`), `invited_at`,
+  `accepted_at`, `created_by`, and optional `notes`. A membership scoped to a
+  StoryWorld **cascades** to every Work in that world.
+- **Project roles** (14): `owner`, `director`, `editor`, `writer`, `artist`,
+  `letterer`, `colourist`, `animator`, `sound_designer`, `technician`,
+  `production_manager`, `marketing`, `reviewer`, `viewer`.
+- **Permission scopes** (11): `view_project`, `edit_narrative`,
+  `edit_visual_assets`, `manage_production`, `upload_assets`, `review`,
+  `approve`, `manage_collaborators`, `publish`, `manage_rights`,
+  `manage_marketing`.
+
+**Policy service** (`app/services/policy.py`) is the single source of truth.
+`can(session, user, scope, work_id=…, story_world_id=…)` combines, in order:
+the global role (an `admin` is a super-user — this is how existing admin
+behaviour stays valid), project **membership** (active memberships on the Work
+or its world), **ownership** (the `owner` project role grants every scope), and
+the requested **operation**. The role → scope matrix lives in `ROLE_SCOPES`;
+when several memberships apply, the strongest role wins (`ROLE_RANK`).
+
+Routers never hand-roll checks. They use the reusable helpers:
+`require_scope(scope)` (a FastAPI dependency that reads the project id from the
+path) for path-scoped routes, and `ensure_can(...)` for membership-id routes
+that load the record first. Membership changes append an immutable
+**`MembershipAudit`** row (decoupled, no FKs, so the trail survives revocation).
+
+Endpoints (`routers/collaborators.py`, mounted unprefixed under `/api`):
+
+- `GET|POST /works/{work_id}/members`, `GET|POST /story-worlds/{world_id}/members`
+  — list (needs `view_project`) and invite (needs `manage_collaborators`).
+- `PATCH /memberships/{id}` (role), `…/suspend`, `…/reactivate`,
+  `DELETE /memberships/{id}` (soft-revoke) — all need `manage_collaborators`.
+- `POST /memberships/{id}/accept` · `…/decline` — restricted to the invited user.
+- `GET /memberships/{id}/audits` — the change history (needs `manage_collaborators`).
+- `GET /me/projects` — the caller's memberships with resolved scopes.
+- `GET /collaboration/roles` — the role → scope matrix, for the UI.
+
+The private UI surfaces a **Collaborators panel** inside each StoryWorld and
+each Work (`components/CollaboratorsPanel.tsx`): invite, change role, suspend /
+reactivate / revoke, accept / decline your own invitations, and per-member
+history. It self-gates manage controls from `/me/projects` (or global admin).
 
 ## Integration layer (ecosystem seams)
 

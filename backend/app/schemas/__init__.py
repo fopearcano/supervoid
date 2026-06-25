@@ -44,6 +44,13 @@ from app.schemas.knowledge import (
     NeighborhoodResult,
 )
 from app.schemas.manuscript import ManuscriptCreate, ManuscriptRead, ManuscriptUpdate
+from app.schemas.membership_audit import MembershipAuditRead, ScopeCatalogEntry
+from app.schemas.project_membership import (
+    MyProjectRead,
+    ProjectMembershipCreate,
+    ProjectMembershipRead,
+    ProjectMembershipRoleUpdate,
+)
 from app.schemas.production_item import (
     ProductionItemCreate,
     ProductionItemRead,
@@ -57,6 +64,7 @@ from app.schemas.production_record import (
 )
 from app.schemas.review import ReviewCreate, ReviewRead, ReviewUpdate
 from app.schemas.rights import RightsCreate, RightsRead, RightsUpdate
+from app.schemas.user import PasswordRotate, UserCreate, UserRead, UserUpdate
 from app.schemas.work import WorkCreate, WorkRead, WorkUpdate
 from app.schemas.workflow_event import (
     TransitionRequest,
@@ -103,6 +111,12 @@ __all__ = [
     "ManuscriptCreate",
     "ManuscriptRead",
     "ManuscriptUpdate",
+    "MembershipAuditRead",
+    "MyProjectRead",
+    "ProjectMembershipCreate",
+    "ProjectMembershipRead",
+    "ProjectMembershipRoleUpdate",
+    "ScopeCatalogEntry",
     "ProductionItemCreate",
     "ProductionItemRead",
     "ProductionItemUpdate",
@@ -119,6 +133,10 @@ __all__ = [
     "RightsCreate",
     "RightsRead",
     "RightsUpdate",
+    "PasswordRotate",
+    "UserCreate",
+    "UserRead",
+    "UserUpdate",
     "TransitionRequest",
     "TransitionResponse",
     "WorkCreate",
