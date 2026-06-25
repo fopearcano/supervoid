@@ -64,6 +64,13 @@ from app.models.enums import (
     ReviewVerdict,
     RightsClearanceState,
     RightStatus,
+    SceneEnvironment,
+    SceneTimeOfDay,
+    ScreenFormat,
+    ScreenProjectStatus,
+    ScreenStatus,
+    ScreenUnitType,
+    ShotMovement,
     StorySeriesStatus,
     StoryWorldStatus,
     StreamStatus,
@@ -104,6 +111,16 @@ from app.models.published_volume import PublishedVolume
 from app.models.published_work import PublishedWork
 from app.models.review import Review
 from app.models.rights import Rights
+from app.models.screen import (
+    Scene,
+    SceneCharacterLink,
+    ScreenProject,
+    ScreenSequence,
+    ScreenShotAssetLink,
+    ScreenShotPanelLink,
+    ScreenUnit,
+    Shot,
+)
 from app.models.story_series import StorySeries
 from app.models.story_world import StoryWorld
 from app.models.user import User
@@ -201,6 +218,21 @@ __all__ = [
     "Rights",
     "RightStatus",
     "RightsClearanceState",
+    "Scene",
+    "SceneCharacterLink",
+    "SceneEnvironment",
+    "SceneTimeOfDay",
+    "ScreenFormat",
+    "ScreenProject",
+    "ScreenProjectStatus",
+    "ScreenSequence",
+    "ScreenShotAssetLink",
+    "ScreenShotPanelLink",
+    "ScreenStatus",
+    "ScreenUnit",
+    "ScreenUnitType",
+    "Shot",
+    "ShotMovement",
     "Medium",
     "StudioDivision",
     "StorySeries",

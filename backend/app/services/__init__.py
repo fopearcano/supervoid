@@ -8,6 +8,7 @@ from app.services import (
     policy,
     production,
     production_templates,
+    screen,
     storage,
     workflow,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "policy",
     "production",
     "production_templates",
+    "screen",
     "storage",
     "workflow",
 ]

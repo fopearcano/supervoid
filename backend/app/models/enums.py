@@ -701,3 +701,79 @@ class CurationStatus(str, Enum):
     READY_FOR_CURATION = "ready_for_curation"
     IN_CURATION = "in_curation"
     HANDED_OFF = "handed_off"
+
+
+# --- SUPERVOID Pictures (screen bounded context) ---------------------------
+# An operational screen-production context entered via AdaptationDossier:
+# ScreenProject → Episode/Reel → Sequence → Scene → Shot. Owns its own
+# vocabulary so the context stays extractable; it reuses only genuinely shared
+# camera/approval enums (CameraFraming, CameraAngle, AssetApprovalStatus).
+
+
+class ScreenFormat(str, Enum):
+    FILM = "film"
+    SHORT = "short"
+    SERIES = "series"
+    ANIMATION = "animation"
+
+
+class ScreenUnitType(str, Enum):
+    """A top-level division of a screen project — an episode (series) or a reel
+    / act / part (film, short, animation)."""
+
+    EPISODE = "episode"
+    REEL = "reel"
+    ACT = "act"
+    PART = "part"
+
+
+class ScreenProjectStatus(str, Enum):
+    DEVELOPMENT = "development"
+    PRE_PRODUCTION = "pre_production"
+    PRODUCTION = "production"
+    POST_PRODUCTION = "post_production"
+    DELIVERED = "delivered"
+    ON_HOLD = "on_hold"
+    CANCELLED = "cancelled"
+
+
+class ScreenStatus(str, Enum):
+    """Workflow status of a unit / sequence / scene / shot."""
+
+    PLANNED = "planned"
+    IN_PROGRESS = "in_progress"
+    IN_REVIEW = "in_review"
+    COMPLETE = "complete"
+    ON_HOLD = "on_hold"
+
+
+class SceneEnvironment(str, Enum):
+    INT = "int"
+    EXT = "ext"
+    INT_EXT = "int_ext"
+
+
+class SceneTimeOfDay(str, Enum):
+    DAY = "day"
+    NIGHT = "night"
+    DAWN = "dawn"
+    DUSK = "dusk"
+    MORNING = "morning"
+    EVENING = "evening"
+    CONTINUOUS = "continuous"
+    LATER = "later"
+    UNSPECIFIED = "unspecified"
+
+
+class ShotMovement(str, Enum):
+    STATIC = "static"
+    PAN = "pan"
+    TILT = "tilt"
+    DOLLY = "dolly"
+    TRACK = "track"
+    ZOOM = "zoom"
+    CRANE = "crane"
+    HANDHELD = "handheld"
+    STEADICAM = "steadicam"
+    AERIAL = "aerial"
+    OTHER = "other"

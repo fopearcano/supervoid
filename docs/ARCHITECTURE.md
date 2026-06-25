@@ -370,6 +370,45 @@ the separate, deliberate public-projection step. The private UI adds a
 **Graphic-novel studio**: a volume/chapter/page/panel navigator, a visual
 page-board, a panel coordinate editor, and progress/readiness views.
 
+## SUPERVOID Pictures (screen bounded context)
+
+The first operational sibling division, living **inside this repository** but
+kept extractable into its own service later (its own status vocabulary; all
+cross-context references held by id). Entered via `AdaptationDossier` — the
+publishing → screen seam — and structured::
+
+    ScreenProject → ScreenUnit (Episode/Reel) → ScreenSequence → Scene → Shot
+
+Supports films, shorts, series and animation (`ScreenFormat`, `ScreenUnitType`).
+
+- **Scene** — heading, location, interior/exterior, time of day, synopsis,
+  script text, characters (via `SceneCharacterLink` → `KnowledgeEntity`),
+  estimated duration, production status, continuity notes.
+- **Shot** — shot number, framing, camera angle, movement, lens, duration,
+  blocking, lighting, dialogue, sound, music, VFX, a source storyboard panel
+  (`gn_panels`), linked asset versions (`ScreenShotAssetLink`), status and
+  approval. Panels map to one or more shots via `ScreenShotPanelLink`.
+
+Operations (`app/services/screen.py`, surfaced under `/api/screen`):
+
+1. **Promote** a Work / graphic novel into an `AdaptationDossier`
+   (`POST /screen/dossiers/promote`, `target_division = pictures`).
+2. **Create a ScreenProject** from an *approved* dossier
+   (`POST /screen/projects/from-dossier/{id}` — rejects proposed/abandoned).
+3. **Reuse graphic-novel pages/panels** as storyboard references
+   (`GET /screen/projects/{id}/storyboard`).
+4. **Map panels to shots** (`POST /screen/shots/{id}/panels`, many-to-many).
+5. **Carry references** — knowledge entities (scene characters), rights (from
+   the source Work) and provenance (via shot asset versions):
+   `GET /screen/projects/{id}/references`.
+6. **Shot lists & breakdowns** (`/shot-list`, `/breakdown`).
+7. **Export the adaptation package** as JSON or Markdown (`/export?format=`).
+
+This makes the SUPERVOID Movies integration descriptor **operational**
+(`status = available`) rather than a future plan — without another deployment or
+repository. The private UI adds a **Screen studio** (dossiers, scenes, shots,
+export).
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —
@@ -377,8 +416,9 @@ for sibling systems under SUPERVOID ENTANGLED:
 
 - `logosforge.py` — the LOGOSFORGE writing subsystem bridge (import drafts,
   seed the knowledge graph, return editorial notes).
-- `movies.py` — the SUPERVOID Movies film-adaptation bridge (promote a
-  published title, share rights and knowledge graph).
+- `movies.py` — the SUPERVOID Pictures bridge, now **operational** (status
+  `available`): it points at the in-repo screen context at `/api/screen` (see
+  *SUPERVOID Pictures*), not a future external system.
 - `ecosystem.py` — the holding map (parent + member systems).
 
 Exposed read-only at `/api/integrations`, `/api/integrations/ecosystem`, and

@@ -186,16 +186,24 @@ The contract already exists at `/api/integrations/logosforge`. Implementation:
 - ⚪ `return_editorial_notes` — push editorial notes/revisions back to the author.
 - ⚪ Adapter + auth model for a locally running LOGOSFORGE instance (local-first).
 
-## Phase 5 — SUPERVOID Movies bridge (future division) ⚪
+## Phase 5 — SUPERVOID Pictures (screen division) 🟡
 
-The contract already exists at `/api/integrations/supervoid_movies`:
+Now an **operational** bounded context inside the repo (`/api/screen`), not a
+future plan. See *SUPERVOID Pictures* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+The SUPERVOID Movies integration descriptor is `available`.
 
-- ⚪ `promote_to_adaptation` — open a film-adaptation dossier from a published
-  title.
-- ⚪ `share_rights` / `share_knowledge_graph` — carry rights and narrative
-  structure across the publishing → film boundary.
-- ⚪ Extract reusable domain/workflow packages so SUPERVOID Movies can build on
-  them without forking.
+- ✅ **ScreenProject → Unit (Episode/Reel) → Sequence → Scene → Shot** for
+  films, shorts, series and animation, with full scene and shot fields.
+- ✅ `promote_to_adaptation` — promote a Work / graphic novel into an
+  `AdaptationDossier` (the entry seam).
+- ✅ Create a ScreenProject from an *approved* dossier (unapproved rejected).
+- ✅ Reuse graphic-novel pages/panels as storyboards; map panels to one or more
+  shots; carry knowledge entities, rights and provenance by reference.
+- ✅ Shot lists, production breakdowns, and an adaptation-package **export**
+  (JSON + Markdown). Alembic `0007`, seed, tests, and a private Screen studio.
+- ✅ Kept **extractable** (own vocabulary, id-only cross-references) — no extra
+  deployment or repository.
+- ⚪ Scheduling/stripboard, call sheets, and a true extraction to its own service.
 
 ## Phase 6 — Platform hardening 🟡
 

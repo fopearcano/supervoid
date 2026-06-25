@@ -111,8 +111,20 @@ from app.models import (  # asset library
     ProvenanceKind,
     ProvenanceRecord,
 )
+from app.models import (  # SUPERVOID Pictures
+    Scene,
+    SceneCharacterLink,
+    SceneEnvironment,
+    SceneTimeOfDay,
+    ScreenFormat,
+    ScreenSequence,
+    ScreenShotPanelLink,
+    Shot,
+    ShotMovement,
+)
 from app.services import graphic_novel as gn_service
 from app.services import policy
+from app.services import screen as screen_service
 from app.services import production as production_service
 from app.services import production_templates
 from app.services.knowledge import slugify
@@ -842,13 +854,14 @@ def _seed_integration_points(session: Session) -> None:
             ),
         ),
         IntegrationPoint(
-            name="SUPERVOID Movies — adaptation hand-off",
+            name="SUPERVOID Pictures — screen production",
             type=IntegrationPointType.SUPERVOID_MOVIES,
-            status=IntegrationPointStatus.PLANNED,
-            endpoint="supervoid-movies://adaptations/intake",
+            status=IntegrationPointStatus.ACTIVE,
+            endpoint="/api/screen",
             notes=(
-                "Future division; hand off works flagged as adaptation "
-                "candidates (e.g. The Silent Workshop) for screen development."
+                "Operational internal adapter. Promote a Work/graphic novel to "
+                "an adaptation dossier, build a ScreenProject of scenes & shots "
+                "(reusing storyboard panels), and export the adaptation package."
             ),
         ),
         IntegrationPoint(
@@ -1718,6 +1731,91 @@ def _seed_graphic_novel_hierarchy(
     session.commit()
 
 
+def _seed_screen_pictures(
+    session: Session,
+    works: dict[str, Work],
+) -> None:
+    """Seed the SUPERVOID Pictures bounded context: a ScreenProject created from
+    the (approved) Silent Workshop adaptation dossier, with a scene, two shots —
+    one mapping a graphic-novel storyboard panel — and a character link."""
+    gn = works.get("silent_workshop")
+    if gn is None:  # pragma: no cover
+        return
+    dossier = session.exec(
+        select(AdaptationDossier).where(AdaptationDossier.source_work_id == gn.id)
+    ).first()
+    if dossier is None:  # pragma: no cover
+        return
+    if not screen_service.is_dossier_approved(dossier):
+        dossier.status = AdaptationStatus.IN_DEVELOPMENT
+        session.add(dossier)
+        session.flush()
+
+    project = screen_service.create_project_from_dossier(
+        session, dossier, fmt=ScreenFormat.FILM,
+        title="The Silent Workshop — Feature",
+    )
+    project.synopsis = (
+        "A near-silent feature about a printer's forty-year correspondence."
+    )
+    session.add(project)
+    session.flush()
+
+    unit = project.units[0]
+    sequence = ScreenSequence(
+        unit_id=unit.id, sequence_number=1, title="Night at the press", position=0,
+    )
+    session.add(sequence)
+    session.flush()
+
+    scene = Scene(
+        sequence_id=sequence.id, scene_number=1, position=0,
+        heading="INT. THE WORKSHOP — NIGHT",
+        location="The Workshop", environment=SceneEnvironment.INT,
+        time_of_day=SceneTimeOfDay.NIGHT,
+        synopsis="Anselm sets the last line of type as the harbour bell rings.",
+        script_text="The press lamp throws a long shadow. ANSELM works alone.",
+        estimated_duration_seconds=180,
+        continuity_notes="Ink-stained apron; the unanswered letter on the bench.",
+    )
+    session.add(scene)
+    session.flush()
+
+    # Character link to the knowledge entity (no duplication).
+    anselm = session.exec(
+        select(KnowledgeEntity).where(KnowledgeEntity.slug == "anselm-the-printer")
+    ).first()
+    if anselm is not None:
+        session.add(
+            SceneCharacterLink(scene_id=scene.id, entity_id=anselm.id, role="lead")
+        )
+
+    # Two shots; the first reuses a graphic-novel panel as its storyboard.
+    panel = session.exec(select(GraphicNovelPanel)).first()
+    shot1 = Shot(
+        scene_id=scene.id, shot_number=1, position=0,
+        framing=CameraFraming.ESTABLISHING, camera_angle=CameraAngle.HIGH,
+        movement=ShotMovement.CRANE, lens="24mm", duration_seconds=12,
+        blocking="Crane down from the rafters to the press.",
+        lighting="Single warm key from the press lamp.",
+        sound="Bell; the rhythm of the press.",
+        source_storyboard_panel_id=panel.id if panel is not None else None,
+    )
+    shot2 = Shot(
+        scene_id=scene.id, shot_number=2, position=1,
+        framing=CameraFraming.CLOSE_UP, camera_angle=CameraAngle.EYE_LEVEL,
+        movement=ShotMovement.STATIC, lens="85mm", duration_seconds=6,
+        dialogue="“Still nothing.”",
+        vfx="Subtle ink-bloom on the unanswered letter.",
+    )
+    session.add_all([shot1, shot2])
+    session.flush()
+    if panel is not None:
+        session.add(ScreenShotPanelLink(shot_id=shot1.id, panel_id=panel.id, role="storyboard"))
+
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1746,6 +1844,7 @@ def run() -> None:
         _seed_production_tasks(session, works, users)
         _seed_asset_library(session, works, authors, users)
         _seed_graphic_novel_hierarchy(session, works)
+        _seed_screen_pictures(session, works)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1764,7 +1863,9 @@ def run() -> None:
         "the Asset Library (a versioned cover with provenance + a near-expiry "
         "licence, plus a human-made character design), and a graphic-novel "
         "production hierarchy (1 volume → chapter → sequence → 2 pages → panels "
-        "with knowledge-entity links and a storyboard↔final comparison)."
+        "with knowledge-entity links and a storyboard↔final comparison), and a "
+        "SUPERVOID Pictures screen project from the adaptation dossier (a scene "
+        "with two shots, one mapping a graphic-novel storyboard panel)."
     )
 
 
