@@ -41,9 +41,9 @@ export function HomePage() {
           Est. MMXXVI
         </span>
 
-        {/* enlarged punk kicker */}
+        {/* enlarged punk kicker — horizontal, nudged a bit left of centre */}
         <span
-          className="-rotate-3 select-none font-sans font-black uppercase leading-[0.85] tracking-tight text-accent text-[clamp(2rem,7vw,4.5rem)]"
+          className="ml-[5vw] select-none self-start font-sans font-black uppercase leading-[0.85] tracking-tight text-accent text-[clamp(2rem,7vw,4.5rem)]"
           style={{ textShadow: '3px 3px 0 rgb(var(--c-ink-900))' }}
         >
           {"I've got a mental"}
