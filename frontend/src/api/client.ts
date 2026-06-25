@@ -62,6 +62,21 @@ export async function apiPatchJson<T>(path: string, payload: unknown): Promise<T
   });
 }
 
+/** Fetch raw bytes (with auth) and return an object URL. Used for private
+ * asset previews/downloads, which require the bearer token a plain <img>/<a>
+ * cannot send. Caller should URL.revokeObjectURL when done. */
+export async function apiBlobUrl(path: string): Promise<string> {
+  const token = readToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${API_BASE}${path}`, { headers });
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch file', response.status);
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 export async function apiPostForm<T>(
   path: string,
   payload: Record<string, string>,

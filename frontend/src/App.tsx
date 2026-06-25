@@ -13,6 +13,7 @@ import { StoryWorldDetailPage } from '@/pages/StoryWorldDetailPage';
 import { AdaptationDossiersPage } from '@/pages/AdaptationDossiersPage';
 import { WorkTransmediaPage } from '@/pages/WorkTransmediaPage';
 import { ProductionTasksPage } from '@/pages/ProductionTasksPage';
+import { AssetLibraryPage } from '@/pages/AssetLibraryPage';
 
 type View =
   | { name: 'dashboard' }
@@ -21,6 +22,7 @@ type View =
   | { name: 'archive' }
   | { name: 'production' }
   | { name: 'production-tasks' }
+  | { name: 'asset-library' }
   | { name: 'calendar' }
   | { name: 'production-item'; id: string }
   | { name: 'story-worlds' }
@@ -74,6 +76,7 @@ export default function App() {
           <ProductionBoard onOpenManuscript={openManuscript} />
         )}
         {view.name === 'production-tasks' && <ProductionTasksPage />}
+        {view.name === 'asset-library' && <AssetLibraryPage />}
         {view.name === 'calendar' && (
           <ReleaseCalendar onOpenManuscript={openManuscript} />
         )}

@@ -9,6 +9,7 @@ export type AppView =
   | 'archive'
   | 'production'
   | 'production-tasks'
+  | 'asset-library'
   | 'calendar'
   | 'production-item'
   | 'story-worlds'
@@ -92,6 +93,11 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                 label="Tasks"
                 active={activeView === 'production-tasks'}
                 onClick={() => onNavigate('production-tasks')}
+              />
+              <NavLink
+                label="Assets"
+                active={activeView === 'asset-library'}
+                onClick={() => onNavigate('asset-library')}
               />
               <NavLink
                 label="Adaptations"

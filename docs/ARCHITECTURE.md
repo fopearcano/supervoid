@@ -280,6 +280,54 @@ The private UI adds a **Production tasks** board (`ProductionTasksPage`) with
 Kanban / list / timeline views, inline task creation, template application, and
 a per-task panel for validated transitions, dependencies and activity.
 
+## Asset Library
+
+The central, work-centred home for reusable creative material. Distinct from
+`Attachment` (a manuscript-scoped file record, unchanged for backward
+compatibility): assets are durable identities whose bytes live in versioned
+rows, carrying provenance and licensing. **Assets are private and never served
+through the public reader** — public media uses the curated public projection.
+
+- **`Asset`** (`assets`) — title, asset type, work / story-world association,
+  canonical status (`CanonState`), visibility, owner, tags (JSON), description,
+  and a pointer to the current version.
+- **`AssetVersion`** (`asset_versions`) — one revision's bytes: storage key,
+  MIME type, dimensions, duration, checksum, size, creator, approval status,
+  `superseded_by` link, and free-form technical metadata (JSON).
+- **`AssetLink`** (`asset_links`) — connects an asset (optionally a specific
+  version) to a character, location, page, panel, scene, shot, production task,
+  public-reader record, work or story world. Generic (`target_type` + id) so it
+  can reference entities that are not first-class tables.
+- **`ProvenanceRecord`** (`provenance_records`) — per-version disclosure:
+  human-created / AI-assisted / AI-generated / mixed, provider, base model and
+  version, LoRA/adapter ids, prompt + negative prompt, seed, sampler/settings,
+  source references, ControlNet inputs, generating workflow, human
+  modifications, generation date, responsible user, and commercial-use review.
+- **`LicenceRecord`** (`licence_records`) — rights holder, licence type, source,
+  territory, permitted uses, attribution, expiration, evidence file, review state.
+
+Storage is abstracted behind `StorageBackend` (`app/services/storage.py`): a
+local filesystem adapter ships today; a remote/object-storage adapter implements
+the same interface later. The asset service (`app/services/assets.py`) owns
+versioning, **checksum-based duplicate detection**, version **promotion /
+rollback** (`set_current_version` supersedes the previous head), **provenance
+completeness** checks (the AI-disclosure gate, by provenance kind), and
+**licence-expiry warnings**.
+
+Surface (`/assets`, fully private — every route requires auth):
+
+- Asset CRUD with search/filters (title, type, work, story world, canon,
+  visibility, owner, tag).
+- `/{id}/versions` (+ `/upload` with in-asset checksum dedupe, `/promote`,
+  `/rollback`, `/approve`), and private `/download` + inline `/preview`.
+- `/{id}/versions/{vid}/provenance` (+ `/completeness`),
+  `/{id}/links`, `/{id}/licences`, plus library-wide `/licence-warnings` and
+  duplicate discovery `/versions/by-checksum/{checksum}`.
+
+Approval of a version and commercial-use review are human actions; nothing here
+auto-approves. The private UI adds an **Asset Library** browser with version
+history, preview/download, provenance and licence panels.
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

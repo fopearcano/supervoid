@@ -82,6 +82,21 @@ from app.models import (  # collaboration / project-scoped access
     ProjectRole,
 )
 from app.models import ApprovalRequest  # production task system
+from app.models import (  # asset library
+    Asset,
+    AssetApprovalStatus,
+    AssetLink,
+    AssetLinkTargetType,
+    AssetType,
+    AssetVersion,
+    AssetVisibility,
+    CommercialUseReviewStatus,
+    LicenceRecord,
+    LicenceReviewState,
+    LicenceType,
+    ProvenanceKind,
+    ProvenanceRecord,
+)
 from app.services import policy
 from app.services import production as production_service
 from app.services import production_templates
@@ -1403,6 +1418,155 @@ def _seed_production_tasks(
         session.commit()
 
 
+def _seed_asset_library(
+    session: Session,
+    works: dict[str, Work],
+    authors: dict[str, Author],
+    users: dict[str, User],
+) -> None:
+    """Seed the central Asset Library: a versioned cover asset with provenance
+    and a licence, plus a human-made character design — wired to the flagship
+    Work. Assets are private and never surface in the public reader."""
+    gn = works.get("silent_workshop")
+    world = session.exec(
+        select(StoryWorld).where(StoryWorld.slug == "the-silent-workshop")
+    ).first()
+    if gn is None:  # pragma: no cover - demo always has the graphic novel
+        return
+
+    # --- Cover asset, two versions, v2 current (v1 superseded) ---
+    cover = Asset(
+        title="The Silent Workshop — Cover",
+        asset_type=AssetType.COVER,
+        work_id=gn.id,
+        story_world_id=world.id if world is not None else None,
+        canon_status=CanonState.CANON,
+        visibility=AssetVisibility.PUBLIC_CANDIDATE,
+        owner_id=users["kazu"].id,
+        tags=["cover", "key-art", "noir"],
+        description="Front cover art for Volume One.",
+    )
+    session.add(cover)
+    session.flush()
+
+    v1 = AssetVersion(
+        asset_id=cover.id,
+        version_number=1,
+        storage_key=f"placeholder:{cover.id}-v1",
+        mime_type="image/png",
+        size_bytes=2_400_000,
+        checksum="0" * 64,
+        width=1400,
+        height=2100,
+        creator_id=users["kazu"].id,
+        approval_status=AssetApprovalStatus.SUPERSEDED,
+    )
+    v2 = AssetVersion(
+        asset_id=cover.id,
+        version_number=2,
+        storage_key=f"placeholder:{cover.id}-v2",
+        mime_type="image/png",
+        size_bytes=2_550_000,
+        checksum="1" * 64,
+        width=1400,
+        height=2100,
+        creator_id=users["kazu"].id,
+        approval_status=AssetApprovalStatus.APPROVED,
+        notes="Tightened contrast; final title treatment.",
+    )
+    session.add_all([v1, v2])
+    session.flush()
+    v1.superseded_by_id = v2.id
+    cover.current_version_id = v2.id
+    session.add_all([v1, cover])
+
+    # Provenance on the current version: AI-assisted, human-finished.
+    session.add(
+        ProvenanceRecord(
+            asset_version_id=v2.id,
+            kind=ProvenanceKind.AI_ASSISTED,
+            provider="local",
+            base_model="SUPERVOID-Diffusion",
+            base_model_version="1.5",
+            adapter_identifiers="lora:silent-workshop-style",
+            prompt="a print workshop at night, brass and ink, noir lighting",
+            negative_prompt="text, watermark",
+            seed=20260614,
+            sampler="dpmpp_2m",
+            settings={"steps": 30, "cfg_scale": 6.5},
+            human_modifications="Repainted hands; hand-set the title typography.",
+            generation_date=utcnow() - timedelta(days=10),
+            responsible_user_id=users["kazu"].id,
+            commercial_use_review=CommercialUseReviewStatus.CLEARED,
+        )
+    )
+
+    # Licence on the asset (commissioned, in-house, expiring to demo warnings).
+    session.add(
+        LicenceRecord(
+            asset_id=cover.id,
+            rights_holder="SUPERVOID Publishing",
+            licence_type=LicenceType.COMMISSIONED,
+            source="In-house art direction",
+            territory="World",
+            permitted_uses="Cover, marketing, editions.",
+            attribution_requirements="None (work for hire).",
+            expiration_date=date.today() + timedelta(days=20),
+            review_state=LicenceReviewState.APPROVED,
+        )
+    )
+
+    # Link the cover to the work.
+    session.add(
+        AssetLink(
+            asset_id=cover.id,
+            asset_version_id=v2.id,
+            target_type=AssetLinkTargetType.WORK,
+            target_id=gn.id,
+            role="cover",
+        )
+    )
+
+    # --- A purely human-made character design ---
+    design = Asset(
+        title="Anselm — Character Design",
+        asset_type=AssetType.CHARACTER_DESIGN,
+        work_id=gn.id,
+        story_world_id=world.id if world is not None else None,
+        canon_status=CanonState.CANON,
+        visibility=AssetVisibility.INTERNAL,
+        owner_id=users["cecilia"].id,
+        tags=["character", "model-sheet"],
+        description="Turnaround and expressions for the printer, Anselm.",
+    )
+    session.add(design)
+    session.flush()
+    dv1 = AssetVersion(
+        asset_id=design.id,
+        version_number=1,
+        storage_key=f"placeholder:{design.id}-v1",
+        mime_type="image/png",
+        size_bytes=1_800_000,
+        checksum="2" * 64,
+        creator_id=users["cecilia"].id,
+        approval_status=AssetApprovalStatus.APPROVED,
+    )
+    session.add(dv1)
+    session.flush()
+    design.current_version_id = dv1.id
+    session.add(design)
+    session.add(
+        ProvenanceRecord(
+            asset_version_id=dv1.id,
+            kind=ProvenanceKind.HUMAN_CREATED,
+            human_modifications="Hand-drawn, inked and scanned.",
+            responsible_user_id=users["cecilia"].id,
+            commercial_use_review=CommercialUseReviewStatus.CLEARED,
+        )
+    )
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1429,6 +1593,7 @@ def run() -> None:
         _seed_transmedia(session, works, authors)
         _seed_collaboration(session, users, works)
         _seed_production_tasks(session, works, users)
+        _seed_asset_library(session, works, authors, users)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1443,7 +1608,9 @@ def run() -> None:
         "(1 story world, 1 series, an adaptation dossier), project "
         "collaboration (5 memberships across a world and a work, with an "
         "audit trail), and a production task breakdown (graphic-novel template "
-        "applied: milestones, tasks, dependencies, and a pending approval)."
+        "applied: milestones, tasks, dependencies, and a pending approval), and "
+        "the Asset Library (a versioned cover with provenance + a near-expiry "
+        "licence, plus a human-made character design)."
     )
 
 

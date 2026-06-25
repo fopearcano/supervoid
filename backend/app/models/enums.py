@@ -531,3 +531,109 @@ class ProductionActivityType(str, Enum):
     COMPLETED = "completed"
     REOPENED = "reopened"
     TEMPLATE_APPLIED = "template_applied"
+
+
+# --- Asset library ---------------------------------------------------------
+# The central, work-centred asset domain. Distinct from ``Attachment`` (which
+# stays a manuscript-scoped file record); assets are reusable, versioned and
+# carry provenance and licensing.
+
+
+class AssetType(str, Enum):
+    """The kind of creative asset (cross-medium)."""
+
+    IMAGE = "image"
+    ILLUSTRATION = "illustration"
+    CHARACTER_DESIGN = "character_design"
+    ENVIRONMENT_DESIGN = "environment_design"
+    COVER = "cover"
+    PAGE_ART = "page_art"
+    STORYBOARD = "storyboard"
+    CONCEPT_ART = "concept_art"
+    AUDIO = "audio"
+    MUSIC = "music"
+    SOUND_EFFECT = "sound_effect"
+    VOICE = "voice"
+    VIDEO = "video"
+    ANIMATION = "animation"
+    MODEL_3D = "model_3d"
+    TEXTURE = "texture"
+    FONT = "font"
+    SCRIPT = "script"
+    DOCUMENT = "document"
+    OTHER = "other"
+
+
+class AssetVisibility(str, Enum):
+    """Who may see an asset. Even ``public_candidate`` assets are NEVER served
+    directly through the public reader — public media uses the curated
+    public projection. Visibility gates the *private* API only."""
+
+    PRIVATE = "private"
+    INTERNAL = "internal"
+    RESTRICTED = "restricted"
+    PUBLIC_CANDIDATE = "public_candidate"
+
+
+class AssetApprovalStatus(str, Enum):
+    """Human approval state of an asset version."""
+
+    DRAFT = "draft"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+
+
+class AssetLinkTargetType(str, Enum):
+    """What an asset (or version) is attached to. Generic so it can reference
+    entities that are not first-class tables (panels, scenes, shots)."""
+
+    CHARACTER = "character"
+    LOCATION = "location"
+    KNOWLEDGE_ENTITY = "knowledge_entity"
+    PAGE = "page"
+    PANEL = "panel"
+    SCENE = "scene"
+    SHOT = "shot"
+    PRODUCTION_TASK = "production_task"
+    PUBLIC_READER_RECORD = "public_reader_record"
+    WORK = "work"
+    STORY_WORLD = "story_world"
+    OTHER = "other"
+
+
+class ProvenanceKind(str, Enum):
+    HUMAN_CREATED = "human_created"
+    AI_ASSISTED = "ai_assisted"
+    AI_GENERATED = "ai_generated"
+    MIXED = "mixed"
+
+
+class CommercialUseReviewStatus(str, Enum):
+    NOT_REVIEWED = "not_reviewed"
+    UNDER_REVIEW = "under_review"
+    CLEARED = "cleared"
+    RESTRICTED = "restricted"
+    BLOCKED = "blocked"
+
+
+class LicenceType(str, Enum):
+    PROPRIETARY = "proprietary"
+    COMMISSIONED = "commissioned"
+    WORK_FOR_HIRE = "work_for_hire"
+    STOCK = "stock"
+    CREATIVE_COMMONS = "creative_commons"
+    PUBLIC_DOMAIN = "public_domain"
+    ROYALTY_FREE = "royalty_free"
+    RIGHTS_MANAGED = "rights_managed"
+    AI_GENERATED = "ai_generated"
+    OTHER = "other"
+
+
+class LicenceReviewState(str, Enum):
+    NOT_REVIEWED = "not_reviewed"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXPIRED = "expired"

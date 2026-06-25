@@ -141,6 +141,25 @@ novels, film, audio and interactive work. See *Production task system* in
 - ✅ **AI safety**: completion and approval are human-only; no auto-approval.
 - ⚪ Effort burndown, capacity/scheduling, and Gantt-style dependency bars.
 
+## Asset Library (central, work-centred) 🟡
+
+A reusable, versioned asset domain with provenance and licensing. See *Asset
+Library* in [`ARCHITECTURE.md`](ARCHITECTURE.md). `Attachment` is preserved for
+backward compatibility; assets are a separate, durable layer.
+
+- ✅ **Asset / AssetVersion / AssetLink / ProvenanceRecord / LicenceRecord**
+  with work / story-world association, canonical status, visibility, owner,
+  tags; per-version checksum, dimensions, duration, technical metadata.
+- ✅ Local filesystem storage behind a `StorageBackend` adapter interface
+  (remote/object storage drops in later).
+- ✅ Checksum-based duplicate detection; version promotion & rollback;
+  asset search & filters; provenance completeness checks; licence-expiry
+  warnings; private preview/download endpoints.
+- ✅ Asset browser + version history frontend; Alembic `0005`, seed and tests.
+- ✅ **Privacy**: assets are never exposed via the public reader — public media
+  stays on the curated public projection.
+- ⚪ Image-dimension/duration auto-extraction; thumbnail generation; S3 adapter.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:

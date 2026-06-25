@@ -7,6 +7,7 @@ configured database engine.
 from app.models.adaptation_dossier import AdaptationDossier
 from app.models.ai_insight import AIInsight
 from app.models.approval_request import ApprovalRequest
+from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
 from app.models.calendar_event import PublishingCalendarEvent
@@ -17,10 +18,15 @@ from app.models.enums import (
     AIFeature,
     ApprovalDecision,
     ApprovalStatus,
+    AssetApprovalStatus,
+    AssetLinkTargetType,
+    AssetType,
+    AssetVisibility,
     AttachmentKind,
     CalendarEventStatus,
     CalendarEventType,
     CanonState,
+    CommercialUseReviewStatus,
     ContractStatus,
     DependencyType,
     DraftStatus,
@@ -30,6 +36,8 @@ from app.models.enums import (
     HotspotType,
     IntegrationPointStatus,
     IntegrationPointType,
+    LicenceReviewState,
+    LicenceType,
     ManuscriptLinkRole,
     MediaAssetType,
     Medium,
@@ -44,6 +52,7 @@ from app.models.enums import (
     ProductionTaskType,
     ProductionTrack,
     ProjectRole,
+    ProvenanceKind,
     PublishedStatus,
     RelationshipKind,
     ReviewVerdict,
@@ -62,6 +71,7 @@ from app.models.graphic_novel_production import GraphicNovelProduction
 from app.models.integration_point import IntegrationPoint
 from app.models.knowledge_entity import KnowledgeEntity
 from app.models.knowledge_relationship import KnowledgeRelationship
+from app.models.licence_record import LicenceRecord
 from app.models.manuscript import Manuscript
 from app.models.manuscript_entity_link import ManuscriptEntityLink
 from app.models.membership_audit import MembershipAudit
@@ -70,6 +80,7 @@ from app.models.production_item import ProductionDependency, ProductionItem
 from app.models.production_milestone import ProductionMilestone
 from app.models.project_membership import ProjectMembership
 from app.models.production_record import ProductionRecord
+from app.models.provenance_record import ProvenanceRecord
 from app.models.public_hotspot import PublicHotspot
 from app.models.public_media_asset import PublicMediaAsset
 from app.models.published_chapter import PublishedChapter
@@ -92,9 +103,22 @@ __all__ = [
     "ApprovalDecision",
     "ApprovalRequest",
     "ApprovalStatus",
+    "Asset",
+    "AssetApprovalStatus",
+    "AssetLink",
+    "AssetLinkTargetType",
+    "AssetType",
+    "AssetVersion",
+    "AssetVisibility",
     "Attachment",
     "AttachmentKind",
     "Author",
+    "CommercialUseReviewStatus",
+    "LicenceRecord",
+    "LicenceReviewState",
+    "LicenceType",
+    "ProvenanceKind",
+    "ProvenanceRecord",
     "CalendarEventStatus",
     "CalendarEventType",
     "CanonState",

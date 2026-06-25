@@ -56,6 +56,29 @@ from app.schemas.approval_request import (
     ApprovalDecisionRequest,
     ApprovalRead,
 )
+from app.schemas.asset import (
+    AssetApprovalUpdate,
+    AssetCreate,
+    AssetDetail,
+    AssetLinkCreate,
+    AssetLinkRead,
+    AssetRead,
+    AssetUpdate,
+    AssetVersionCreate,
+    AssetVersionRead,
+    DuplicateMatch,
+)
+from app.schemas.licence_record import (
+    LicenceCreate,
+    LicenceRead,
+    LicenceUpdate,
+    LicenceWarningRead,
+)
+from app.schemas.provenance_record import (
+    ProvenanceCompletenessRead,
+    ProvenanceRead,
+    ProvenanceWrite,
+)
 from app.schemas.production_item import (
     ProductionItemCreate,
     ProductionItemRead,
@@ -145,6 +168,23 @@ __all__ = [
     "ApprovalCreate",
     "ApprovalDecisionRequest",
     "ApprovalRead",
+    "AssetApprovalUpdate",
+    "AssetCreate",
+    "AssetDetail",
+    "AssetLinkCreate",
+    "AssetLinkRead",
+    "AssetRead",
+    "AssetUpdate",
+    "AssetVersionCreate",
+    "AssetVersionRead",
+    "DuplicateMatch",
+    "LicenceCreate",
+    "LicenceRead",
+    "LicenceUpdate",
+    "LicenceWarningRead",
+    "ProvenanceCompletenessRead",
+    "ProvenanceRead",
+    "ProvenanceWrite",
     "ApplyTemplateRequest",
     "ApplyTemplateResult",
     "DependencyCreate",
