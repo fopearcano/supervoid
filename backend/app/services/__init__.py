@@ -3,6 +3,7 @@
 from app.services import (
     agents,
     assets,
+    distribution,
     exports,
     graphic_novel,
     integrations,
@@ -10,6 +11,7 @@ from app.services import (
     policy,
     production,
     production_templates,
+    rights,
     screen,
     storage,
     workflow,
@@ -18,6 +20,7 @@ from app.services import (
 __all__ = [
     "agents",
     "assets",
+    "distribution",
     "exports",
     "graphic_novel",
     "integrations",
@@ -25,6 +28,7 @@ __all__ = [
     "policy",
     "production",
     "production_templates",
+    "rights",
     "screen",
     "storage",
     "workflow",

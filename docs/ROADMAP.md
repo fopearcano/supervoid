@@ -217,6 +217,27 @@ existing integration endpoints. See *Operational integration hub* in
 - ⚪ Live network dispatch by default, richer GitHub sync, and remote/object
   storage for ingested outputs.
 
+## Operational business layer 🟡
+
+The studio's commercial spine — rights depth, a CRM, and editions/distribution.
+See *Operational business layer* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+- ✅ **Rights depth**: `Rights`/`Contract` extended with term windows, rights
+  holder, exclusivity, sublicensing, reversion, option periods, chain of title,
+  evidence, territory/language coverage, adaptation/merchandising constraints,
+  status history, and reminders/expiry warnings.
+- ✅ **Relationship memory**: `Organization`, `Contact`, `ContactRole`,
+  `Interaction`, `Opportunity`, `ContactTag` — covering publishers, distributors,
+  printers, journalists, reviewers, festivals, translators, artists, agents and
+  collaborators; consent/preferences recorded; no scraping or auto-send.
+- ✅ **Editions & distribution**: an `Edition` model connected to
+  `ProductionRecord`, plus validated package generators for ONIX, KDP, Ingram,
+  GlobalComix, press kit and reviewer/ARC — packages + checklists, never direct
+  uploads.
+- ✅ Alembic `0010`, seed, tests, and private Rights / Contacts / Editions UIs.
+- ⚪ Real tested upload adapters per channel, royalty statements, and a sales
+  dashboard.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:

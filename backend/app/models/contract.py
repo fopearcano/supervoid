@@ -2,10 +2,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, Relationship
 
 from app.models.base import BaseEntity
-from app.models.enums import ContractStatus
+from app.models.enums import ContractStatus, RightsExclusivity
 
 if TYPE_CHECKING:
     from app.models.author import Author
@@ -34,6 +35,31 @@ class Contract(BaseEntity, table=True):
     signed_at: Optional[datetime] = Field(default=None)
     expiration_date: Optional[date] = Field(default=None, index=True)
     terms: Optional[str] = Field(default=None)
+
+    # --- depth (additive; existing rows stay valid) ---
+    rights_holder: Optional[str] = Field(default=None, max_length=200)
+    exclusivity: RightsExclusivity = Field(
+        default=RightsExclusivity.UNSPECIFIED, index=True
+    )
+    # Term window.
+    effective_date: Optional[date] = Field(default=None, index=True)
+    term_start_date: Optional[date] = Field(default=None, index=True)
+    term_end_date: Optional[date] = Field(default=None, index=True)
+    # Option period.
+    option_start_date: Optional[date] = Field(default=None)
+    option_end_date: Optional[date] = Field(default=None, index=True)
+    option_exercised: bool = Field(default=False)
+    # Reversion & sublicensing.
+    reversion_conditions: Optional[str] = Field(default=None)
+    reversion_date: Optional[date] = Field(default=None, index=True)
+    sublicensable: bool = Field(default=False)
+    # Coverage beyond the single rights_territory.
+    territory_coverage: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    language_coverage: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
 
     manuscript: "Manuscript" = Relationship(back_populates="contracts")
     work: Optional["Work"] = Relationship(back_populates="contracts")

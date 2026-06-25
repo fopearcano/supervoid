@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.author import Author
     from app.models.calendar_event import PublishingCalendarEvent
     from app.models.contract import Contract
+    from app.models.edition import Edition
     from app.models.editorial_note import EditorialNote
     from app.models.graphic_novel_production import GraphicNovelProduction
     from app.models.manuscript import Manuscript
@@ -90,6 +91,7 @@ class Work(BaseEntity, table=True):
     manuscripts: list["Manuscript"] = Relationship(back_populates="work")
     contracts: list["Contract"] = Relationship(back_populates="work")
     rights: list["Rights"] = Relationship(back_populates="work")
+    editions: list["Edition"] = Relationship(back_populates="work")
     production_items: list["ProductionItem"] = Relationship(back_populates="work")
     reviews: list["Review"] = Relationship(back_populates="work")
     editorial_notes: list["EditorialNote"] = Relationship(back_populates="work")

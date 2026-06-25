@@ -900,3 +900,215 @@ class IntegrationLinkKind(str, Enum):
     BRANCH = "branch"
     RELEASE = "release"
     OTHER = "other"
+
+
+# --- Business layer: rights depth ------------------------------------------
+# Deepen the Rights/Contract layer for an independent studio: term windows,
+# exclusivity, sublicensing, options, chain of title, evidence and history.
+
+
+class RightsExclusivity(str, Enum):
+    EXCLUSIVE = "exclusive"
+    SOLE = "sole"  # licensor may also exploit, but no other licensees
+    NON_EXCLUSIVE = "non_exclusive"
+    UNSPECIFIED = "unspecified"
+
+
+class RightScope(str, Enum):
+    """A licensable right, used by windows / options / status history."""
+
+    PRINT = "print"
+    EBOOK = "ebook"
+    AUDIOBOOK = "audiobook"
+    FILM = "film"
+    TELEVISION = "television"
+    STAGE = "stage"
+    TRANSLATION = "translation"
+    SERIAL = "serial"
+    ADAPTATION = "adaptation"
+    MERCHANDISING = "merchandising"
+    GAMING = "gaming"
+    ALL = "all"
+    OTHER = "other"
+
+
+class RightsWindowStatus(str, Enum):
+    PLANNED = "planned"
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    TERMINATED = "terminated"
+    REVERTED = "reverted"
+
+
+class OptionPeriodStatus(str, Enum):
+    OPEN = "open"
+    EXERCISED = "exercised"
+    EXPIRED = "expired"
+    DECLINED = "declined"
+
+
+class ChainOfTitleType(str, Enum):
+    CREATION = "creation"
+    ASSIGNMENT = "assignment"
+    LICENSE = "license"
+    WORK_FOR_HIRE = "work_for_hire"
+    INHERITANCE = "inheritance"
+    REVERSION = "reversion"
+    OTHER = "other"
+
+
+class RightsEvidenceKind(str, Enum):
+    CONTRACT = "contract"
+    AMENDMENT = "amendment"
+    ASSIGNMENT = "assignment"
+    REGISTRATION = "registration"
+    CORRESPONDENCE = "correspondence"
+    RELEASE = "release"
+    LICENSE = "license"
+    OTHER = "other"
+
+
+# --- Business layer: relationship memory (CRM) -----------------------------
+# A private studio CRM. Manual logging only — never scrapes or sends
+# unsolicited communication automatically.
+
+
+class OrganizationKind(str, Enum):
+    PUBLISHER = "publisher"
+    DISTRIBUTOR = "distributor"
+    PRINTER = "printer"
+    RETAILER = "retailer"
+    FESTIVAL = "festival"
+    AGENCY = "agency"
+    MEDIA = "media"
+    STUDIO = "studio"
+    INSTITUTION = "institution"
+    OTHER = "other"
+
+
+class ContactRoleKind(str, Enum):
+    PUBLISHER = "publisher"
+    DISTRIBUTOR = "distributor"
+    PRINTER = "printer"
+    JOURNALIST = "journalist"
+    REVIEWER = "reviewer"
+    FESTIVAL = "festival"
+    TRANSLATOR = "translator"
+    ARTIST = "artist"
+    AGENT = "agent"
+    COLLABORATOR = "collaborator"
+    EDITOR = "editor"
+    RETAILER = "retailer"
+    OTHER = "other"
+
+
+class InteractionKind(str, Enum):
+    EMAIL = "email"
+    CALL = "call"
+    MEETING = "meeting"
+    EVENT = "event"
+    SUBMISSION = "submission"
+    SOCIAL = "social"
+    NOTE = "note"
+    OTHER = "other"
+
+
+class InteractionDirection(str, Enum):
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+    INTERNAL = "internal"
+
+
+class ConsentStatus(str, Enum):
+    """Consent to be contacted — manual, recorded, never assumed."""
+
+    UNKNOWN = "unknown"
+    GRANTED = "granted"
+    DECLINED = "declined"
+    WITHDRAWN = "withdrawn"
+
+
+class OpportunityKind(str, Enum):
+    RIGHTS_SALE = "rights_sale"
+    CO_EDITION = "co_edition"
+    TRANSLATION = "translation"
+    REVIEW = "review"
+    FESTIVAL = "festival"
+    DISTRIBUTION = "distribution"
+    COLLABORATION = "collaboration"
+    SPONSORSHIP = "sponsorship"
+    OTHER = "other"
+
+
+class OpportunityStatus(str, Enum):
+    LEAD = "lead"
+    QUALIFIED = "qualified"
+    ACTIVE = "active"
+    NEGOTIATION = "negotiation"
+    WON = "won"
+    LOST = "lost"
+    DORMANT = "dormant"
+
+
+# --- Business layer: editions & distribution -------------------------------
+# A proper Edition model (connected to ProductionRecord) plus validated
+# distribution-package generators.
+
+
+class EditionFormat(str, Enum):
+    HARDCOVER = "hardcover"
+    TRADE_PAPERBACK = "trade_paperback"
+    MASS_MARKET = "mass_market"
+    POD_PAPERBACK = "pod_paperback"
+    EBOOK = "ebook"
+    AUDIOBOOK = "audiobook"
+    WEB_COMIC = "web_comic"
+    PDF = "pdf"
+    BOX_SET = "box_set"
+    OTHER = "other"
+
+
+class EditionIdentifierType(str, Enum):
+    ISBN_13 = "isbn_13"
+    ISBN_10 = "isbn_10"
+    ASIN = "asin"
+    DOI = "doi"
+    UPC = "upc"
+    INTERNAL = "internal"
+    NONE = "none"
+
+
+class DistributionStatus(str, Enum):
+    PLANNED = "planned"
+    IN_PREP = "in_prep"
+    READY = "ready"
+    SUBMITTED = "submitted"
+    LIVE = "live"
+    ON_HOLD = "on_hold"
+    OUT_OF_PRINT = "out_of_print"
+    WITHDRAWN = "withdrawn"
+
+
+class DistributionChannel(str, Enum):
+    """A target for a generated, validated distribution package."""
+
+    ONIX = "onix"
+    KDP = "kdp"
+    INGRAM = "ingram"
+    GLOBALCOMIX = "globalcomix"
+    PRESS_KIT = "press_kit"
+    ARC = "arc"
+
+
+class PackageStatus(str, Enum):
+    GENERATED = "generated"  # built, not yet validated
+    VALIDATED = "validated"  # built and passed validation
+    INVALID = "invalid"  # built but failed validation
+    FAILED = "failed"  # generation itself errored
+
+
+class ChecklistStatus(str, Enum):
+    PASS = "pass"
+    WARN = "warn"
+    FAIL = "fail"
+    NA = "na"

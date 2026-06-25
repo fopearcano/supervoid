@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import ContractStatus
+from app.models.enums import ContractStatus, RightsExclusivity
 from app.schemas._common import TimestampedRead
 
 
@@ -22,6 +22,20 @@ class ContractCreate(BaseModel):
     signed_at: Optional[datetime] = None
     expiration_date: Optional[date] = None
     terms: Optional[str] = None
+    # depth
+    rights_holder: Optional[str] = Field(default=None, max_length=200)
+    exclusivity: RightsExclusivity = RightsExclusivity.UNSPECIFIED
+    effective_date: Optional[date] = None
+    term_start_date: Optional[date] = None
+    term_end_date: Optional[date] = None
+    option_start_date: Optional[date] = None
+    option_end_date: Optional[date] = None
+    option_exercised: bool = False
+    reversion_conditions: Optional[str] = None
+    reversion_date: Optional[date] = None
+    sublicensable: bool = False
+    territory_coverage: list[str] = Field(default_factory=list)
+    language_coverage: list[str] = Field(default_factory=list)
 
 
 class ContractUpdate(BaseModel):
@@ -34,6 +48,19 @@ class ContractUpdate(BaseModel):
     signed_at: Optional[datetime] = None
     expiration_date: Optional[date] = None
     terms: Optional[str] = None
+    rights_holder: Optional[str] = Field(default=None, max_length=200)
+    exclusivity: Optional[RightsExclusivity] = None
+    effective_date: Optional[date] = None
+    term_start_date: Optional[date] = None
+    term_end_date: Optional[date] = None
+    option_start_date: Optional[date] = None
+    option_end_date: Optional[date] = None
+    option_exercised: Optional[bool] = None
+    reversion_conditions: Optional[str] = None
+    reversion_date: Optional[date] = None
+    sublicensable: Optional[bool] = None
+    territory_coverage: Optional[list[str]] = None
+    language_coverage: Optional[list[str]] = None
 
 
 class ContractRead(TimestampedRead):
@@ -48,3 +75,16 @@ class ContractRead(TimestampedRead):
     signed_at: Optional[datetime]
     expiration_date: Optional[date]
     terms: Optional[str]
+    rights_holder: Optional[str]
+    exclusivity: RightsExclusivity
+    effective_date: Optional[date]
+    term_start_date: Optional[date]
+    term_end_date: Optional[date]
+    option_start_date: Optional[date]
+    option_end_date: Optional[date]
+    option_exercised: bool
+    reversion_conditions: Optional[str]
+    reversion_date: Optional[date]
+    sublicensable: bool
+    territory_coverage: list[str]
+    language_coverage: list[str]

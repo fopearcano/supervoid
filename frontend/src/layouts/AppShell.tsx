@@ -14,6 +14,9 @@ export type AppView =
   | 'pictures-studio'
   | 'agent-centre'
   | 'integrations-hub'
+  | 'rights-desk'
+  | 'contacts'
+  | 'editions'
   | 'calendar'
   | 'production-item'
   | 'story-worlds'
@@ -122,6 +125,21 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                 label="Integrations"
                 active={activeView === 'integrations-hub'}
                 onClick={() => onNavigate('integrations-hub')}
+              />
+              <NavLink
+                label="Rights"
+                active={activeView === 'rights-desk'}
+                onClick={() => onNavigate('rights-desk')}
+              />
+              <NavLink
+                label="Contacts"
+                active={activeView === 'contacts'}
+                onClick={() => onNavigate('contacts')}
+              />
+              <NavLink
+                label="Editions"
+                active={activeView === 'editions'}
+                onClick={() => onNavigate('editions')}
               />
               <NavLink
                 label="Adaptations"

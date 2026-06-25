@@ -19,6 +19,16 @@ from app.models.attachment import Attachment
 from app.models.author import Author
 from app.models.calendar_event import PublishingCalendarEvent
 from app.models.contract import Contract
+from app.models.crm import (
+    Contact,
+    ContactRole,
+    ContactTag,
+    ContactTagLink,
+    Interaction,
+    Opportunity,
+    Organization,
+)
+from app.models.edition import DistributionPackage, Edition
 from app.models.editorial_note import EditorialNote
 from app.models.enums import (
     AdaptationStatus,
@@ -98,6 +108,27 @@ from app.models.enums import (
     WorkStatus,
     WorkType,
 )
+from app.models.enums import (  # business layer (rights / CRM / editions)
+    ChainOfTitleType,
+    ChecklistStatus,
+    ConsentStatus,
+    ContactRoleKind,
+    DistributionChannel,
+    DistributionStatus,
+    EditionFormat,
+    EditionIdentifierType,
+    InteractionDirection,
+    InteractionKind,
+    OpportunityKind,
+    OpportunityStatus,
+    OptionPeriodStatus,
+    OrganizationKind,
+    PackageStatus,
+    RightScope,
+    RightsEvidenceKind,
+    RightsExclusivity,
+    RightsWindowStatus,
+)
 from app.models.graphic_novel_hierarchy import (
     GraphicNovelChapter,
     GraphicNovelPage,
@@ -132,7 +163,14 @@ from app.models.published_page import PublishedPage
 from app.models.published_volume import PublishedVolume
 from app.models.published_work import PublishedWork
 from app.models.review import Review
-from app.models.rights import Rights
+from app.models.rights import (
+    ChainOfTitleEntry,
+    Rights,
+    RightsEvidence,
+    RightsOption,
+    RightsStatusHistory,
+    RightsWindow,
+)
 from app.models.screen import (
     Scene,
     SceneCharacterLink,
@@ -236,6 +274,39 @@ __all__ = [
     "RelationshipKind",
     "Contract",
     "ContractStatus",
+    "ChainOfTitleEntry",
+    "ChainOfTitleType",
+    "ChecklistStatus",
+    "ConsentStatus",
+    "Contact",
+    "ContactRole",
+    "ContactRoleKind",
+    "ContactTag",
+    "ContactTagLink",
+    "DistributionChannel",
+    "DistributionPackage",
+    "DistributionStatus",
+    "Edition",
+    "EditionFormat",
+    "EditionIdentifierType",
+    "Interaction",
+    "InteractionDirection",
+    "InteractionKind",
+    "Opportunity",
+    "OpportunityKind",
+    "OpportunityStatus",
+    "OptionPeriodStatus",
+    "Organization",
+    "OrganizationKind",
+    "PackageStatus",
+    "RightScope",
+    "RightsEvidence",
+    "RightsEvidenceKind",
+    "RightsExclusivity",
+    "RightsOption",
+    "RightsStatusHistory",
+    "RightsWindow",
+    "RightsWindowStatus",
     "EditorialNote",
     "EditorialNoteKind",
     "ExportFormat",

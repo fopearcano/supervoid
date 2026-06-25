@@ -123,8 +123,42 @@ from app.models import (  # SUPERVOID Pictures
     ShotMovement,
 )
 from app.models import PromptTemplate, PromptTemplateVersion  # agent framework
+from app.models import (  # business layer (rights depth / CRM / editions)
+    ChainOfTitleEntry,
+    ChainOfTitleType,
+    ConsentStatus,
+    Contact,
+    ContactRole,
+    ContactRoleKind,
+    ContactTag,
+    ContactTagLink,
+    DistributionChannel,
+    DistributionStatus,
+    Edition,
+    EditionFormat,
+    EditionIdentifierType,
+    Interaction,
+    InteractionDirection,
+    InteractionKind,
+    Opportunity,
+    OpportunityKind,
+    OpportunityStatus,
+    OptionPeriodStatus,
+    Organization,
+    OrganizationKind,
+    RightScope,
+    RightsEvidence,
+    RightsEvidenceKind,
+    RightsExclusivity,
+    RightsOption,
+    RightsStatusHistory,
+    RightsWindow,
+    RightsWindowStatus,
+)
 from app.services import agents as agent_svc
+from app.services import distribution as distribution_svc
 from app.services import integrations as integration_hub
+from app.services.knowledge import slugify as _slugify_tag
 from app.services import graphic_novel as gn_service
 from app.services import policy
 from app.services import screen as screen_service
@@ -1949,6 +1983,153 @@ def _seed_integration_activity(
         session.commit()
 
 
+def _seed_business_layer(
+    session: Session,
+    works: dict[str, Work],
+    manuscripts: dict[str, Manuscript],
+    users: dict[str, User],
+) -> None:
+    """Seed the operational business layer: rights depth (windows, an option,
+    chain of title, evidence, a status change), a small CRM (a publisher, a
+    reviewer with a role/tag/interaction/opportunity), and an edition with two
+    generated, validated distribution packages."""
+    today = date.today()
+    salt = works.get("salt_atlases")
+    if salt is None:  # pragma: no cover
+        return
+
+    # --- Part A: deepen the existing Salt Atlases (World/English) rights ---
+    rights = session.exec(
+        select(Rights).where(Rights.work_id == salt.id, Rights.language == "English")
+    ).first()
+    if rights is not None:
+        rights.rights_holder = "SUPERVOID Publishing"
+        rights.exclusivity = RightsExclusivity.EXCLUSIVE
+        rights.term_start_date = today - timedelta(days=400)
+        rights.term_end_date = today + timedelta(days=365 * 6)
+        rights.sublicensable = True
+        rights.sublicense_terms = "Translation sublicensing permitted with approval."
+        rights.reversion_conditions = "Rights revert if out of print for 18 months."
+        rights.reversion_date = today + timedelta(days=365 * 6 + 30)
+        rights.adaptation_constraints = "Film/TV reserved; no AI-generated derivatives."
+        rights.territory_coverage = ["World"]
+        rights.language_coverage = ["English"]
+        rights.reminder_date = today + timedelta(days=45)
+        session.add(rights)
+        session.add(RightsWindow(
+            rights_id=rights.id, scope=RightScope.PRINT, territory="World",
+            language="English", exclusivity=RightsExclusivity.EXCLUSIVE,
+            starts_on=today - timedelta(days=400),
+            ends_on=today + timedelta(days=365 * 6),
+            status=RightsWindowStatus.ACTIVE,
+        ))
+        session.add(RightsOption(
+            rights_id=rights.id, label="Film option — Lantern Pictures",
+            scope=RightScope.FILM, holder="Lantern Pictures",
+            option_start=today - timedelta(days=30),
+            option_end=today + timedelta(days=150),
+            exercise_deadline=today + timedelta(days=120),
+            fee=Decimal("5000.00"), currency="EUR",
+            status=OptionPeriodStatus.OPEN,
+        ))
+        session.add(ChainOfTitleEntry(
+            rights_id=rights.id, position=0, entry_type=ChainOfTitleType.CREATION,
+            from_party="Iris Aldoria (author)", to_party="SUPERVOID Publishing",
+            effective_date=today - timedelta(days=400),
+            instrument="Head publishing agreement",
+        ))
+        session.add(RightsEvidence(
+            rights_id=rights.id, kind=RightsEvidenceKind.CONTRACT,
+            title="Signed publishing agreement", document_ref="contracts/salt-atlases.pdf",
+            dated_on=today - timedelta(days=400),
+        ))
+        session.add(RightsStatusHistory(
+            rights_id=rights.id, scope=RightScope.PRINT,
+            from_status=RightStatus.AVAILABLE, to_status=RightStatus.LICENSED,
+            note="Print licensed for the world English edition.",
+            changed_by_id=users["helena"].id,
+        ))
+
+    # --- Part B: relationship memory (CRM) ---
+    org = Organization(
+        name="Éditions du Phare", kind=OrganizationKind.PUBLISHER, country="France",
+        city="Paris", website="https://example.invalid/phare",
+        source_of_introduction="Frankfurt Book Fair 2025",
+        notes="French-language partner; interested in translations.",
+    )
+    session.add(org)
+    session.flush()
+
+    contact = Contact(
+        full_name="Camille Lefevre", organization_id=org.id,
+        title="Senior Reviews Editor", email="camille.lefevre@example.invalid",
+        country="France", source_of_introduction="Introduced by Mireille Vance",
+        interests=["literary non-fiction", "maps", "translation"],
+        relevant_work_ids=[salt.id], follow_up_date=today + timedelta(days=14),
+        consent_status=ConsentStatus.GRANTED, preferred_channel="email",
+        consent_notes="Opted in to review copies at Frankfurt.",
+    )
+    session.add(contact)
+    session.flush()
+    session.add(ContactRole(
+        contact_id=contact.id, role=ContactRoleKind.REVIEWER,
+        organization_id=org.id, title="Reviews Editor", is_primary=True,
+    ))
+    session.add(ContactRole(
+        contact_id=contact.id, role=ContactRoleKind.JOURNALIST, organization_id=org.id,
+    ))
+    tag = ContactTag(name="VIP", slug=_slugify_tag("VIP"), color="#b08")
+    session.add(tag)
+    session.flush()
+    session.add(ContactTagLink(contact_id=contact.id, tag_id=tag.id))
+    session.add(Interaction(
+        contact_id=contact.id, organization_id=org.id,
+        kind=InteractionKind.MEETING, direction=InteractionDirection.OUTBOUND,
+        subject="Frankfurt — review & translation interest",
+        body="Met at the fair; keen on the Salt Atlases for a French co-edition.",
+        work_id=salt.id, follow_up_date=today + timedelta(days=14),
+        created_by_id=users["mireille"].id,
+    ))
+    session.add(Opportunity(
+        title="French co-edition — The Salt Atlases", kind=OpportunityKind.CO_EDITION,
+        status=OpportunityStatus.QUALIFIED, organization_id=org.id,
+        contact_id=contact.id, work_id=salt.id, value=Decimal("8000.00"),
+        currency="EUR", expected_close_date=today + timedelta(days=90),
+        source="Frankfurt Book Fair 2025", owner_id=users["mireille"].id,
+    ))
+
+    # --- Part C: an edition + two validated distribution packages ---
+    ms = manuscripts.get("salt_atlases")
+    edition = Edition(
+        work_id=salt.id, manuscript_id=ms.id if ms else None,
+        title="The Salt Atlases", format=EditionFormat.TRADE_PAPERBACK,
+        language="en", territory="World", imprint="SUPERVOID Editions",
+        identifier="9780306406157", identifier_type=EditionIdentifierType.ISBN_13,
+        trim_size="6x9in", page_count=288, price=Decimal("24.00"), currency="USD",
+        publication_date=today - timedelta(days=30),
+        distribution_status=DistributionStatus.LIVE,
+        files=[
+            {"role": "cover", "asset_id": None, "path": "editions/salt/cover.pdf"},
+            {"role": "interior", "path": "editions/salt/interior.pdf"},
+        ],
+        edition_metadata={
+            "description": "A literary atlas of Europe's inland seas.",
+            "keywords": ["atlas", "essays", "geography", "maps"],
+            "categories": ["NAT045030", "TRV026000"],
+            "author_bio": "Iris Aldoria is an essayist and cartographer.",
+            "press_contact": "press@supervoid.local",
+        },
+    )
+    session.add(edition)
+    session.flush()
+    for channel in (DistributionChannel.ONIX, DistributionChannel.PRESS_KIT):
+        distribution_svc.generate_package(
+            session, edition, channel, user=users["mireille"]
+        )
+
+    session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1980,6 +2161,7 @@ def run() -> None:
         _seed_screen_pictures(session, works)
         _seed_agents(session, manuscripts, works, users)
         _seed_integration_activity(session, integration_points, users)
+        _seed_business_layer(session, works, manuscripts, users)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -2005,7 +2187,10 @@ def run() -> None:
         "propose-only run with a gated proposal, and a versioned prompt template), "
         "and the operational integration hub (n8n / ComfyUI / GitHub / Affinity "
         "adapters, with a read-only run, a commit linked to a task, and a "
-        "pending-approval webhook event)."
+        "pending-approval webhook event), and the operational business layer "
+        "(deepened rights with a window/option/chain-of-title/evidence/status "
+        "change, a CRM publisher + reviewer with role/tag/interaction/opportunity, "
+        "and an edition with ONIX + press-kit packages)."
     )
 
 

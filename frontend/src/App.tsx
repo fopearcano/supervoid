@@ -18,6 +18,9 @@ import { GraphicNovelStudioPage } from '@/pages/GraphicNovelStudioPage';
 import { PicturesStudioPage } from '@/pages/PicturesStudioPage';
 import { AgentCentrePage } from '@/pages/AgentCentrePage';
 import { IntegrationsHubPage } from '@/pages/IntegrationsHubPage';
+import { RightsDeskPage } from '@/pages/RightsDeskPage';
+import { ContactsPage } from '@/pages/ContactsPage';
+import { EditionsPage } from '@/pages/EditionsPage';
 
 type View =
   | { name: 'dashboard' }
@@ -31,6 +34,9 @@ type View =
   | { name: 'pictures-studio' }
   | { name: 'agent-centre' }
   | { name: 'integrations-hub' }
+  | { name: 'rights-desk' }
+  | { name: 'contacts' }
+  | { name: 'editions' }
   | { name: 'calendar' }
   | { name: 'production-item'; id: string }
   | { name: 'story-worlds' }
@@ -89,6 +95,9 @@ export default function App() {
         {view.name === 'pictures-studio' && <PicturesStudioPage />}
         {view.name === 'agent-centre' && <AgentCentrePage />}
         {view.name === 'integrations-hub' && <IntegrationsHubPage />}
+        {view.name === 'rights-desk' && <RightsDeskPage />}
+        {view.name === 'contacts' && <ContactsPage />}
+        {view.name === 'editions' && <EditionsPage />}
         {view.name === 'calendar' && (
           <ReleaseCalendar onOpenManuscript={openManuscript} />
         )}

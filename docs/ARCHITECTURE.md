@@ -511,6 +511,45 @@ Surface (declared before `/{key}`, mostly `AUTHED`): `/integrations/adapters`,
 private UI adds an **Integration Hub** (adapters, points + health/config, run
 history, links).
 
+## Operational business layer (rights, CRM, editions)
+
+The studio's commercial spine, in three parts.
+
+**Rights depth.** `Rights` and `Contract` gain term windows, rights holder,
+exclusivity, sublicensing, reversion, option periods, territory/language
+coverage and adaptation/merchandising constraints. The dynamic detail lives in
+child tables of `Rights`: `RightsWindow` (per-scope term windows), `RightsOption`
+(option periods + exercise deadlines), `ChainOfTitleEntry` (how the right moved
+between parties), `RightsEvidence` (documents, optionally a stored asset) and
+`RightsStatusHistory` (append-only; a scope change also applies to the matching
+profile column). `app/services/rights.py` derives **reminders and expiry
+warnings** from profile expirations, term ends, window ends, option deadlines,
+reversion and reminder dates, and contract term/option ends — sorted by urgency
+at `GET /api/rights/warnings`. Child resources are nested under
+`/api/rights/{id}/…`; `/warnings` is declared before `/{rights_id}`.
+
+**Relationship memory (CRM).** A private, manual-only CRM: `Organization`,
+`Contact` (with `ContactRole` and `ContactTag` via a link table), `Interaction`
+(a logged touchpoint) and `Opportunity` (a light pipeline). Contacts carry
+source of introduction, interests, relevant works, follow-up date, consent /
+preferences and notes. It only *records* relationships — there is no endpoint
+that sends communication or imports contacts; `do_not_contact` and
+`consent_status` are recorded, never assumed.
+
+**Editions & distribution.** `Edition` is a concrete format/language/territory
+of a Work — identifier (+ type), dimensions, page count, price, publication
+date, files, metadata and distribution status — connected to (not replacing)
+`ProductionRecord`. `app/services/distribution` generates **validated packages**
+for six channels (ONIX, KDP, Ingram, GlobalComix, press kit, ARC): each
+generator builds a JSON-safe manifest and a checklist of pass/warn/fail/na
+items, persisted as a `DistributionPackage` (status `validated`/`invalid`).
+Generators prepare and validate — they never upload; real uploads would need a
+tested adapter (the integration hub). Surface: `/api/rights` (+ children,
+`/warnings`), `/api/organizations`, `/api/contacts` (+ roles/tags),
+`/api/interactions`, `/api/opportunities`, `/api/editions` (+ `/detail`,
+`/packages/{channel}`) and `/api/distribution/channels`. The private UI adds
+**Rights**, **Contacts** and **Editions** views.
+
 ## Public Graphic Novel Webviewer (public layer)
 
 A public, read-only reader for published graphic novels sits on top of the
