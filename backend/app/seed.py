@@ -124,6 +124,7 @@ from app.models import (  # SUPERVOID Pictures
 )
 from app.models import PromptTemplate, PromptTemplateVersion  # agent framework
 from app.services import agents as agent_svc
+from app.services import integrations as integration_hub
 from app.services import graphic_novel as gn_service
 from app.services import policy
 from app.services import screen as screen_service
@@ -843,9 +844,11 @@ def _seed_calendar_events(session: Session, works: dict[str, Work]) -> None:
     session.commit()
 
 
-def _seed_integration_points(session: Session) -> None:
-    points = [
-        IntegrationPoint(
+def _seed_integration_points(session: Session) -> dict[str, IntegrationPoint]:
+    """Seed the integration registry, now binding operational, local-first
+    adapters. Secrets are referenced by ENV-VAR name only — never stored."""
+    points = {
+        "logosforge": IntegrationPoint(
             name="LOGOSFORGE — manuscript import",
             type=IntegrationPointType.LOGOSFORGE,
             status=IntegrationPointStatus.PLANNED,
@@ -855,7 +858,7 @@ def _seed_integration_points(session: Session) -> None:
                 "finished drafts into SUPERVOID Publishing as manuscripts."
             ),
         ),
-        IntegrationPoint(
+        "movies": IntegrationPoint(
             name="SUPERVOID Pictures — screen production",
             type=IntegrationPointType.SUPERVOID_MOVIES,
             status=IntegrationPointStatus.ACTIVE,
@@ -866,23 +869,57 @@ def _seed_integration_points(session: Session) -> None:
                 "(reusing storyboard panels), and export the adaptation package."
             ),
         ),
-        IntegrationPoint(
-            name="AI Lab — editorial assistance",
-            type=IntegrationPointType.AI_LAB,
-            status=IntegrationPointStatus.PLANNED,
-            endpoint=None,
-            notes="Editorial AI features run locally; AI Lab seam reserved.",
-        ),
-        IntegrationPoint(
+        "knowledge": IntegrationPoint(
             name="Archive / Knowledge Graph",
             type=IntegrationPointType.ARCHIVE_KNOWLEDGE_GRAPH,
             status=IntegrationPointStatus.ACTIVE,
             endpoint="/api/knowledge",
             notes="Editorial knowledge graph available in-app.",
         ),
-    ]
-    session.add_all(points)
+        # --- operational hub adapters (local-first) ---
+        "n8n": IntegrationPoint(
+            name="n8n — automation webhook",
+            type=IntegrationPointType.OTHER,
+            status=IntegrationPointStatus.ACTIVE,
+            adapter_key="n8n_webhook",
+            endpoint="http://localhost:5678/webhook/supervoid",
+            config={"webhook_url": "http://localhost:5678/webhook/supervoid"},
+            credential_refs={"auth_token": "SUPERVOID_N8N_TOKEN"},
+            notes="Outbound automation events; recorded unless network is enabled.",
+        ),
+        "comfyui": IntegrationPoint(
+            name="ComfyUI — local generation",
+            type=IntegrationPointType.AI_LAB,
+            status=IntegrationPointStatus.ACTIVE,
+            adapter_key="comfyui",
+            endpoint="http://127.0.0.1:8188",
+            config={"base_url": "http://127.0.0.1:8188"},
+            notes="Queue workflows, attach outputs to assets with provenance.",
+        ),
+        "github": IntegrationPoint(
+            name="GitHub — Silent Workshop repository",
+            type=IntegrationPointType.OTHER,
+            status=IntegrationPointStatus.ACTIVE,
+            adapter_key="github_project",
+            endpoint="https://github.com/supervoid/silent-workshop",
+            config={"owner": "supervoid", "repo": "silent-workshop"},
+            credential_refs={"token": "SUPERVOID_GITHUB_TOKEN"},
+            notes="Link commits, issues and PRs to production tasks.",
+        ),
+        "affinity": IntegrationPoint(
+            name="Affinity — file exchange",
+            type=IntegrationPointType.OTHER,
+            status=IntegrationPointStatus.ACTIVE,
+            adapter_key="file_exchange.affinity",
+            config={"discipline": "layout/illustration"},
+            notes="Structured export/import packages for Affinity (no remote control).",
+        ),
+    }
+    session.add_all(points.values())
     session.commit()
+    for point in points.values():
+        session.refresh(point)
+    return points
 
 
 def _entity(
@@ -1862,6 +1899,56 @@ def _seed_agents(
     session.commit()
 
 
+def _seed_integration_activity(
+    session: Session,
+    points: dict[str, IntegrationPoint],
+    users: dict[str, User],
+) -> None:
+    """Seed the operational hub: an immediate read-only ComfyUI status read; a
+    GitHub commit linked to a production task (requested → approved → executed);
+    and a pending-approval n8n webhook event still awaiting sign-off — showing
+    the approval boundary every external mutation passes through."""
+    admin = users["helena"]
+
+    comfy = points.get("comfyui")
+    if comfy is not None:
+        # Read-only: runs immediately, degrades gracefully (ComfyUI not assumed up).
+        integration_hub.request_operation(
+            session, comfy, "query_status", {"prompt_id": "demo-0001"},
+            user=admin, dry_run=False,
+        )
+        session.commit()
+
+    github = points.get("github")
+    task = session.exec(select(ProductionItem)).first()
+    if github is not None and task is not None:
+        run = integration_hub.request_operation(
+            session, github, "link_commit",
+            {
+                "external_ref": "a1b2c3d",
+                "title": "Set the last line of type",
+                "target_id": task.id,
+            },
+            user=admin, dry_run=False,
+        )
+        session.commit()
+        session.refresh(run)
+        integration_hub.approve_run(session, run, user=admin)
+        session.commit()
+        integration_hub.execute_run(session, run, user=admin)
+        session.commit()
+
+    n8n = points.get("n8n")
+    if n8n is not None:
+        # External: created PENDING_APPROVAL; nothing dispatched.
+        integration_hub.request_operation(
+            session, n8n, "send_event",
+            {"event_type": "work.published", "data": {"title": "The Silent Workshop"}},
+            user=admin, dry_run=False,
+        )
+        session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1882,7 +1969,7 @@ def run() -> None:
         _seed_editorial_notes(session, manuscripts, works, authors, users)
         _seed_production_records(session, manuscripts)
         _seed_calendar_events(session, works)
-        _seed_integration_points(session)
+        integration_points = _seed_integration_points(session)
         _seed_knowledge_graph(session, manuscripts)
         _seed_public_reader(session, works)
         _seed_transmedia(session, works, authors)
@@ -1892,6 +1979,7 @@ def run() -> None:
         _seed_graphic_novel_hierarchy(session, works)
         _seed_screen_pictures(session, works)
         _seed_agents(session, manuscripts, works, users)
+        _seed_integration_activity(session, integration_points, users)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1914,7 +2002,10 @@ def run() -> None:
         "SUPERVOID Pictures screen project from the adaptation dossier (a scene "
         "with two shots, one mapping a graphic-novel storyboard panel), and the "
         "supervised agent framework (a read-only analysis run with findings, a "
-        "propose-only run with a gated proposal, and a versioned prompt template)."
+        "propose-only run with a gated proposal, and a versioned prompt template), "
+        "and the operational integration hub (n8n / ComfyUI / GitHub / Affinity "
+        "adapters, with a read-only run, a commit linked to a task, and a "
+        "pending-approval webhook event)."
     )
 
 

@@ -63,6 +63,17 @@ class Settings(BaseSettings):
     ai_model: str = "gpt-4o-mini"
     ai_request_timeout: float = 60.0
 
+    # --- Integration hub ---
+    # Local-first by default: external network operations (webhook dispatch,
+    # ComfyUI queueing, remote GitHub sync) are *recorded* rather than fired
+    # unless this is explicitly enabled. Internal mutations (asset/provenance
+    # creation, task links, local export/import packages) always run for real
+    # once their operation has been approved.
+    integrations_allow_network: bool = False
+    # Root for generated/ingested desktop file-exchange packages (under storage).
+    integrations_exchange_subdir: str = "integrations/exchange"
+    integrations_request_timeout: float = 30.0
+
 
 @lru_cache
 def get_settings() -> Settings:

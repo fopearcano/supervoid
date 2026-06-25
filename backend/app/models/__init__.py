@@ -50,8 +50,13 @@ from app.models.enums import (
     FindingSeverity,
     GNStatus,
     HotspotType,
+    IntegrationAdapterKind,
+    IntegrationDirectionKind,
+    IntegrationHealthStatus,
+    IntegrationLinkKind,
     IntegrationPointStatus,
     IntegrationPointType,
+    IntegrationRunStatus,
     LicenceReviewState,
     LicenceType,
     ManuscriptLinkRole,
@@ -103,7 +108,11 @@ from app.models.graphic_novel_hierarchy import (
     GraphicNovelVolume,
 )
 from app.models.graphic_novel_production import GraphicNovelProduction
-from app.models.integration_point import IntegrationPoint
+from app.models.integration_point import (
+    IntegrationLink,
+    IntegrationPoint,
+    IntegrationRun,
+)
 from app.models.knowledge_entity import KnowledgeEntity
 from app.models.knowledge_relationship import KnowledgeRelationship
 from app.models.licence_record import LicenceRecord
@@ -195,9 +204,16 @@ __all__ = [
     "PageSide",
     "PanelElementType",
     "HotspotType",
+    "IntegrationAdapterKind",
+    "IntegrationDirectionKind",
+    "IntegrationHealthStatus",
+    "IntegrationLink",
+    "IntegrationLinkKind",
     "IntegrationPoint",
     "IntegrationPointStatus",
     "IntegrationPointType",
+    "IntegrationRun",
+    "IntegrationRunStatus",
     "KnowledgeEntity",
     "KnowledgeRelationship",
     "ManuscriptEntityLink",

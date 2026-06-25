@@ -17,6 +17,7 @@ import { AssetLibraryPage } from '@/pages/AssetLibraryPage';
 import { GraphicNovelStudioPage } from '@/pages/GraphicNovelStudioPage';
 import { PicturesStudioPage } from '@/pages/PicturesStudioPage';
 import { AgentCentrePage } from '@/pages/AgentCentrePage';
+import { IntegrationsHubPage } from '@/pages/IntegrationsHubPage';
 
 type View =
   | { name: 'dashboard' }
@@ -29,6 +30,7 @@ type View =
   | { name: 'gn-studio' }
   | { name: 'pictures-studio' }
   | { name: 'agent-centre' }
+  | { name: 'integrations-hub' }
   | { name: 'calendar' }
   | { name: 'production-item'; id: string }
   | { name: 'story-worlds' }
@@ -86,6 +88,7 @@ export default function App() {
         {view.name === 'gn-studio' && <GraphicNovelStudioPage />}
         {view.name === 'pictures-studio' && <PicturesStudioPage />}
         {view.name === 'agent-centre' && <AgentCentrePage />}
+        {view.name === 'integrations-hub' && <IntegrationsHubPage />}
         {view.name === 'calendar' && (
           <ReleaseCalendar onOpenManuscript={openManuscript} />
         )}

@@ -834,3 +834,69 @@ class AgentToolKind(str, Enum):
     READ_ONLY = "read_only"
     MUTATION = "mutation"
     EXTERNAL = "external"
+
+
+# --- Operational integration hub -------------------------------------------
+# IntegrationPoint evolves from a descriptive registry into an operational but
+# local-first hub. Code-registered adapters declare capabilities; every run is
+# persisted, and external mutations pass through an approval boundary before
+# any side effect can fire. Adapter keys / categories are stored as strings;
+# only the run lifecycle and link kinds are DB enums.
+
+
+class IntegrationAdapterKind(str, Enum):
+    """The category of a code-registered integration adapter."""
+
+    WEBHOOK = "webhook"  # generic outbound webhook (n8n, …)
+    COMFYUI = "comfyui"  # local image/video generation backend
+    GITHUB = "github"  # source-control project bridge
+    FILE_EXCHANGE = "file_exchange"  # desktop-app export/import packages
+    OTHER = "other"
+
+
+class IntegrationRunStatus(str, Enum):
+    """Lifecycle of a single integration operation.
+
+    Read-only operations and dry-runs go straight to ``SUCCEEDED``. Operations
+    that mutate internal state or touch an external system are created
+    ``PENDING_APPROVAL`` and can only ever execute once ``APPROVED`` — this is
+    the approval boundary external mutations must pass through.
+    """
+
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class IntegrationDirectionKind(str, Enum):
+    """Which way an operation moves data relative to SUPERVOID Publishing."""
+
+    INBOUND = "inbound"  # data flows into SUPERVOID
+    OUTBOUND = "outbound"  # data flows out to the external system
+    INTERNAL = "internal"  # local-only effect (e.g. write an export package)
+
+
+class IntegrationHealthStatus(str, Enum):
+    """Reported health of an adapter for a configured integration point."""
+
+    HEALTHY = "healthy"  # configured and (where checked) reachable
+    DEGRADED = "degraded"  # configured but partially usable
+    UNREACHABLE = "unreachable"  # configured but not responding
+    NOT_CONFIGURED = "not_configured"  # missing required configuration
+    DISABLED = "disabled"  # the integration point is switched off
+    UNKNOWN = "unknown"  # liveness not checked (local-first default)
+
+
+class IntegrationLinkKind(str, Enum):
+    """The kind of external object linked to an internal production task."""
+
+    COMMIT = "commit"
+    ISSUE = "issue"
+    PULL_REQUEST = "pull_request"
+    BRANCH = "branch"
+    RELEASE = "release"
+    OTHER = "other"

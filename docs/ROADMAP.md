@@ -193,6 +193,30 @@ framework* in [`ARCHITECTURE.md`](ARCHITECTURE.md).
   endpoints; Alembic `0008`, seed, tests, and a private Agent Centre UI.
 - ⚪ Streaming runs, scheduled/triggered agents, and per-tool real executors.
 
+## Operational integration hub 🟡
+
+`IntegrationPoint` became an operational but local-first hub without breaking the
+existing integration endpoints. See *Operational integration hub* in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+- ✅ `IntegrationAdapter` interface (health, capabilities, dry-run, inbound,
+  outbound, status) with code-registered adapters and persisted `IntegrationRun`.
+- ✅ Secure configuration: env-referenced secrets, credential references only in
+  the DB, no raw secret retrieval through the API, masked config status.
+- ✅ Generic **n8n** webhook adapter; **ComfyUI** adapter (queue, status/history,
+  attach outputs to assets, import workflow provenance, full dry-run, no
+  always-on assumption); **GitHub** adapter (link commits/issues/PRs to tasks,
+  dry-run fixtures, no embedded credentials).
+- ✅ **File-exchange** adapters for Affinity, InDesign, Clip Studio Paint,
+  DaVinci Resolve and Blender/Cinema 4D/Houdini — structured export/import
+  packages, not fake remote control.
+- ✅ Every external mutation passes an approval boundary (`IntegrationRun`
+  PENDING_APPROVAL → APPROVED → execute; external actions admin-gated); network
+  effects recorded unless enabled; Alembic `0009`, seed, tests, and a private
+  **Integration Hub** UI (adapter health/status + run history).
+- ⚪ Live network dispatch by default, richer GitHub sync, and remote/object
+  storage for ingested outputs.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:

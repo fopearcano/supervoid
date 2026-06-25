@@ -466,10 +466,50 @@ extension points explicit and inspectable.
 
 Alongside the static contracts, a persisted **`IntegrationPoint`** registry is
 CRUD-able at `/api/integrations/points` (filterable by `type` and `status`).
-These are operational records — a specific LOGOSFORGE bridge, a SUPERVOID Movies
-adaptation hand-off, an AI Lab or Archive/Knowledge-Graph seam — each with an
-endpoint placeholder. The `/points` routes are declared before the `/{key}`
-catch-all so they are not shadowed by it.
+The `/points` routes are declared before the `/{key}` catch-all so they are not
+shadowed by it.
+
+### Operational integration hub
+
+`IntegrationPoint` has grown from a descriptive record into the binding for an
+**operational but local-first** hub. Each point may bind a code-registered
+**adapter** (`app/services/integrations`) and carries non-secret `config`, a
+`credential_refs` map (logical name → ENV-VAR name), and an `enabled` flag.
+
+- **Adapter interface** (`base.py`): health check, capabilities, dry-run,
+  inbound operation, outbound operation, status reporting. Each
+  `AdapterOperation` declares `mutating` / `external` / `touches_network`, which
+  drive the approval boundary.
+- **Adapters**: `n8n_webhook` (generic outbound webhook), `comfyui` (queue
+  workflows, read status/history, attach outputs to assets with AI provenance,
+  import workflow provenance — never assumes ComfyUI is running), `github_project`
+  (link commits/issues/PRs to production tasks; dry-run fixtures for remote
+  sync), and a `file_exchange.*` profile per desktop app (Affinity, InDesign,
+  Clip Studio Paint, DaVinci Resolve, Blender, Cinema 4D, Houdini) that
+  generates/ingests **structured packages** rather than pretending to remote-
+  control the app.
+- **Secure configuration** (`config.py`): secrets live only in the environment
+  and are resolved by reference at call time; the API never returns secret
+  values or env-var names — only presence booleans and masked config.
+  `credential_refs` values are validated as env-var names so a raw secret can
+  never be stored.
+- **Approval boundary** (`service.py`): `IntegrationRun` carries its own
+  lifecycle (the equivalent of an `AgentActionProposal`). Read-only operations
+  and dry-runs run immediately; mutating/external operations are created
+  `PENDING_APPROVAL` and can only ever execute once `APPROVED` — external
+  actions additionally require an **admin**. Local-first: outbound network
+  effects are *recorded*, not dispatched, unless `INTEGRATIONS_ALLOW_NETWORK` is
+  set; internal mutations (asset/provenance/link/package) run for real after
+  approval. Inputs and outputs are persisted with secret-like keys redacted.
+- **`IntegrationLink`** records external objects (commit/issue/PR) attached to a
+  production task.
+
+Surface (declared before `/{key}`, mostly `AUTHED`): `/integrations/adapters`,
+`/integrations/points/{id}/health`, `/integrations/points/{id}/config`,
+`POST /integrations/points/{id}/operations`, `/integrations/runs`
+(+ detail, `/approve`, `/reject`, `/execute`), and `/integrations/links`. The
+private UI adds an **Integration Hub** (adapters, points + health/config, run
+history, links).
 
 ## Public Graphic Novel Webviewer (public layer)
 
