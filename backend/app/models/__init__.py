@@ -6,6 +6,7 @@ configured database engine.
 """
 from app.models.adaptation_dossier import AdaptationDossier
 from app.models.ai_insight import AIInsight
+from app.models.approval_request import ApprovalRequest
 from app.models.attachment import Attachment
 from app.models.author import Author
 from app.models.calendar_event import PublishingCalendarEvent
@@ -14,11 +15,14 @@ from app.models.editorial_note import EditorialNote
 from app.models.enums import (
     AdaptationStatus,
     AIFeature,
+    ApprovalDecision,
+    ApprovalStatus,
     AttachmentKind,
     CalendarEventStatus,
     CalendarEventType,
     CanonState,
     ContractStatus,
+    DependencyType,
     DraftStatus,
     EditorialNoteKind,
     EntityKind,
@@ -31,9 +35,14 @@ from app.models.enums import (
     Medium,
     MembershipAuditAction,
     MembershipStatus,
+    MilestoneStatus,
     PermissionScope,
+    ProductionActivityType,
     ProductionItemStatus,
+    ProductionPriority,
     ProductionStage,
+    ProductionTaskType,
+    ProductionTrack,
     ProjectRole,
     PublishedStatus,
     RelationshipKind,
@@ -56,7 +65,9 @@ from app.models.knowledge_relationship import KnowledgeRelationship
 from app.models.manuscript import Manuscript
 from app.models.manuscript_entity_link import ManuscriptEntityLink
 from app.models.membership_audit import MembershipAudit
-from app.models.production_item import ProductionItem
+from app.models.production_activity import ProductionActivity
+from app.models.production_item import ProductionDependency, ProductionItem
+from app.models.production_milestone import ProductionMilestone
 from app.models.project_membership import ProjectMembership
 from app.models.production_record import ProductionRecord
 from app.models.public_hotspot import PublicHotspot
@@ -78,6 +89,9 @@ __all__ = [
     "AdaptationStatus",
     "AIFeature",
     "AIInsight",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalStatus",
     "Attachment",
     "AttachmentKind",
     "Author",
@@ -117,10 +131,19 @@ __all__ = [
     "EditorialNoteKind",
     "ExportFormat",
     "Manuscript",
+    "DependencyType",
+    "MilestoneStatus",
+    "ProductionActivity",
+    "ProductionActivityType",
+    "ProductionDependency",
     "ProductionItem",
     "ProductionItemStatus",
+    "ProductionMilestone",
+    "ProductionPriority",
     "ProductionRecord",
     "ProductionStage",
+    "ProductionTaskType",
+    "ProductionTrack",
     "Review",
     "ReviewVerdict",
     "Rights",

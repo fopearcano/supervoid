@@ -81,7 +81,10 @@ from app.models import (  # collaboration / project-scoped access
     ProjectMembership,
     ProjectRole,
 )
+from app.models import ApprovalRequest  # production task system
 from app.services import policy
+from app.services import production as production_service
+from app.services import production_templates
 from app.services.knowledge import slugify
 from app.services.public_reader_service import publish_work_to_public_reader
 from app.models.base import utcnow
@@ -1337,6 +1340,69 @@ def _seed_collaboration(
     session.commit()
 
 
+def _seed_production_tasks(
+    session: Session,
+    works: dict[str, Work],
+    users: dict[str, User],
+) -> None:
+    """Seed the general production task system by applying the graphic-novel
+    template to the flagship Work, then assigning a few tasks, advancing one,
+    and opening a human approval request on the deliverable."""
+    gn = works.get("silent_workshop")
+    if gn is None:  # pragma: no cover - demo always has the graphic novel
+        return
+
+    template = production_templates.get_template("graphic_novel_volume")
+    if template is None:  # pragma: no cover
+        return
+    result = production_templates.instantiate_template(
+        session, template, work_id=gn.id, actor_id=users["helena"].id
+    )
+    session.commit()
+
+    tasks = [session.get(ProductionItem, tid) for tid in result.task_ids]
+    by_title = {t.title: t for t in tasks if t is not None}
+
+    # Assign a few tasks across people.
+    assignments = {
+        "Write script": users["cecilia"],
+        "Thumbnails / layouts": users["kazu"],
+        "Pencils": users["kazu"],
+        "Cover art": users["ines"],
+    }
+    for title, person in assignments.items():
+        task = by_title.get(title)
+        if task is not None:
+            task.assignee_id = person.id
+            task.reviewer_id = users["jonas"].id
+            session.add(task)
+    session.commit()
+
+    # Advance the script through a couple of legal transitions.
+    script = by_title.get("Write script")
+    if script is not None:
+        production_service.apply_transition(
+            session, script, ProductionItemStatus.IN_PROGRESS,
+            actor_id=users["cecilia"].id,
+        )
+        session.commit()
+
+    # Open a human approval request on the print deliverable.
+    deliverable = by_title.get("Print run")
+    if deliverable is not None:
+        approval = ApprovalRequest(
+            requested_by_id=users["kazu"].id,
+            approver_id=users["helena"].id,
+            task_id=deliverable.id,
+            target_type="production_item",
+            target_id=deliverable.id,
+            title="Approve print files",
+            description="Final files ready for the printer — needs sign-off.",
+        )
+        session.add(approval)
+        session.commit()
+
+
 def run() -> None:
     init_db()
     with Session(engine) as session:
@@ -1362,6 +1428,7 @@ def run() -> None:
         _seed_public_reader(session, works)
         _seed_transmedia(session, works, authors)
         _seed_collaboration(session, users, works)
+        _seed_production_tasks(session, works, users)
 
     print(
         "Seeded SUPERVOID Publishing: "
@@ -1373,9 +1440,10 @@ def run() -> None:
         "calendar events, integration points, a starter knowledge graph, "
         "a public Graphic Novel Webviewer demo (1 published work, 1 volume, "
         "2 chapters, 6 pages, media + hotspots), the IP/transmedia layer "
-        "(1 story world, 1 series, an adaptation dossier), and project "
+        "(1 story world, 1 series, an adaptation dossier), project "
         "collaboration (5 memberships across a world and a work, with an "
-        "audit trail)."
+        "audit trail), and a production task breakdown (graphic-novel template "
+        "applied: milestones, tasks, dependencies, and a pending approval)."
     )
 
 

@@ -25,5 +25,8 @@ class User(BaseEntity, table=True):
     reviews: list["Review"] = Relationship(back_populates="reviewer")
     workflow_events: list["WorkflowEvent"] = Relationship(back_populates="actor")
     editorial_notes: list["EditorialNote"] = Relationship(back_populates="author_user")
-    production_assignments: list["ProductionItem"] = Relationship(back_populates="assignee")
+    production_assignments: list["ProductionItem"] = Relationship(
+        back_populates="assignee",
+        sa_relationship_kwargs={"foreign_keys": "[ProductionItem.assignee_id]"},
+    )
     uploaded_attachments: list["Attachment"] = Relationship(back_populates="uploader")

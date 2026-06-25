@@ -51,16 +51,41 @@ from app.schemas.project_membership import (
     ProjectMembershipRead,
     ProjectMembershipRoleUpdate,
 )
+from app.schemas.approval_request import (
+    ApprovalCreate,
+    ApprovalDecisionRequest,
+    ApprovalRead,
+)
 from app.schemas.production_item import (
     ProductionItemCreate,
     ProductionItemRead,
     ProductionItemUpdate,
+)
+from app.schemas.production_milestone import (
+    MilestoneCreate,
+    MilestoneRead,
+    MilestoneUpdate,
 )
 from app.schemas.production_record import (
     ProductionRecordCreate,
     ProductionRecordDetail,
     ProductionRecordRead,
     ProductionRecordUpdate,
+)
+from app.schemas.production_task import (
+    DependencyCreate,
+    DependencyRead,
+    ProductionActivityRead,
+    ProductionTaskCreate,
+    ProductionTaskDetail,
+    ProductionTaskRead,
+    ProductionTaskUpdate,
+    StatusTransitionRequest,
+)
+from app.schemas.production_template import (
+    ApplyTemplateRequest,
+    ApplyTemplateResult,
+    ProductionTemplateRead,
 )
 from app.schemas.review import ReviewCreate, ReviewRead, ReviewUpdate
 from app.schemas.rights import RightsCreate, RightsRead, RightsUpdate
@@ -117,9 +142,26 @@ __all__ = [
     "ProjectMembershipRead",
     "ProjectMembershipRoleUpdate",
     "ScopeCatalogEntry",
+    "ApprovalCreate",
+    "ApprovalDecisionRequest",
+    "ApprovalRead",
+    "ApplyTemplateRequest",
+    "ApplyTemplateResult",
+    "DependencyCreate",
+    "DependencyRead",
+    "MilestoneCreate",
+    "MilestoneRead",
+    "MilestoneUpdate",
+    "ProductionActivityRead",
     "ProductionItemCreate",
     "ProductionItemRead",
     "ProductionItemUpdate",
+    "ProductionTaskCreate",
+    "ProductionTaskDetail",
+    "ProductionTaskRead",
+    "ProductionTaskUpdate",
+    "ProductionTemplateRead",
+    "StatusTransitionRequest",
     "ProductionRecordCreate",
     "ProductionRecordDetail",
     "ProductionRecordRead",

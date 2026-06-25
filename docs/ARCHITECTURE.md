@@ -95,8 +95,9 @@ while editorial concerns attach to the manuscript.
   design → page layout → lettering → colouring → final files, each a
   `StreamStatus`.
 - **Production** — `ProductionRecord` is a 1:1 edition roll-up (ISBN, release
-  date, per-format and per-stage `StreamStatus`); `ProductionItem`s are granular
-  tasks (now linkable to a Work, with deadline/status filters).
+  date, per-format and per-stage `StreamStatus`); `ProductionItem` has evolved
+  into a general cross-medium production **task** (see *Production task system*
+  below) while staying backward compatible.
 - **PublishingCalendarEvent** (`calendar_events`) — dated catalogue events
   (release, cover reveal, preorder…), optionally tied to a Work; date-range
   filterable.
@@ -230,6 +231,54 @@ The private UI surfaces a **Collaborators panel** inside each StoryWorld and
 each Work (`components/CollaboratorsPanel.tsx`): invite, change role, suspend /
 reactivate / revoke, accept / decline your own invitations, and per-member
 history. It self-gates manage controls from `/me/projects` (or global admin).
+
+## Production task system
+
+`ProductionItem` (the `production_items` table) has grown from a publishing-stage
+checklist item into a general production **task** spanning publishing, graphic
+novels, film, audio and interactive work — without breaking the original
+`/production-items` endpoints or records.
+
+- **Backward compatibility** — the original columns (`manuscript_id`, `stage`,
+  `status`, `due_date`, `notes`, `assignee_id`) and routes are untouched.
+  `manuscript_id` and `stage` became nullable; `work_id` is now the primary
+  project link. `ProductionItemStatus` was *extended* (the original
+  `pending/in_progress/blocked/done` plus `todo/in_review/changes_requested/
+  approved/cancelled`), so existing rows remain valid (migration `0004` rebuilds
+  the table on SQLite via a naming convention, defaulting new NOT NULL columns).
+- **New fields** — title, description, story_world_id, division, track,
+  task_type, priority, creator, reviewer, parent (subtasks), milestone,
+  start/due/completed dates, estimated/actual effort, blocked reason, acceptance
+  criteria, deliverable asset, revision number.
+- **Related entities** — `ProductionDependency` (a directed dependency edge),
+  `ProductionMilestone` (checkpoints tasks group under), `ApprovalRequest`
+  (human approval gate), and the append-only `ProductionActivity` log.
+- **Workflow engine** (`app/services/production.py`) — `ALLOWED_TRANSITIONS`
+  defines a validated state machine; completion/review transitions are blocked
+  while finish-to-start dependencies are unmet; `would_create_cycle` guards the
+  dependency graph; every change appends a `ProductionActivity`.
+- **AI safety** — `HUMAN_ONLY_STATUSES = {APPROVED, DONE}`: completion and
+  approval are reachable only through authenticated endpoints, never AI/service
+  code. Deciding an `ApprovalRequest` requires the assigned human approver (or
+  an admin), and approving does **not** auto-complete the task.
+
+Surfaces (private API, mounted under `/api`):
+
+- `/production-items` — the **legacy** CRUD, unchanged.
+- `/production-tasks` — the rich surface: CRUD + detail (with derived
+  `is_blocked` / unmet-dependency / subtask data), `/transition`, `/subtasks`,
+  `/dependencies`, `/activity`, `/approvals`, and the queries `/my-assignments`,
+  `/overdue`, `/blocked`, `/awaiting-approval`.
+- `/milestones` — milestone CRUD + `/{id}/tasks`.
+- `/approvals` — list/get/create, `/decide` (human-gated), `/cancel`.
+- `/production-templates` + `POST /works/{id}/production-template` — list the
+  starter templates and instantiate one onto a Work. Starter templates
+  (`app/services/production_templates.py`): graphic novel volume, book
+  publication, short film, feature film, animated sequence, promotional launch.
+
+The private UI adds a **Production tasks** board (`ProductionTasksPage`) with
+Kanban / list / timeline views, inline task creation, template application, and
+a per-task panel for validated transitions, dependencies and activity.
 
 ## Integration layer (ecosystem seams)
 

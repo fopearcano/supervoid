@@ -117,6 +117,30 @@ Project-scoped collaboration layered on top of (never replacing) the global
 - ⚪ Page/panel/spread tracking distinct from prose layout stages.
 - ⚪ Cover and interior asset versioning via the attachments layer.
 
+## Production task system (cross-medium) 🟡
+
+`ProductionItem` evolved into a general production task for publishing, graphic
+novels, film, audio and interactive work. See *Production task system* in
+[`ARCHITECTURE.md`](ARCHITECTURE.md). Backward compatible: the legacy
+`/production-items` endpoints and records are unchanged.
+
+- ✅ Extended task fields (title, description, division, track, task type,
+  priority, creator, reviewer, parent, milestone, start/due/completed dates,
+  estimated/actual effort, blocked reason, acceptance criteria, deliverable
+  asset, revision number); `work_id` primary, `manuscript_id` optional.
+- ✅ **Dependencies** (`ProductionDependency`, with cycle guard), **subtasks**
+  (self-referential parent), **milestones** (`ProductionMilestone`).
+- ✅ **ApprovalRequest** human gate; append-only **ProductionActivity** log.
+- ✅ **Validated state transitions** + detection of blocked tasks / unmet
+  dependencies in the policy-like `production` service.
+- ✅ Query endpoints: my-assignments, overdue, blocked, awaiting-approval.
+- ✅ Kanban / list / timeline frontend board.
+- ✅ Work-level production templates + 6 starter templates (graphic novel
+  volume, book publication, short film, feature film, animated sequence,
+  promotional launch); Alembic `0004`, seed and tests.
+- ✅ **AI safety**: completion and approval are human-only; no auto-approval.
+- ⚪ Effort burndown, capacity/scheduling, and Gantt-style dependency bars.
+
 ## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
 
 The contract already exists at `/api/integrations/logosforge`. Implementation:

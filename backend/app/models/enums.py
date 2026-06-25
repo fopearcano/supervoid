@@ -67,10 +67,17 @@ class ProductionStage(str, Enum):
 
 
 class ProductionItemStatus(str, Enum):
+    # --- Original states (kept for backward compatibility) ---
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     BLOCKED = "blocked"
     DONE = "done"
+    # --- Extended task-system states ---
+    TODO = "todo"
+    IN_REVIEW = "in_review"
+    CHANGES_REQUESTED = "changes_requested"
+    APPROVED = "approved"
+    CANCELLED = "cancelled"
 
 
 class EditorialNoteKind(str, Enum):
@@ -421,3 +428,106 @@ class MembershipAuditAction(str, Enum):
     SUSPENDED = "suspended"
     REACTIVATED = "reactivated"
     REVOKED = "revoked"
+
+
+# --- General production task system ----------------------------------------
+# The ProductionItem evolves into a cross-medium production task. These enums
+# describe a task spanning publishing, graphic novels, film, audio and
+# interactive work. ``ProductionItemStatus`` (above) is the shared lifecycle.
+
+
+class ProductionTrack(str, Enum):
+    """A discipline / pipeline lane a production task belongs to. Cross-medium:
+    not every track is used by every division."""
+
+    EDITORIAL = "editorial"
+    ART = "art"
+    LETTERING = "lettering"
+    COLOR = "color"
+    LAYOUT = "layout"
+    PREPRESS = "prepress"
+    PRINT = "print"
+    SCRIPT = "script"
+    STORYBOARD = "storyboard"
+    ANIMATION = "animation"
+    VFX = "vfx"
+    PHOTOGRAPHY = "photography"
+    EDITING = "editing"
+    SOUND = "sound"
+    MUSIC = "music"
+    ENGINEERING = "engineering"
+    DESIGN = "design"
+    QA = "qa"
+    MARKETING = "marketing"
+    PRODUCTION = "production"
+    OTHER = "other"
+
+
+class ProductionTaskType(str, Enum):
+    """The nature of a production task."""
+
+    TASK = "task"
+    REVIEW = "review"
+    DELIVERABLE = "deliverable"
+    APPROVAL = "approval"
+    BUG = "bug"
+    RESEARCH = "research"
+    ADMIN = "admin"
+
+
+class ProductionPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class DependencyType(str, Enum):
+    """How one task depends on another."""
+
+    FINISH_TO_START = "finish_to_start"  # predecessor must finish before this starts
+    START_TO_START = "start_to_start"
+    RELATED = "related"
+
+
+class MilestoneStatus(str, Enum):
+    PLANNED = "planned"
+    IN_PROGRESS = "in_progress"
+    REACHED = "reached"
+    MISSED = "missed"
+    CANCELLED = "cancelled"
+
+
+class ApprovalStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CHANGES_REQUESTED = "changes_requested"
+    CANCELLED = "cancelled"
+
+
+class ApprovalDecision(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CHANGES_REQUESTED = "changes_requested"
+
+
+class ProductionActivityType(str, Enum):
+    """An append-only event in a production task's history."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    STATUS_CHANGED = "status_changed"
+    ASSIGNED = "assigned"
+    REASSIGNED = "reassigned"
+    BLOCKED = "blocked"
+    UNBLOCKED = "unblocked"
+    DEPENDENCY_ADDED = "dependency_added"
+    DEPENDENCY_REMOVED = "dependency_removed"
+    APPROVAL_REQUESTED = "approval_requested"
+    APPROVAL_DECIDED = "approval_decided"
+    MILESTONE_LINKED = "milestone_linked"
+    COMMENTED = "commented"
+    COMPLETED = "completed"
+    REOPENED = "reopened"
+    TEMPLATE_APPLIED = "template_applied"
