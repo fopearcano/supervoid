@@ -33,7 +33,7 @@ function useShowcase(): ShowcaseWork[] | null {
   return works;
 }
 
-export function LandingPage() {
+export function LandingPage({ onBack }: { onBack?: () => void }) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,6 +60,15 @@ export function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-ink-800">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="absolute left-6 top-6 z-10 font-mono text-[0.62rem] uppercase tracking-widest text-parchment-dim transition-colors hover:text-parchment"
+        >
+          ← Home
+        </button>
+      )}
       <div className="absolute right-6 top-6 z-10">
         <ThemeToggle />
       </div>

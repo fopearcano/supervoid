@@ -40,34 +40,36 @@
 }
 
 [data-theme='hacker'] {
-  /* Near-black with a faint green cast, VS-Code-dark in feel. */
-  --c-ink-50: 214 238 216;
-  --c-ink-100: 184 216 188;
-  --c-ink-200: 132 172 136;
-  --c-ink-300: 96 128 100;
-  --c-ink-400: 52 76 56;
-  --c-ink-500: 32 48 35;
-  --c-ink-600: 23 36 26;
-  --c-ink-650: 19 30 22;
-  --c-ink-700: 16 25 18;
-  --c-ink-800: 10 16 11;
-  --c-ink-900: 6 10 7;
+  /* Darker, near-neutral charcoal base — VS-Code-dark, only a faint green cast
+     so the bright foreground reads as high-contrast. */
+  --c-ink-50: 210 238 212;
+  --c-ink-100: 172 210 176;
+  --c-ink-200: 124 162 128;
+  --c-ink-300: 80 106 82;
+  --c-ink-400: 44 58 46;
+  --c-ink-500: 28 38 29;
+  --c-ink-600: 20 28 21;
+  --c-ink-650: 16 22 16;
+  --c-ink-700: 13 18 13;
+  --c-ink-800: 8 11 8;
+  --c-ink-900: 4 6 4;
 
-  /* Terminal green foreground, tuned for contrast rather than neon glare. */
-  --c-parchment: 192 232 190;
-  --c-parchment-muted: 146 200 150;
-  --c-parchment-dim: 116 176 122;
-  --c-parchment-shadow: 84 124 88;
+  /* Vivid terminal green foreground — brighter and more saturated for a
+     high-contrast, neon-adjacent read. */
+  --c-parchment: 150 240 165;
+  --c-parchment-muted: 108 212 130;
+  --c-parchment-dim: 84 184 108;
+  --c-parchment-shadow: 58 118 72;
 
-  --c-accent: 92 222 116;
-  --c-accent-soft: 60 158 86;
-  --c-accent-deep: 36 96 52;
+  --c-accent: 64 246 122;
+  --c-accent-soft: 40 188 92;
+  --c-accent-deep: 24 118 56;
 
-  --c-rule: 30 52 34;
+  --c-rule: 32 56 38;
 
-  --c-signal: 236 110 110;
-  --c-signal-soft: 182 84 84;
-  --c-signal-dim: 112 56 56;
+  --c-signal: 255 112 112;
+  --c-signal-soft: 206 84 84;
+  --c-signal-dim: 124 58 58;
 }
 
 @layer base {

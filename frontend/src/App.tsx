@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppShell, type AppView } from '@/layouts/AppShell';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
 import { ThemeProvider } from '@/theme/ThemeContext';
+import { HomePage } from '@/pages/HomePage';
 import { LandingPage } from '@/pages/LandingPage';
 import { Dashboard } from '@/pages/Dashboard';
 import { ManuscriptView } from '@/pages/ManuscriptView';
@@ -161,13 +162,28 @@ function LoadingScreen() {
   );
 }
 
-/** Gate the studio behind authentication: anonymous visitors get the public
- * landing page (with sign-in), authenticated users get the studio shell. */
+/** The public area for signed-out visitors: a punk home page, with the members
+ * sign-in reached from it (and via the #members hash for a direct link). */
+function AnonymousArea() {
+  const initial =
+    typeof window !== 'undefined' && window.location.hash === '#members'
+      ? 'members'
+      : 'home';
+  const [view, setView] = useState<'home' | 'members'>(initial);
+
+  if (view === 'members') {
+    return <LandingPage onBack={() => setView('home')} />;
+  }
+  return <HomePage onEnterMembers={() => setView('members')} />;
+}
+
+/** Gate the studio behind authentication: signed-out visitors get the public
+ * home / sign-in, authenticated users get the studio shell. */
 function Gate() {
   const { status } = useAuth();
   if (status === 'authenticated') return <StudioRoot />;
   if (status === 'loading' || status === 'idle') return <LoadingScreen />;
-  return <LandingPage />;
+  return <AnonymousArea />;
 }
 
 export default function App() {
