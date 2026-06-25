@@ -55,10 +55,16 @@ from app.models import (
 from app.models import (  # public reader projection
     HotspotType,
     MediaAssetType,
+    PanelTransition,
+    PublicationAction,
+    PublicationApproval,
+    PublicationApprovalStatus,
+    PublicationEvent,
     PublicHotspot,
     PublicMediaAsset,
     PublishedChapter,
     PublishedPage,
+    PublishedPanel,
     PublishedStatus,
     PublishedVolume,
     PublishedWork,
@@ -1274,6 +1280,65 @@ def _seed_public_reader(session: Session, works: dict[str, Work]) -> None:
     session.add_all(hotspots)
     session.commit()
 
+    # Public cinematic panels (normalised coords) for the first two pages — this
+    # drives real panel-by-panel reading. A panel-scoped hotspot rides page 1.
+    panels = [
+        PublishedPanel(
+            published_page_id=pages[0].id, panel_number=1, reading_order=0,
+            x=0.06, y=0.05, width=0.88, height=0.42,
+            transition=PanelTransition.FADE, transition_duration_ms=700,
+            caption="The workshop wakes; the press is cold.",
+            alt_text="Wide establishing panel of the print workshop at dawn.",
+        ),
+        PublishedPanel(
+            published_page_id=pages[0].id, panel_number=2, reading_order=1,
+            x=0.10, y=0.52, width=0.80, height=0.42,
+            focus_x=0.30, focus_y=0.55, focus_width=0.40, focus_height=0.35,
+            transition=PanelTransition.DISSOLVE, transition_duration_ms=900,
+            caption="“Still nothing,” he says, to no one.",
+            alt_text="Close panel on the printer at the bench.",
+            audio_track_id=hotspot_audio.id,
+        ),
+        PublishedPanel(
+            published_page_id=pages[3].id, panel_number=1, reading_order=0,
+            x=0.05, y=0.08, width=0.90, height=0.84,
+            transition=PanelTransition.CUT, transition_duration_ms=400,
+            caption="Night bindery: thread, glue, and lamplight.",
+        ),
+    ]
+    session.add_all(panels)
+    session.commit()
+    for panel in panels:
+        session.refresh(panel)
+    session.add(PublicHotspot(
+        published_page_id=pages[0].id, published_panel_id=panels[1].id,
+        type=HotspotType.LORE, x=34, y=58, width=28, height=20,
+        title="On the unanswered letter",
+        content="The letter on the bench is never opened on-page.",
+    ))
+
+    # Publication history + an approved publication request (the demo work is
+    # already PUBLISHED). Preserves an auditable lifecycle.
+    admin = session.exec(select(User).where(User.email == "helena.pryce@supervoid.local")).first()
+    actor_id = admin.id if admin else None
+    validation = {"ok": True, "errors": 0, "warnings": 0, "issues": []}
+    session.add(PublicationApproval(
+        published_work_id=pub.id, status=PublicationApprovalStatus.APPROVED,
+        requested_by_id=actor_id, decided_by_id=actor_id, decided_at=utcnow(),
+        validation=validation, note="Cleared for the demo launch.",
+    ))
+    session.add_all([
+        PublicationEvent(published_work_id=pub.id, action=PublicationAction.CREATED, actor_id=actor_id),
+        PublicationEvent(
+            published_work_id=pub.id, action=PublicationAction.APPROVED, actor_id=actor_id,
+        ),
+        PublicationEvent(
+            published_work_id=pub.id, action=PublicationAction.PUBLISHED, actor_id=actor_id,
+            from_status=PublishedStatus.DRAFT, to_status=PublishedStatus.PUBLISHED,
+        ),
+    ])
+    session.commit()
+
 
 def _seed_transmedia(
     session: Session,
@@ -2190,7 +2255,9 @@ def run() -> None:
         "pending-approval webhook event), and the operational business layer "
         "(deepened rights with a window/option/chain-of-title/evidence/status "
         "change, a CRM publisher + reviewer with role/tag/interaction/opportunity, "
-        "and an edition with ONIX + press-kit packages)."
+        "and an edition with ONIX + press-kit packages), and private curation of "
+        "the public reader (cinematic panels on the demo pages with a panel-scoped "
+        "hotspot, plus an approved publication request and publication history)."
     )
 
 

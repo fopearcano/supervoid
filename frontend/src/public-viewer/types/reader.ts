@@ -47,6 +47,29 @@ export interface PublicHotspot {
   video: PublicMediaAsset | null;
 }
 
+export type PanelTransition = 'cut' | 'fade' | 'dissolve' | 'slide' | 'zoom';
+
+export interface PublishedPanel {
+  id: string;
+  panel_number: number;
+  reading_order: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  focus_x: number | null;
+  focus_y: number | null;
+  focus_width: number | null;
+  focus_height: number | null;
+  transition: PanelTransition;
+  transition_duration_ms: number;
+  caption: string | null;
+  alt_text: string | null;
+  audio_track: PublicMediaAsset | null;
+  video: PublicMediaAsset | null;
+  hotspots: PublicHotspot[];
+}
+
 export interface PublishedPage {
   id: string;
   page_number: number;
@@ -57,6 +80,7 @@ export interface PublishedPage {
   music_track: PublicMediaAsset | null;
   video_overlay: PublicMediaAsset | null;
   hotspots: PublicHotspot[];
+  panels: PublishedPanel[];
 }
 
 export interface PublishedChapterSummary {

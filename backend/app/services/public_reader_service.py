@@ -24,6 +24,7 @@ from app.models import (
     PublicMediaAsset,
     PublishedChapter,
     PublishedPage,
+    PublishedPanel,
     PublishedStatus,
     PublishedVolume,
     PublishedWork,
@@ -35,6 +36,7 @@ from app.schemas.public_reader import (
     PublishedChapterRead,
     PublishedChapterSummary,
     PublishedPageRead,
+    PublishedPanelRead,
     PublishedVolumeRead,
     PublishedWorkDetail,
     PublishedWorkSummary,
@@ -147,6 +149,31 @@ def _hotspot_read(
     )
 
 
+def _panel_read(
+    session: Session, panel: PublishedPanel, cache: MediaCache
+) -> PublishedPanelRead:
+    return PublishedPanelRead(
+        id=panel.id,
+        panel_number=panel.panel_number,
+        reading_order=panel.reading_order,
+        x=panel.x,
+        y=panel.y,
+        width=panel.width,
+        height=panel.height,
+        focus_x=panel.focus_x,
+        focus_y=panel.focus_y,
+        focus_width=panel.focus_width,
+        focus_height=panel.focus_height,
+        transition=panel.transition,
+        transition_duration_ms=panel.transition_duration_ms,
+        caption=panel.caption,
+        alt_text=panel.alt_text,
+        audio_track=_media_read(session, panel.audio_track_id, cache),
+        video=_media_read(session, panel.video_id, cache),
+        hotspots=[_hotspot_read(session, h, cache) for h in panel.hotspots],
+    )
+
+
 def _page_read(
     session: Session, page: PublishedPage, cache: MediaCache
 ) -> PublishedPageRead:
@@ -159,7 +186,14 @@ def _page_read(
         height=page.height,
         music_track=_media_read(session, page.music_track_id, cache),
         video_overlay=_media_read(session, page.video_overlay_id, cache),
-        hotspots=[_hotspot_read(session, h, cache) for h in page.hotspots],
+        # Page-level hotspots are those not bound to a panel; panel hotspots
+        # travel inside their panel for cinematic mode.
+        hotspots=[
+            _hotspot_read(session, h, cache)
+            for h in page.hotspots
+            if h.published_panel_id is None
+        ],
+        panels=[_panel_read(session, p, cache) for p in page.panels],
     )
 
 
@@ -175,10 +209,7 @@ def list_published_works(session: Session) -> list[PublishedWorkSummary]:
     return [PublishedWorkSummary.model_validate(w) for w in session.exec(stmt).all()]
 
 
-def get_work_detail(session: Session, slug: str) -> Optional[PublishedWorkDetail]:
-    work = _get_visible_work(session, slug)
-    if work is None:
-        return None
+def _work_detail_read(session: Session, work: PublishedWork) -> PublishedWorkDetail:
     cache: MediaCache = {}
     return PublishedWorkDetail(
         id=work.id,
@@ -196,6 +227,36 @@ def get_work_detail(session: Session, slug: str) -> Optional[PublishedWorkDetail
         video_intro=_media_read(session, work.video_intro_id, cache),
         volumes=[_volume_read(session, v, cache) for v in work.volumes],
     )
+
+
+def get_work_detail(session: Session, slug: str) -> Optional[PublishedWorkDetail]:
+    work = _get_visible_work(session, slug)
+    if work is None:
+        return None
+    return _work_detail_read(session, work)
+
+
+# --- private preview (admin) -----------------------------------------------
+# Build the EXACT public representation for a work/page regardless of status, so
+# a curator can preview a DRAFT before it is published. These bypass the
+# visibility gate by design and are only ever reached through the private,
+# authenticated curation API — never the public router.
+
+
+def preview_work_detail(
+    session: Session, work_id: str
+) -> Optional[PublishedWorkDetail]:
+    work = session.get(PublishedWork, work_id)
+    if work is None:
+        return None
+    return _work_detail_read(session, work)
+
+
+def preview_page(session: Session, page_id: str) -> Optional[PublishedPageRead]:
+    page = session.get(PublishedPage, page_id)
+    if page is None:
+        return None
+    return _page_read(session, page, {})
 
 
 def list_volumes_for_work(

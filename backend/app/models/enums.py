@@ -1112,3 +1112,41 @@ class ChecklistStatus(str, Enum):
     WARN = "warn"
     FAIL = "fail"
     NA = "na"
+
+
+# --- Private curation of the public reader ---------------------------------
+# A private admin CMS curates the public projection and performs a controlled
+# hand-off from private GraphicNovelPage / AssetVersion records. Publication is
+# gated behind validation + approval; history is preserved; the public reader is
+# never written automatically and never references a private file.
+
+
+class PublicationAction(str, Enum):
+    """An append-only event in a published work's history."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SCHEDULED = "scheduled"
+    APPROVAL_REQUESTED = "approval_requested"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
+    ARCHIVED = "archived"
+    PAGE_HANDED_OFF = "page_handed_off"
+
+
+class PublicationApprovalStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class PanelTransition(str, Enum):
+    """How the cinematic reader moves between panels."""
+
+    CUT = "cut"
+    FADE = "fade"
+    DISSOLVE = "dissolve"
+    SLIDE = "slide"
+    ZOOM = "zoom"

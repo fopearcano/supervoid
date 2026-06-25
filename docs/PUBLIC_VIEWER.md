@@ -181,6 +181,36 @@ media is downloaded.
 
 ---
 
+## Private curation CMS
+
+The bridge now feeds a private admin CMS at `/api/curation` (authenticated; the
+**only** writer of the public projection — `/public` stays read-only). It covers
+published works, volumes, chapters, pages, public media, hotspots, panels,
+credits, visibility and scheduling, plus an exact-public **preview**
+(`/curation/works/{id}/preview`, `/curation/pages/{id}/preview`) that renders the
+public schema for a DRAFT without exposing it publicly.
+
+**Gated publication.** `validate → request-approval → approve (admin) → publish`.
+`validate` checks credits and — for asset-derived pages — provenance and a
+cleared, current licence. Publishing needs an APPROVED `PublicationApproval` and
+passing validation. Every step appends a `PublicationEvent`; **unpublish** flips
+visibility only and never deletes the private source or the projection rows.
+
+**Controlled hand-off.** `POST /curation/handoff/page` turns a private
+`GraphicNovelPage` into a public page from an **explicitly selected public
+derivative** (`PublicMediaAsset`) — a private file is never used or exposed. It
+copies the normalised `GraphicNovelPanel` coordinates into public
+`PublishedPanel` rows and records soft source references (never serialised) so
+licence/provenance can be validated before publication.
+
+**Cinematic mode.** `PublishedPanel` (normalised geometry + reading order +
+transition/duration + optional focus crop + panel audio/video + panel hotspots)
+is exposed on the public page read. The reader frames each panel in reading
+order with the configured transition, supports keyboard + touch, and falls back
+to full-page display when a page has no panels.
+
+---
+
 ## Future ecosystem hooks
 
 - **LOGOSFORGE → SUPERVOID Publishing (inbound writing).** LOGOSFORGE (the

@@ -21,6 +21,7 @@ import { IntegrationsHubPage } from '@/pages/IntegrationsHubPage';
 import { RightsDeskPage } from '@/pages/RightsDeskPage';
 import { ContactsPage } from '@/pages/ContactsPage';
 import { EditionsPage } from '@/pages/EditionsPage';
+import { CurationPage } from '@/pages/CurationPage';
 
 type View =
   | { name: 'dashboard' }
@@ -37,6 +38,7 @@ type View =
   | { name: 'rights-desk' }
   | { name: 'contacts' }
   | { name: 'editions' }
+  | { name: 'curation' }
   | { name: 'calendar' }
   | { name: 'production-item'; id: string }
   | { name: 'story-worlds' }
@@ -98,6 +100,7 @@ export default function App() {
         {view.name === 'rights-desk' && <RightsDeskPage />}
         {view.name === 'contacts' && <ContactsPage />}
         {view.name === 'editions' && <EditionsPage />}
+        {view.name === 'curation' && <CurationPage />}
         {view.name === 'calendar' && (
           <ReleaseCalendar onOpenManuscript={openManuscript} />
         )}

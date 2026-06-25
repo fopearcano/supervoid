@@ -575,6 +575,32 @@ the private data. Full detail in [`PUBLIC_VIEWER.md`](PUBLIC_VIEWER.md).
 The `player/` module (cinematic viewer, audio/video players, hotspots, gated
 playback) is content-agnostic by design — the seam SUPERVOID Movies can reuse.
 
+### Private curation CMS & controlled hand-off
+
+A private admin CMS (`/api/curation`, authenticated) is the *only* writer of the
+public projection — the public router stays read-only. It manages
+`PublishedWork` / volumes / chapters / pages / media / hotspots / panels, with
+visibility, scheduling and an exact-public **preview** (`preview_*` build the
+public schema regardless of status, reached only through the private API).
+
+- **Gated publication.** `validate → request approval → approve (admin) →
+  publish`. `validate_for_publication` checks credits and, for asset-derived
+  pages, provenance + a cleared, current licence. Publishing requires an
+  APPROVED `PublicationApproval` and passing validation; every step appends a
+  `PublicationEvent` (history is never deleted). Unpublish flips visibility only
+  — the projection rows and the private source are preserved.
+- **Controlled hand-off.** `hand_off_page` turns a private `GraphicNovelPage`
+  into a public page using an **explicitly selected public derivative**
+  (`PublicMediaAsset`) — a private file is never used or exposed. It copies the
+  normalised `GraphicNovelPanel` coordinates into public `PublishedPanel` rows
+  and records soft source references (`source_gn_page_id`,
+  `source_asset_version_id`, never serialised) for licence/provenance validation.
+- **Cinematic panels.** `PublishedPanel` carries normalised geometry, reading
+  order, transition + duration, optional focus crop, panel-level audio/video and
+  panel-scoped hotspots. The public page read exposes these; the reader's
+  cinematic mode frames each panel in order and falls back to full-page display
+  when a page has no panels.
+
 ## Local-first & Postgres
 
 Defaults require nothing external: SQLite on disk, `dry_run` AI, no network.

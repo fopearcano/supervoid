@@ -45,8 +45,18 @@ API. See [`PUBLIC_VIEWER.md`](PUBLIC_VIEWER.md).
   (intro / page overlay / hotspot / ambient), with graceful degradation.
 - ✅ Curated public hotspots (info / character / location / lore / link / audio
   / video) and a dark, cinematic SUPERVOID identity + shared design tokens.
-- ⚪ Real panel-by-panel cinematic mode (coords per panel), guided reading.
-- ⚪ A small curation UI in the admin app for building published works.
+- ✅ **Real panel-by-panel cinematic mode** from normalised `PublishedPanel`
+  coordinates: guided navigation, configurable transition + duration, reading
+  order, optional focus crop, panel-level audio/video/hotspots, accessibility
+  fallback, keyboard + touch, and graceful fallback to full-page display.
+- ✅ **Private curation CMS** (`/api/curation`): create/edit published works,
+  volumes, chapters, pages, media, hotspots, panels and credits; visibility and
+  scheduling; gated publication (validate → request approval → approve →
+  publish) with preserved history; unpublish without deleting the private
+  source; validate credits/licences/provenance; exact-public preview; and a
+  controlled hand-off from `GraphicNovelPage`/`AssetVersion` using an explicit
+  public derivative. Tests prove unpublished/private data stays out of `/public`.
+  Alembic `0011`, seed (cinematic panels + approval/history), private UI.
 - ⚪ Image/asset pipeline (derivatives, CDN) beyond local placeholders.
 
 ## IP & transmedia studio layer 🟡

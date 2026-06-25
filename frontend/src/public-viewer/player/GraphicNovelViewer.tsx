@@ -47,6 +47,7 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
 
   const [mode, setMode] = useState<ReaderMode>('single');
   const [pageIndex, setPageIndex] = useState(0);
+  const [panelIndex, setPanelIndex] = useState(0);
   const [fit, setFit] = useState<FitMode>('height');
   const [zoom, setZoom] = useState(1);
   const [chromeVisible, setChromeVisible] = useState(true);
@@ -58,10 +59,16 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
   // Reset per-chapter view state when the chapter changes.
   useEffect(() => {
     setPageIndex(0);
+    setPanelIndex(0);
     setShowIntro(true);
     setActiveHotspot(null);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [chapterId]);
+
+  // Start each cinematic session (mode switch) at the first panel.
+  useEffect(() => {
+    setPanelIndex(0);
+  }, [mode]);
 
   const summaries = volume.chapters;
   const chapterIdx = summaries.findIndex((c) => c.id === chapterId);
@@ -93,6 +100,17 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
 
   const next = () => {
     if (mode === 'scroll') return scrollByViewport(1);
+    if (mode === 'cinematic') {
+      const panels = pages[pageIndex]?.panels ?? [];
+      if (panelIndex + 1 < panels.length) return setPanelIndex((i) => i + 1);
+      if (pageIndex + 1 < pages.length) {
+        setPageIndex((i) => i + 1);
+        return setPanelIndex(0);
+      }
+      const nx = summaries[chapterIdx + 1];
+      if (nx) props.onNavigateChapter(volume.id, nx.id);
+      return;
+    }
     const step = mode === 'double' ? 2 : 1;
     if (pageIndex + step < pages.length) {
       setPageIndex((i) => Math.min(i + step, pages.length - 1));
@@ -104,6 +122,17 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
 
   const prev = () => {
     if (mode === 'scroll') return scrollByViewport(-1);
+    if (mode === 'cinematic') {
+      if (panelIndex > 0) return setPanelIndex((i) => i - 1);
+      if (pageIndex > 0) {
+        const previousPanels = pages[pageIndex - 1]?.panels ?? [];
+        setPageIndex((i) => i - 1);
+        return setPanelIndex(Math.max(previousPanels.length - 1, 0));
+      }
+      const pv = summaries[chapterIdx - 1];
+      if (pv) props.onNavigateChapter(volume.id, pv.id);
+      return;
+    }
     const step = mode === 'double' ? 2 : 1;
     if (pageIndex - step >= 0) {
       setPageIndex((i) => Math.max(i - step, 0));
@@ -159,6 +188,17 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
   if (mode === 'scroll') {
     progress = scrollProgress;
     pageLabel = `${pages.length} pp`;
+  } else if (mode === 'cinematic') {
+    const panels = pages[pageIndex]?.panels ?? [];
+    if (panels.length) {
+      progress = pages.length
+        ? (pageIndex + (panelIndex + 1) / panels.length) / pages.length
+        : 0;
+      pageLabel = `p${pageIndex + 1} · panel ${panelIndex + 1}/${panels.length}`;
+    } else {
+      progress = pages.length ? (pageIndex + 1) / pages.length : 0;
+      pageLabel = `${pageIndex + 1} / ${pages.length}`;
+    }
   } else if (mode === 'double') {
     const last = Math.min(pageIndex + 2, pages.length);
     progress = pages.length ? last / pages.length : 0;
@@ -216,6 +256,7 @@ export function GraphicNovelViewer(props: GraphicNovelViewerProps) {
             pages={pages}
             mode={mode}
             pageIndex={pageIndex}
+            panelIndex={panelIndex}
             fit={fit}
             zoom={zoom}
             hotspotsVisible={hotspotsVisible}

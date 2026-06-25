@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PublicHotspot, PublishedPage, ReaderMode } from '../types/reader';
 import { mediaUrl } from '../api/publicClient';
+import { CinematicStage } from './CinematicStage';
 import { HotspotLayer } from './HotspotLayer';
 import { VideoPlayer } from './VideoPlayer';
 
@@ -84,6 +85,7 @@ export function PageCanvas({
   pages,
   mode,
   pageIndex,
+  panelIndex,
   fit,
   zoom,
   hotspotsVisible,
@@ -92,6 +94,7 @@ export function PageCanvas({
   pages: PublishedPage[];
   mode: ReaderMode;
   pageIndex: number;
+  panelIndex: number;
   fit: FitMode;
   zoom: number;
   hotspotsVisible: boolean;
@@ -137,12 +140,12 @@ export function PageCanvas({
 
   if (mode === 'cinematic') {
     return (
-      <div className="sv-letterbox relative flex w-full justify-center">
-        <span className="absolute left-4 top-2 z-30 font-mono text-[0.54rem] uppercase tracking-widest text-parchment-shadow">
-          Cinematic · preview
-        </span>
-        {figure(pages[pageIndex], 'height')}
-      </div>
+      <CinematicStage
+        page={pages[pageIndex]}
+        panelIndex={panelIndex}
+        hotspotsVisible={hotspotsVisible}
+        onOpenHotspot={onOpenHotspot}
+      />
     );
   }
 

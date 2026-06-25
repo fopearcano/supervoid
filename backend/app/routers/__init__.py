@@ -15,6 +15,7 @@ from app.routers import (
     collaborators,
     contracts,
     crm,
+    curation,
     dashboard,
     editions,
     editorial_notes,
@@ -88,6 +89,7 @@ ALL_ROUTERS = (
     ai,
     agents,
     crm,
+    curation,
     knowledge,
     _manuscript_links,
 )
@@ -106,6 +108,7 @@ __all__ = [
     "collaborators",
     "contracts",
     "crm",
+    "curation",
     "dashboard",
     "editions",
     "editorial_notes",

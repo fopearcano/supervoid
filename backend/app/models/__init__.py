@@ -124,6 +124,9 @@ from app.models.enums import (  # business layer (rights / CRM / editions)
     OptionPeriodStatus,
     OrganizationKind,
     PackageStatus,
+    PanelTransition,
+    PublicationAction,
+    PublicationApprovalStatus,
     RightScope,
     RightsEvidenceKind,
     RightsExclusivity,
@@ -156,10 +159,13 @@ from app.models.production_milestone import ProductionMilestone
 from app.models.project_membership import ProjectMembership
 from app.models.production_record import ProductionRecord
 from app.models.provenance_record import ProvenanceRecord
+from app.models.publication_approval import PublicationApproval
+from app.models.publication_event import PublicationEvent
 from app.models.public_hotspot import PublicHotspot
 from app.models.public_media_asset import PublicMediaAsset
 from app.models.published_chapter import PublishedChapter
 from app.models.published_page import PublishedPage
+from app.models.published_panel import PublishedPanel
 from app.models.published_volume import PublishedVolume
 from app.models.published_work import PublishedWork
 from app.models.review import Review
@@ -263,10 +269,16 @@ __all__ = [
     "PermissionScope",
     "ProjectMembership",
     "ProjectRole",
+    "PanelTransition",
+    "PublicationAction",
+    "PublicationApproval",
+    "PublicationApprovalStatus",
+    "PublicationEvent",
     "PublicHotspot",
     "PublicMediaAsset",
     "PublishedChapter",
     "PublishedPage",
+    "PublishedPanel",
     "PublishedStatus",
     "PublishedVolume",
     "PublishedWork",

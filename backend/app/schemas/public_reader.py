@@ -10,7 +10,12 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from app.models.enums import HotspotType, MediaAssetType, PublishedStatus
+from app.models.enums import (
+    HotspotType,
+    MediaAssetType,
+    PanelTransition,
+    PublishedStatus,
+)
 from app.schemas._common import ORMModel
 
 
@@ -39,6 +44,30 @@ class PublicHotspotRead(ORMModel):
     video: Optional[PublicMediaAssetRead] = None
 
 
+class PublishedPanelRead(ORMModel):
+    """A public, cinematic panel — normalised geometry and curator-approved
+    public content only. Drives panel-by-panel reading."""
+
+    id: str
+    panel_number: int
+    reading_order: int
+    x: float
+    y: float
+    width: float
+    height: float
+    focus_x: Optional[float] = None
+    focus_y: Optional[float] = None
+    focus_width: Optional[float] = None
+    focus_height: Optional[float] = None
+    transition: PanelTransition
+    transition_duration_ms: int
+    caption: Optional[str] = None
+    alt_text: Optional[str] = None
+    audio_track: Optional[PublicMediaAssetRead] = None
+    video: Optional[PublicMediaAssetRead] = None
+    hotspots: list[PublicHotspotRead] = []
+
+
 class PublishedPageRead(ORMModel):
     id: str
     page_number: int
@@ -49,6 +78,7 @@ class PublishedPageRead(ORMModel):
     music_track: Optional[PublicMediaAssetRead] = None
     video_overlay: Optional[PublicMediaAssetRead] = None
     hotspots: list[PublicHotspotRead] = []
+    panels: list[PublishedPanelRead] = []
 
 
 class PublishedChapterSummary(ORMModel):

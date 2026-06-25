@@ -17,6 +17,7 @@ export type AppView =
   | 'rights-desk'
   | 'contacts'
   | 'editions'
+  | 'curation'
   | 'calendar'
   | 'production-item'
   | 'story-worlds'
@@ -140,6 +141,11 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
                 label="Editions"
                 active={activeView === 'editions'}
                 onClick={() => onNavigate('editions')}
+              />
+              <NavLink
+                label="Curation"
+                active={activeView === 'curation'}
+                onClick={() => onNavigate('curation')}
               />
               <NavLink
                 label="Adaptations"
