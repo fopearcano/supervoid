@@ -211,3 +211,37 @@
     @apply transition-colors hover:bg-ink-700/40;
   }
 }
+
+/* Punk home — scrolling marquee band + faint CRT scanline texture. */
+@keyframes sv-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.sv-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: sv-marquee 24s linear infinite;
+}
+.sv-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.035) 0,
+    rgb(255 255 255 / 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee {
+    animation: none;
+  }
+}
