@@ -61,6 +61,19 @@ def test_read_only_run_creates_findings_immediately(client: TestClient) -> None:
     assert "checked" in body["result"]
 
 
+def test_run_correlation_id_matches_request_id(client: TestClient) -> None:
+    """A run is traceable back to the HTTP request that triggered it: its
+    correlation_id is the inbound X-Request-ID."""
+    ms = _manuscript(client)
+    run = client.post(
+        "/api/agents/manuscript_consistency/run",
+        json={"target_type": "manuscript", "target_id": ms["id"]},
+        headers={"X-Request-ID": "trace-agent-1"},
+    )
+    assert run.status_code == 201, run.text
+    assert run.json()["correlation_id"] == "trace-agent-1"
+
+
 # --- mutation becomes a gated proposal -------------------------------------
 
 

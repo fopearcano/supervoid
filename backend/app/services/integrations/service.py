@@ -92,9 +92,15 @@ def request_operation(
     *,
     user: User,
     dry_run: bool = False,
+    correlation_id: Optional[str] = None,
 ) -> IntegrationRun:
     """Request an adapter operation. Read-only ops and dry-runs run now;
-    mutating/external ops are persisted PENDING_APPROVAL with no side effect."""
+    mutating/external ops are persisted PENDING_APPROVAL with no side effect.
+
+    ``correlation_id`` ties the run to the originating HTTP request (the API
+    layer passes ``request.state.request_id``) and stays fixed across the
+    run's approve/execute lifecycle; it falls back to a fresh id when invoked
+    outside a request."""
     adapter = _require_adapter(point)
     op = adapter.get_operation(operation)
     if op is None:
@@ -113,7 +119,7 @@ def request_operation(
         is_external=op.external,
         requested_by_id=user.id if user else None,
         input=redact(payload or {}),
-        correlation_id=uuid4().hex,
+        correlation_id=correlation_id or uuid4().hex,
     )
 
     if dry_run or op.read_only:

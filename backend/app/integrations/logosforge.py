@@ -23,30 +23,39 @@ LOGOSFORGE = Integration(
         "narrative engine where stories are drafted before they enter the "
         "SUPERVOID Publishing pipeline."
     ),
-    status=IntegrationStatus.PLANNED,
+    status=IntegrationStatus.AVAILABLE,
     summary=(
         "Bridge between the LOGOSFORGE writing/narrative subsystem and "
-        "SUPERVOID Publishing. Carries a finished draft from authoring into "
-        "editorial production without re-keying, and lets narrative structure "
-        "(characters, places, themes) seed the editorial knowledge graph."
+        "SUPERVOID Publishing, implemented as a local-first, package-based hub "
+        "adapter (adapter key 'logosforge') — NOT a live LOGOSFORGE API. The "
+        "inbound seam works today: ingest an exported draft bundle as a "
+        "manuscript and seed the knowledge graph through the integration hub's "
+        "approval boundary. Outbound editorial notes are recorded for return, "
+        "not dispatched."
     ),
     capabilities=[
         IntegrationCapability(
             key="import_manuscript",
-            summary="Import a completed LOGOSFORGE draft as a SUPERVOID manuscript.",
+            summary=(
+                "Import a completed LOGOSFORGE draft *bundle* as a SUPERVOID "
+                "manuscript (local-first; via the hub adapter)."
+            ),
             direction=IntegrationDirection.INBOUND,
         ),
         IntegrationCapability(
             key="sync_knowledge_graph",
             summary=(
                 "Seed the editorial knowledge graph from LOGOSFORGE story "
-                "entities and relationships."
+                "entities and relationships in the bundle (local-first)."
             ),
             direction=IntegrationDirection.INBOUND,
         ),
         IntegrationCapability(
             key="return_editorial_notes",
-            summary="Return editorial notes and revisions to the author in LOGOSFORGE.",
+            summary=(
+                "Record editorial notes to return to the author in LOGOSFORGE "
+                "(recorded only — not dispatched; no live LOGOSFORGE API)."
+            ),
             direction=IntegrationDirection.OUTBOUND,
         ),
     ],

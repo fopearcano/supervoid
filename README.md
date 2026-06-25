@@ -53,7 +53,12 @@ CRUD-able at `GET/POST /api/integrations/points` and filterable by `type` and
 Further documentation:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture & module map
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased roadmap, including the LOGOSFORGE and Movies bridges
+- [`docs/API.md`](docs/API.md) — HTTP API reference & cross-cutting conventions
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased roadmap with five status tiers (completed / production-ready / experimental / adapter-only / future extraction)
+- [`docs/ONE_PERSON_STUDIO_WORKFLOW.md`](docs/ONE_PERSON_STUDIO_WORKFLOW.md) — the daily solo workflow
+- [`docs/COLLABORATIVE_STUDIO_WORKFLOW.md`](docs/COLLABORATIVE_STUDIO_WORKFLOW.md) — adding collaborators later
+- [`docs/RELEASE_READINESS.md`](docs/RELEASE_READINESS.md) — pre-release checklist
+- [`docs/INTEGRATION_TEST_REPORT.md`](docs/INTEGRATION_TEST_REPORT.md) — integration & hardening test report
 - [`docs/PUBLIC_VIEWER.md`](docs/PUBLIC_VIEWER.md) — the public Graphic Novel Webviewer
 - [`docs/SUPERVOID_BRANDING.md`](docs/SUPERVOID_BRANDING.md) — naming, voice, and visual identity
 - [`docs/MIGRATION_NOTES.md`](docs/MIGRATION_NOTES.md) — migration report from `logosforge-pub`

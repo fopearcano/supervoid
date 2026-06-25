@@ -1,6 +1,7 @@
 from datetime import date
 from typing import TYPE_CHECKING, Optional
 
+from sqlalchemy import Index
 from sqlmodel import Field, Relationship
 
 from app.models.base import BaseEntity
@@ -37,6 +38,16 @@ class ProductionItem(BaseEntity, table=True):
     """
 
     __tablename__ = "production_items"
+
+    # Composite indexes for the command-centre / "my work" hot paths, which
+    # filter on two columns together (single-column indexes above still serve
+    # other queries): assignee + open/closed status, status + due date for
+    # overdue sweeps, and work + status for the per-work command page.
+    __table_args__ = (
+        Index("ix_production_items_assignee_status", "assignee_id", "status"),
+        Index("ix_production_items_status_due_date", "status", "due_date"),
+        Index("ix_production_items_work_status", "work_id", "status"),
+    )
 
     # --- Identity / description (new) ---
     title: Optional[str] = Field(default=None, max_length=300, index=True)

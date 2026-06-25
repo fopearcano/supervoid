@@ -28,6 +28,11 @@ from app.models import (
     PublishedWork,
     User,
 )
+from app.models.enums import (
+    MediaAssetType,
+    PublicationAction,
+    PublicationApprovalStatus,
+)
 from app.schemas.curation import (
     ApprovalDecisionRequest,
     CreateFromWorkRequest,
@@ -173,24 +178,44 @@ def preview_work(work_id: str, session: Session = Depends(get_session)) -> Publi
     return detail
 
 
-@router.get("/works/{work_id}/events", response_model=list[PublicationEventRead])
-def list_events(work_id: str, session: Session = Depends(get_session)) -> list[PublicationEventRead]:
-    rows = session.exec(
-        select(PublicationEvent)
-        .where(PublicationEvent.published_work_id == work_id)
-        .order_by(PublicationEvent.created_at.desc())
-    ).all()
-    return [PublicationEventRead.model_validate(e) for e in rows]
+@router.get("/works/{work_id}/events", response_model=Page[PublicationEventRead])
+def list_events(
+    work_id: str,
+    session: Session = Depends(get_session),
+    params: PageParams = Depends(page_params),
+    action: Optional[PublicationAction] = Query(default=None),
+) -> Page[PublicationEventRead]:
+    # Publication history is append-only and grows with every edit/lifecycle
+    # action, so it is paginated (newest first) and filterable by action.
+    stmt = select(PublicationEvent).where(PublicationEvent.published_work_id == work_id)
+    if action is not None:
+        stmt = stmt.where(PublicationEvent.action == action)
+    stmt = stmt.order_by(PublicationEvent.created_at.desc())
+    items, total = paginate(session, stmt, params)
+    return Page[PublicationEventRead](
+        items=[PublicationEventRead.model_validate(e) for e in items],
+        total=total, skip=params.skip, limit=params.limit,
+    )
 
 
-@router.get("/works/{work_id}/approvals", response_model=list[PublicationApprovalRead])
-def list_approvals(work_id: str, session: Session = Depends(get_session)) -> list[PublicationApprovalRead]:
-    rows = session.exec(
-        select(PublicationApproval)
-        .where(PublicationApproval.published_work_id == work_id)
-        .order_by(PublicationApproval.created_at.desc())
-    ).all()
-    return [PublicationApprovalRead.model_validate(a) for a in rows]
+@router.get("/works/{work_id}/approvals", response_model=Page[PublicationApprovalRead])
+def list_approvals(
+    work_id: str,
+    session: Session = Depends(get_session),
+    params: PageParams = Depends(page_params),
+    status_: Optional[PublicationApprovalStatus] = Query(default=None, alias="status"),
+) -> Page[PublicationApprovalRead]:
+    stmt = select(PublicationApproval).where(
+        PublicationApproval.published_work_id == work_id
+    )
+    if status_ is not None:
+        stmt = stmt.where(PublicationApproval.status == status_)
+    stmt = stmt.order_by(PublicationApproval.created_at.desc())
+    items, total = paginate(session, stmt, params)
+    return Page[PublicationApprovalRead](
+        items=[PublicationApprovalRead.model_validate(a) for a in items],
+        total=total, skip=params.skip, limit=params.limit,
+    )
 
 
 @router.post("/works/{work_id}/schedule", response_model=PublishedWorkAdminRead)
@@ -451,12 +476,26 @@ def delete_panel(panel_id: str, session: Session = Depends(get_session)):
 # --- public media ----------------------------------------------------------
 
 
-@router.get("/media", response_model=list[PublicMediaAssetAdminRead])
-def list_media(session: Session = Depends(get_session)) -> list[PublicMediaAssetAdminRead]:
-    rows = session.exec(
-        select(PublicMediaAsset).order_by(PublicMediaAsset.created_at.desc())
-    ).all()
-    return [PublicMediaAssetAdminRead.model_validate(m) for m in rows]
+@router.get("/media", response_model=Page[PublicMediaAssetAdminRead])
+def list_media(
+    session: Session = Depends(get_session),
+    params: PageParams = Depends(page_params),
+    type_: Optional[MediaAssetType] = Query(default=None, alias="type"),
+    public_visibility: Optional[bool] = Query(default=None),
+) -> Page[PublicMediaAssetAdminRead]:
+    # The public media library is a single global collection, so it is paginated
+    # and filterable by media type / visibility.
+    stmt = select(PublicMediaAsset)
+    if type_ is not None:
+        stmt = stmt.where(PublicMediaAsset.type == type_)
+    if public_visibility is not None:
+        stmt = stmt.where(PublicMediaAsset.public_visibility == public_visibility)
+    stmt = stmt.order_by(PublicMediaAsset.created_at.desc())
+    items, total = paginate(session, stmt, params)
+    return Page[PublicMediaAssetAdminRead](
+        items=[PublicMediaAssetAdminRead.model_validate(m) for m in items],
+        total=total, skip=params.skip, limit=params.limit,
+    )
 
 
 @router.post("/media", response_model=PublicMediaAssetAdminRead, status_code=201)

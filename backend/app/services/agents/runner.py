@@ -106,9 +106,14 @@ def run_agent(
     target_type: Optional[str],
     target_id: Optional[str],
     retry_of_id: Optional[str] = None,
+    correlation_id: Optional[str] = None,
 ) -> AgentRun:
     """Execute an agent and persist its run, findings and proposals. Caller
-    commits. Validation failures raise before any run is created."""
+    commits. Validation failures raise before any run is created.
+
+    ``correlation_id`` ties the run to the originating HTTP request (the API
+    layer passes ``request.state.request_id``); it falls back to a fresh id when
+    invoked outside a request (seeds, scripts)."""
     if not definition.enabled:
         raise HTTPException(status_code=409, detail="Agent is disabled.")
     if target_type and target_type not in definition.supported_entity_types:
@@ -137,7 +142,7 @@ def run_agent(
         input_snapshot=snapshot,
         status=AgentRunStatus.RUNNING,
         started_at=utcnow(),
-        correlation_id=uuid4().hex,
+        correlation_id=correlation_id or uuid4().hex,
         retry_of_id=retry_of_id,
     )
     session.add(run)
@@ -197,12 +202,19 @@ def run_agent(
     return run
 
 
-def retry_run(session: Session, original: AgentRun, *, definition: AgentDefinition, user: User) -> AgentRun:
+def retry_run(
+    session: Session,
+    original: AgentRun,
+    *,
+    definition: AgentDefinition,
+    user: User,
+    correlation_id: Optional[str] = None,
+) -> AgentRun:
     """Create a NEW run for the same agent/target — never overwrite history."""
     return run_agent(
         session, definition=definition, user=user,
         target_type=original.target_type, target_id=original.target_id,
-        retry_of_id=original.id,
+        retry_of_id=original.id, correlation_id=correlation_id,
     )
 
 

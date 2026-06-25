@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, Index
 from sqlmodel import Field, Relationship
 
 from app.models.base import BaseEntity
@@ -80,6 +80,11 @@ class IntegrationRun(BaseEntity, table=True):
     """
 
     __tablename__ = "integration_runs"
+
+    # Composite index for run history filtered by point + status.
+    __table_args__ = (
+        Index("ix_integration_runs_point_status", "integration_point_id", "status"),
+    )
 
     integration_point_id: str = Field(
         foreign_key="integration_points.id", index=True

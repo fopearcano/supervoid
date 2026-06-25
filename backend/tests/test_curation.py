@@ -177,12 +177,20 @@ def test_publication_history_preserved(client: TestClient) -> None:
     client.post(f"/api/curation/works/{work['id']}/unpublish")
 
     events = client.get(f"/api/curation/works/{work['id']}/events").json()
-    actions = [e["action"] for e in events]
+    actions = [e["action"] for e in events["items"]]
     assert "published" in actions
     assert "unpublished" in actions
     assert "created" in actions
+    # The paginated history reports its total alongside the page of items.
+    assert events["total"] == len(events["items"])
+    # Filtering by action narrows the history.
+    only_pub = client.get(
+        f"/api/curation/works/{work['id']}/events?action=published"
+    ).json()
+    assert only_pub["total"] >= 1
+    assert {e["action"] for e in only_pub["items"]} == {"published"}
     approvals = client.get(f"/api/curation/works/{work['id']}/approvals").json()
-    assert approvals[0]["status"] == "approved"
+    assert approvals["items"][0]["status"] == "approved"
 
 
 # === controlled hand-off ===================================================

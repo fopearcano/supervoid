@@ -28,14 +28,15 @@ def test_ecosystem_map_keeps_systems_distinct(anon_client: TestClient) -> None:
     assert members["supervoid_movies"]["current"] is False
 
 
-def test_logosforge_integration_is_a_planned_writing_bridge(
+def test_logosforge_integration_is_an_adapter_backed_writing_bridge(
     anon_client: TestClient,
 ) -> None:
     r = anon_client.get("/api/integrations/logosforge")
     assert r.status_code == 200
     body = r.json()
     assert body["name"] == "LOGOSFORGE"
-    assert body["status"] == "planned"
+    # The inbound bundle import is now a usable (local-first) hub adapter.
+    assert body["status"] == "available"
     assert len(body["capabilities"]) >= 1
 
 

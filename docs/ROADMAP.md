@@ -3,7 +3,79 @@
 A phased plan. The guiding constraints are unchanged from the migration:
 **local-first**, **modular**, no unnecessary services, working system first.
 
-Status legend: ✅ done · 🟡 in place / partial · ⚪ planned
+## Status tiers
+
+Every capability is classified into one of these tiers. The distinction between
+*production-ready* and *adapter-only* is deliberate and load-bearing: **mocked,
+dry-run, and package-export integrations are never described as fully operational
+external integrations.**
+
+- ✅ **Production-ready** — built, tested, and hardened; safe to run as-is
+  (local-first). Backed by the test suite, the migration CI gate, structured
+  errors, request correlation, and backup/restore.
+- 🟢 **Completed** — built and tested end-to-end; production-ready pending only an
+  operational choice (a real Postgres, real credentials, a real upload target).
+- 🧪 **Experimental** — built but not hardened; off by default or dry-run only;
+  needs opt-in and further work before production use.
+- 🔌 **Adapter-only (local-first)** — a local adapter, package generator, or typed
+  contract — **not** a live external integration. It generates/ingests structured
+  packages or *records* intent; it never dispatches over the network unless
+  `INTEGRATIONS_ALLOW_NETWORK` is explicitly enabled and tested. Do not describe
+  these as fully operational external integrations.
+- 🌱 **Future extraction** — a bounded context drawn so it can be split into its
+  own service later; runs inside the monolith today.
+- ⚪ **Planned** — not yet built.
+
+Inline phase markers below use the same icons (a ⚪ item within a shipped phase is
+a planned extension of it).
+
+## Status by tier (overview)
+
+**✅ Production-ready (hardened, local-first)**
+- Editorial core: Works, Manuscripts, Authors, workflow engine, reviews,
+  contracts, editorial notes, attachments, search/archive.
+- Production task system (tasks, dependencies, milestones, approvals, activity).
+- Asset Library (versions, checksum dedupe, provenance, licences, storage).
+- Graphic-novel production hierarchy + the private curation CMS and public
+  reader (with proven public/private isolation and real cinematic mode).
+- Supervised studio-agent framework (gated proposals; nothing auto-executes).
+- Collaboration & project-scoped access control.
+- Operational command centre (read-only aggregation; one-person-first).
+- Platform hardening: Alembic migrations + CI `check`, composite hot-path
+  indexes (0012), structured error envelope, request correlation, pagination on
+  large collections, and **backup/restore of records + assets**.
+
+**🟢 Completed (pending an operational choice)**
+- Operational business layer — rights depth, CRM, editions; **export packages**
+  (ONIX/KDP/Ingram/web/press-kit/ARC) are generated and validated locally.
+  *Channel uploads are not implemented* (see adapter-only).
+- Postgres support — engine-agnostic ORM and migrations; not yet CI-verified
+  against a live Postgres.
+
+**🔌 Adapter-only (local-first — NOT live external integrations)**
+- Integration hub adapters: **n8n**, **ComfyUI**, **GitHub** — outbound effects
+  are *recorded*, not dispatched, unless network access is explicitly enabled.
+- **Desktop file-exchange** adapters (Affinity, InDesign, Clip Studio Paint,
+  DaVinci Resolve, Blender, Cinema 4D, Houdini) — generate/ingest structured
+  packages; no remote control.
+- **LOGOSFORGE** — local-first **bundle import** (`import_manuscript`,
+  `sync_knowledge_graph`); outbound notes recorded-only. No live LOGOSFORGE API.
+- **Distribution export packages** — validated packages and checklists, not
+  uploads.
+
+**🧪 Experimental (opt-in / not hardened)**
+- AI providers behind the provider interface — **dry-run by default**; real
+  providers are opt-in and unverified.
+- Agent executors beyond `update_work_metadata` — high-risk/external proposals
+  are *recorded*, not performed, even after approval.
+
+**🌱 Future extraction (bounded contexts, monolith today)**
+- SUPERVOID Pictures (`/api/screen`) — own vocabulary, id-only cross-refs.
+- The integration hub and the LOGOSFORGE seam — extractable behind their
+  adapters/contracts.
+
+**⚪ Planned** — see the per-phase ⚪ items below (royalties, CDN/derivatives,
+live channel uploads, scheduling, PDF export, real-provider hardening).
 
 ---
 
@@ -262,15 +334,20 @@ The unifying dashboard over the whole studio — one-person-first, team-ready. S
 - ✅ 10 tests, including per-user scoping for *my work*. No new tables — pure
   aggregation over the existing domains.
 
-## Phase 4 — LOGOSFORGE integration (writing subsystem) ⚪
+## Phase 4 — LOGOSFORGE integration (writing subsystem) 🔌
 
-The contract already exists at `/api/integrations/logosforge`. Implementation:
+Implemented as a **local-first, package-based hub adapter** (`logosforge`) — an
+**adapter-only** integration, not a live LOGOSFORGE API. The contract at
+`/api/integrations/logosforge` is now `available` and backed by the adapter.
 
-- ⚪ `import_manuscript` — pull a finished LOGOSFORGE draft into a manuscript.
-- ⚪ `sync_knowledge_graph` — seed editorial entities/relationships from
-  LOGOSFORGE narrative structure.
-- ⚪ `return_editorial_notes` — push editorial notes/revisions back to the author.
-- ⚪ Adapter + auth model for a locally running LOGOSFORGE instance (local-first).
+- 🔌 `import_manuscript` — ingest an exported LOGOSFORGE draft **bundle** as a
+  manuscript (resolves/creates the author), through the approval boundary.
+- 🔌 `sync_knowledge_graph` — seed editorial entities/relationships from the
+  bundle (idempotent by slug).
+- 🔌 `return_editorial_notes` — **recorded only**; nothing is dispatched (no live
+  LOGOSFORGE API).
+- ⚪ A real adapter against a locally running LOGOSFORGE instance (live exchange)
+  remains future work; today the seam is package/bundle based.
 
 ## Phase 5 — SUPERVOID Pictures (screen division) 🟡
 
@@ -298,10 +375,20 @@ The SUPERVOID Movies integration descriptor is `available`.
   (`create_all` / `migrate` / `skip`), a migration CLI, a CI-safe schema
   verification (`manage_db.py check`), and migration tests. SQLite tested;
   Postgres supported via the same env. See [`MIGRATIONS.md`](MIGRATIONS.md).
+- ✅ **Integration & hardening pass** — end-to-end workflow tests; composite
+  hot-path indexes (Alembic `0012`); pagination + filtering on every large
+  collection; a consistent `{detail, request_id}` **error envelope** (incl.
+  validation `errors`); **request correlation** threaded into agent and
+  integration runs; **backup/restore** of records *and* stored assets
+  (`scripts/backup_restore.py`); a verified demo seed; and refreshed API /
+  architecture / workflow docs + a release-readiness checklist.
+- 🌱 LOGOSFORGE bundle import shipped as a local-first **adapter-only** seam
+  (see Phase 4) — completing the declared contract without claiming a live API.
 - ⚪ Postgres as a first-class deployment target with CI coverage (validate the
   baseline against a real Postgres instance).
 - ⚪ PDF export (currently a reserved placeholder).
-- ⚪ Real AI providers behind the existing provider interface (opt-in).
+- 🧪 Real AI providers behind the existing provider interface — opt-in, dry-run
+  by default, not yet hardened.
 
 ---
 

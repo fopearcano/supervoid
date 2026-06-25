@@ -9,7 +9,7 @@ approval before execution, and retries create new runs rather than overwrite.
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, Index
 from sqlmodel import Field, Relationship
 
 from app.models.base import BaseEntity
@@ -33,6 +33,13 @@ class AgentRun(BaseEntity, table=True):
     """
 
     __tablename__ = "agent_runs"
+
+    # Composite indexes for the agent inbox (status + recency) and the per-work
+    # command page (target lookup).
+    __table_args__ = (
+        Index("ix_agent_runs_target", "target_type", "target_id"),
+        Index("ix_agent_runs_status_created_at", "status", "created_at"),
+    )
 
     agent_key: str = Field(max_length=120, index=True)
     requested_by_id: Optional[str] = Field(
@@ -80,6 +87,11 @@ class AgentFinding(BaseEntity, table=True):
 
     __tablename__ = "agent_findings"
 
+    # Composite index for the inbox: open findings grouped/filtered by severity.
+    __table_args__ = (
+        Index("ix_agent_findings_resolved_severity", "resolved", "severity"),
+    )
+
     run_id: str = Field(foreign_key="agent_runs.id", index=True)
     agent_key: str = Field(max_length=120, index=True)
 
@@ -107,6 +119,11 @@ class AgentActionProposal(BaseEntity, table=True):
     external actions always require it."""
 
     __tablename__ = "agent_action_proposals"
+
+    # Composite index for the inbox: pending proposals by recency.
+    __table_args__ = (
+        Index("ix_agent_action_proposals_status_created_at", "status", "created_at"),
+    )
 
     run_id: str = Field(foreign_key="agent_runs.id", index=True)
     agent_key: str = Field(max_length=120, index=True)

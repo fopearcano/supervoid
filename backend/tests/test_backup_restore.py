@@ -1,0 +1,120 @@
+"""Backup/restore covers new records *and* stored assets (round-trip).
+
+The dump is driven by ``SQLModel.metadata`` so it inherently covers every new
+record type; this proves a representative connected graph (asset + version +
+provenance, an agent run, a public projection) plus a real asset file survive a
+backup → restore into a fresh database and storage path.
+"""
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import pytest
+from sqlmodel import Session, create_engine, select
+
+from app.migrations import ensure_migrated
+from app.models import (
+    AgentRun,
+    AssetVersion,
+    Author,
+    ProvenanceRecord,
+    PublishedWork,
+)
+from app.models.enums import PublishedStatus
+from app.services.integrations import effects
+
+_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "backup_restore.py"
+
+
+def _load_module():
+    spec = importlib.util.spec_from_file_location("backup_restore", _SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _populate(url: str, storage: Path) -> dict:
+    ensure_migrated(url)
+    engine = create_engine(url)
+    ids: dict = {}
+    try:
+        with Session(engine) as s:
+            author = Author(full_name="Backup Author")
+            s.add(author)
+            s.flush()
+            res = effects.attach_asset_version(
+                s,
+                new_asset={"title": "Backup Cover", "asset_type": "cover"},
+                owner_id=None,
+                storage_key="assets/backup-cover.png",
+                mime_type="image/png",
+                provenance={"kind": "mixed", "provider": "hand"},
+            )
+            s.add(AgentRun(agent_key="manuscript_consistency", correlation_id="trace-backup"))
+            s.add(PublishedWork(
+                title="Backup Public", slug="backup-public", status=PublishedStatus.DRAFT
+            ))
+            s.commit()
+            ids["asset_version_id"] = res["asset_version_id"]
+    finally:
+        engine.dispose()
+
+    f = storage / "assets" / "backup-cover.png"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_bytes(b"\x89PNG\r\n\x1a\nDEMO-BYTES")
+    return ids
+
+
+def test_backup_restore_round_trip(tmp_path: Path) -> None:
+    mod = _load_module()
+    src_url = f"sqlite:///{tmp_path / 'src.db'}"
+    src_storage = tmp_path / "src-storage"
+    ids = _populate(src_url, src_storage)
+
+    out = tmp_path / "backup"
+    manifest = mod.backup(out, url=src_url, storage_path=str(src_storage))
+    assert manifest["storage_files"] >= 1
+    # New-domain tables are present in the dump with their rows.
+    for table in ("assets", "asset_versions", "provenance_records", "agent_runs", "published_works"):
+        assert manifest["row_counts"][table] == 1, table
+
+    # Restore into a fresh database + storage path.
+    dst_url = f"sqlite:///{tmp_path / 'dst.db'}"
+    dst_storage = tmp_path / "dst-storage"
+    stats = mod.restore(out, url=dst_url, storage_path=str(dst_storage))
+    assert stats["total_rows"] == manifest["total_rows"]
+
+    engine = create_engine(dst_url)
+    try:
+        with Session(engine) as s:
+            assert s.exec(select(Author)).first().full_name == "Backup Author"
+            av = s.exec(select(AssetVersion)).first()
+            assert av.storage_key == "assets/backup-cover.png"
+            prov = s.exec(select(ProvenanceRecord)).first()
+            assert prov.asset_version_id == ids["asset_version_id"]
+            assert s.exec(select(AgentRun)).first().correlation_id == "trace-backup"
+            assert s.exec(select(PublishedWork)).first().slug == "backup-public"
+    finally:
+        engine.dispose()
+
+    # The asset file came back byte-for-byte.
+    restored = dst_storage / "assets" / "backup-cover.png"
+    assert restored.is_file()
+    assert restored.read_bytes() == (src_storage / "assets" / "backup-cover.png").read_bytes()
+
+
+def test_restore_refuses_nonempty_without_reset(tmp_path: Path) -> None:
+    mod = _load_module()
+    src_url = f"sqlite:///{tmp_path / 'src.db'}"
+    src_storage = tmp_path / "s"
+    _populate(src_url, src_storage)
+    out = tmp_path / "b"
+    mod.backup(out, url=src_url, storage_path=str(src_storage))
+
+    # Restoring back into the populated source refuses without reset...
+    with pytest.raises(SystemExit):
+        mod.restore(out, url=src_url, storage_path=str(src_storage))
+    # ...but succeeds with reset (idempotent reload).
+    stats = mod.restore(out, url=src_url, storage_path=str(src_storage), reset=True)
+    assert stats["total_rows"] >= 5

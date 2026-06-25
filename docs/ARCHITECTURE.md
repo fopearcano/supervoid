@@ -34,12 +34,15 @@ backend/
     services/        Business logic (workflow, knowledge, AI, exports, storage,
                      public_reader_service)
     integrations/    Ecosystem integration contracts (LOGOSFORGE, Movies)
+    services/integrations/adapters/   Hub adapters (n8n, comfyui, github,
+                     file_exchange.*, logosforge) + effects
     static/demo/     Local placeholder media for the public reader
     utils/           crud, logging, request-id middleware, pagination
-  alembic/           Migration environment + versions/ (baseline schema)
+  alembic/           Migration environment + versions/ (baseline … 0012)
   alembic.ini        Alembic config (URL resolved from settings in env.py)
-  scripts/manage_db.py  Migration CLI (upgrade/stamp/ensure/verify/check)
-  tests/             Pytest suite
+  scripts/manage_db.py       Migration CLI (upgrade/stamp/ensure/verify/check)
+  scripts/backup_restore.py  Logical dump/restore (records + asset storage)
+  tests/             Pytest suite (incl. test_e2e_workflows, test_backup_restore)
 frontend/
   src/
     main.tsx         Entry — admin App, or PublicViewerApp for /reader*
@@ -171,7 +174,21 @@ React (api/*.ts) ──HTTP──> FastAPI router ──> service / crud util �
 
 The app factory (`create_app`) mounts every router in `routers.ALL_ROUTERS`
 under the `/api` prefix, installs CORS and a request-id middleware, and
-registers integrity/`Exception` handlers that return correlation-tagged JSON.
+registers a consistent set of error handlers.
+
+**Structured error envelope.** Every error response — `HTTPException` (404 /
+400 / 401 / 403 / 409 …), request-validation (422), `IntegrityError` (409) and
+the catch-all 500 — returns the same JSON shape: `{"detail": <string>,
+"request_id": <id>}` (validation errors add a structured `"errors"` list), with
+the `X-Request-ID` header set on every response (errors included). Any
+exception-supplied headers (e.g. `WWW-Authenticate` on 401) are preserved.
+
+**Request correlation.** The request-id middleware mints (or honours an inbound)
+`X-Request-ID` and stamps it on `request.state`, every log record, and the
+response. Agent runs and integration runs carry that id as their
+`correlation_id` (falling back to a fresh id off-request), so a run is traceable
+back to the HTTP request — and, for integration runs, across its whole
+approve/execute lifecycle.
 
 ## Authentication & roles
 
@@ -452,8 +469,11 @@ an **Agent Centre** (registry, run, history, findings inbox, proposals).
 `backend/app/integrations/` declares **typed contracts** — not live clients —
 for sibling systems under SUPERVOID ENTANGLED:
 
-- `logosforge.py` — the LOGOSFORGE writing subsystem bridge (import drafts,
-  seed the knowledge graph, return editorial notes).
+- `logosforge.py` — the LOGOSFORGE writing subsystem bridge (status
+  `available`). The inbound seam is now backed by a **local-first, package-based
+  hub adapter** (`logosforge`): it ingests an exported draft *bundle* as a
+  manuscript and seeds the knowledge graph through the approval boundary.
+  Outbound editorial notes are *recorded only* — there is no live LOGOSFORGE API.
 - `movies.py` — the SUPERVOID Pictures bridge, now **operational** (status
   `available`): it points at the in-repo screen context at `/api/screen` (see
   *SUPERVOID Pictures*), not a future external system.
@@ -487,7 +507,10 @@ shadowed by it.
   sync), and a `file_exchange.*` profile per desktop app (Affinity, InDesign,
   Clip Studio Paint, DaVinci Resolve, Blender, Cinema 4D, Houdini) that
   generates/ingests **structured packages** rather than pretending to remote-
-  control the app.
+  control the app, plus `logosforge` (sibling writing subsystem): a local-first
+  **bundle import** — `import_manuscript` (draft bundle → manuscript) and
+  `sync_knowledge_graph` (entities/relationships → knowledge graph) inbound, with
+  `return_editorial_notes` recorded-only. Adapter-only: no live LOGOSFORGE API.
 - **Secure configuration** (`config.py`): secrets live only in the environment
   and are resolved by reference at call time; the API never returns secret
   values or env-var names — only presence booleans and masked config.
@@ -655,6 +678,20 @@ Shared helpers live in `app/migrations.py`; the CLI is `scripts/manage_db.py`
 (`upgrade`/`downgrade`/`stamp`/`ensure`/`verify`/`check`). `manage_db.py check`
 is a CI-safe guard that builds the schema from migrations on a throwaway DB and
 asserts it matches `SQLModel.metadata`.
+
+Migration **0012** adds composite indexes for the hot read paths (the command
+centre / "my work" / agent inbox): `production_items(assignee_id,status)`,
+`(status,due_date)`, `(work_id,status)`; `agent_findings(resolved,severity)`;
+`agent_runs(target_type,target_id)` and `(status,created_at)`;
+`agent_action_proposals(status,created_at)`; and
+`integration_runs(integration_point_id,status)`. They are declared on the
+models' `__table_args__` so a fresh `create_all` and the migration agree.
+
+**Backup / restore.** `scripts/backup_restore.py` performs a logical,
+dialect-agnostic dump of every table (driven by `SQLModel.metadata`, so it
+covers new record types automatically) plus a copy of the asset storage tree,
+and restores both into a freshly migrated target. See the *Release readiness*
+checklist for operational use.
 
 ## Extending the system
 

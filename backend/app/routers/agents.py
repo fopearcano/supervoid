@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session, func, select
 
 from app.auth import AUTHED, get_current_user
@@ -135,6 +135,7 @@ def list_agent_tools() -> list[ToolRead]:
 def run_agent(
     key: str,
     payload: RunRequest,
+    request: Request,
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> AgentRunDetail:
@@ -145,6 +146,7 @@ def run_agent(
     run = agent_svc.run_agent(
         session, definition=definition, user=user,
         target_type=payload.target_type, target_id=payload.target_id,
+        correlation_id=getattr(request.state, "request_id", None),
     )
     session.commit()
     session.refresh(run)
@@ -183,6 +185,7 @@ def get_run(run_id: str, session: Session = Depends(get_session)) -> AgentRunDet
 @router.post("/agent-runs/{run_id}/retry", response_model=AgentRunDetail, status_code=201)
 def retry_run(
     run_id: str,
+    request: Request,
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> AgentRunDetail:
@@ -191,7 +194,10 @@ def retry_run(
     if definition is None:
         raise HTTPException(status_code=409, detail="Agent no longer registered")
     _check_permissions(session, user, definition, original.target_type, original.target_id)
-    run = agent_svc.retry_run(session, original, definition=definition, user=user)
+    run = agent_svc.retry_run(
+        session, original, definition=definition, user=user,
+        correlation_id=getattr(request.state, "request_id", None),
+    )
     session.commit()
     session.refresh(run)
     return _run_detail(run)

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session, select
 
 from app.auth import ADMIN_ONLY, AUTHED, get_current_user
@@ -247,6 +247,7 @@ def integration_point_config(
 def request_integration_operation(
     point_id: str,
     payload: OperationRequest,
+    request: Request,
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> IntegrationRunRead:
@@ -254,6 +255,7 @@ def request_integration_operation(
     run = integration_hub.request_operation(
         session, point, payload.operation, payload.payload,
         user=user, dry_run=payload.dry_run,
+        correlation_id=getattr(request.state, "request_id", None),
     )
     session.commit()
     session.refresh(run)

@@ -30,9 +30,13 @@ export const updatePublishedWork = (id: string, payload: Record<string, unknown>
 export const validateWork = (id: string) =>
   apiFetch<ValidationResult>(`/curation/works/${id}/validate`);
 export const fetchEvents = (id: string) =>
-  apiFetch<PublicationEventAdmin[]>(`/curation/works/${id}/events`);
+  apiFetch<Page<PublicationEventAdmin>>(
+    `/curation/works/${id}/events?limit=100`,
+  ).then((p) => p.items);
 export const fetchApprovals = (id: string) =>
-  apiFetch<ApprovalAdmin[]>(`/curation/works/${id}/approvals`);
+  apiFetch<Page<ApprovalAdmin>>(
+    `/curation/works/${id}/approvals?limit=100`,
+  ).then((p) => p.items);
 export const requestApproval = (id: string) =>
   apiPostJson<ApprovalAdmin>(`/curation/works/${id}/request-approval`, {});
 export const decideApproval = (approvalId: string, approve: boolean) =>
@@ -67,7 +71,7 @@ export const createCurationPage = (chapterId: string, payload: Record<string, un
 // --- media -----------------------------------------------------------------
 
 export const fetchPublicMedia = () =>
-  apiFetch<MediaAdmin[]>('/curation/media');
+  apiFetch<Page<MediaAdmin>>('/curation/media?limit=200').then((p) => p.items);
 export const createPublicMedia = (payload: Record<string, unknown>) =>
   apiPostJson<MediaAdmin>('/curation/media', payload);
 

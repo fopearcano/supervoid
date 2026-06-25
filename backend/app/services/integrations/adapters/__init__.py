@@ -14,6 +14,7 @@ from app.services.integrations.adapters.file_exchange import (
     FileExchangeAdapter,
 )
 from app.services.integrations.adapters.github import GitHubProjectAdapter
+from app.services.integrations.adapters.logosforge import LogosforgeAdapter
 from app.services.integrations.adapters.n8n import N8nWebhookAdapter
 from app.services.integrations.base import IntegrationAdapter
 
@@ -28,6 +29,7 @@ def _register(adapter: IntegrationAdapter) -> IntegrationAdapter:
 _register(N8nWebhookAdapter())
 _register(ComfyUIAdapter())
 _register(GitHubProjectAdapter())
+_register(LogosforgeAdapter())
 for _profile in DESKTOP_APP_PROFILES:
     _register(FileExchangeAdapter(_profile))
 
@@ -47,6 +49,7 @@ __all__ = [
     "DESKTOP_APP_PROFILES",
     "FileExchangeAdapter",
     "GitHubProjectAdapter",
+    "LogosforgeAdapter",
     "N8nWebhookAdapter",
     "get_adapter",
     "list_adapters",

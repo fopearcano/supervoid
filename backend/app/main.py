@@ -5,10 +5,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.db import prepare_database
@@ -75,6 +78,39 @@ def create_app() -> FastAPI:
             "/public/demo",
             StaticFiles(directory=PUBLIC_DEMO_DIR),
             name="public-demo",
+        )
+
+    # Every error response carries the same envelope: a human-readable
+    # ``detail`` string plus the ``request_id`` (also on the header) so a
+    # failure in the UI or a log line can be traced to one request.
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_exception_handler(
+        request: Request, exc: StarletteHTTPException
+    ) -> JSONResponse:
+        rid = getattr(request.state, "request_id", "-")
+        # Preserve any exception-supplied headers (e.g. WWW-Authenticate on 401).
+        headers = dict(getattr(exc, "headers", None) or {})
+        headers[REQUEST_ID_HEADER] = rid
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail, "request_id": rid},
+            headers=headers,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        rid = getattr(request.state, "request_id", "-")
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "Request validation failed.",
+                "errors": jsonable_encoder(exc.errors()),
+                "request_id": rid,
+            },
+            headers={REQUEST_ID_HEADER: rid},
         )
 
     @app.exception_handler(IntegrityError)

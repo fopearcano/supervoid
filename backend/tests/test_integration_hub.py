@@ -177,6 +177,19 @@ def test_read_only_operation_runs_immediately(client: TestClient) -> None:
     assert run["output"]["reachable"] is False
 
 
+def test_run_correlation_id_matches_request_id(client: TestClient) -> None:
+    """An integration run is traceable back to the HTTP request that asked for
+    it: its correlation_id is the inbound X-Request-ID."""
+    point = _point(client)
+    r = client.post(
+        f"/api/integrations/points/{point['id']}/operations",
+        json={"operation": "query_status", "payload": {"prompt_id": "p1"}, "dry_run": False},
+        headers={"X-Request-ID": "trace-integration-1"},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["correlation_id"] == "trace-integration-1"
+
+
 def test_dry_run_external_operation_has_no_side_effect(client: TestClient) -> None:
     point = _point(client, adapter_key="n8n_webhook", config={"webhook_url": "http://x/y"})
     run = _request_op(
@@ -457,3 +470,100 @@ def test_hub_requires_auth(anon_client: TestClient) -> None:
         "/api/integrations/points/x/operations",
         json={"operation": "query_status"},
     ).status_code == 401
+
+
+# --- LOGOSFORGE: local-first bundle import (adapter-only) -------------------
+
+
+def _lf_point(client: TestClient) -> dict:
+    return _point(client, name="LOGOSFORGE", adapter_key="logosforge", config={})
+
+
+def test_logosforge_adapter_registered_and_local_first(client: TestClient) -> None:
+    adapters = {a["key"]: a for a in client.get("/api/integrations/adapters").json()}
+    assert "logosforge" in adapters
+    ops = {o["key"]: o for o in adapters["logosforge"]["operations"]}
+    # import is inbound + mutating (gated, not admin); notes are external (admin-gated).
+    assert ops["import_manuscript"]["mutating"] is True
+    assert ops["import_manuscript"]["external"] is False
+    assert ops["return_editorial_notes"]["external"] is True
+    # Local-first health needs no configuration.
+    point = _lf_point(client)
+    health = client.get(f"/api/integrations/points/{point['id']}/health").json()
+    assert health["status"] == "healthy"
+
+
+def test_logosforge_import_manuscript_dry_run_then_creates(client: TestClient) -> None:
+    point = _lf_point(client)
+    bundle = {
+        "manuscript": {
+            "title": "The Drowned Cathedral",
+            "synopsis": "A tide myth.",
+            "word_count": 42000,
+        },
+        "author": {"full_name": "Wren Calloway"},
+    }
+    # Dry-run previews and creates nothing.
+    dry = _request_op(client, point["id"], "import_manuscript", bundle, dry_run=True)
+    assert dry["status"] == "succeeded"
+    assert dry["output"]["would_create"]["manuscript_title"] == "The Drowned Cathedral"
+    assert "manuscript_id" not in dry["output"]
+
+    # Real run: mutating -> gated -> approve -> execute.
+    run = _request_op(client, point["id"], "import_manuscript", bundle)
+    rid = run["id"]
+    assert run["status"] == "pending_approval"
+    assert client.post(f"/api/integrations/runs/{rid}/approve").json()["status"] == "approved"
+    executed = client.post(f"/api/integrations/runs/{rid}/execute").json()
+    assert executed["status"] == "succeeded"
+    ms_id = executed["output"]["manuscript_id"]
+    fetched = client.get(f"/api/manuscripts/{ms_id}").json()
+    assert fetched["title"] == "The Drowned Cathedral"
+    assert fetched["word_count"] == 42000
+
+
+def test_logosforge_sync_knowledge_graph_is_idempotent(client: TestClient) -> None:
+    point = _lf_point(client)
+    bundle = {"knowledge": {
+        "entities": [
+            {"kind": "character", "name": "Wren"},
+            {"kind": "place", "name": "The Cathedral"},
+        ],
+        "relationships": [
+            {"source": "Wren", "target": "The Cathedral", "kind": "inhabits"}
+        ],
+    }}
+
+    def _run_sync() -> dict:
+        run = _request_op(client, point["id"], "sync_knowledge_graph", bundle)
+        rid = run["id"]
+        client.post(f"/api/integrations/runs/{rid}/approve")
+        return client.post(f"/api/integrations/runs/{rid}/execute").json()
+
+    first = _run_sync()
+    assert first["status"] == "succeeded"
+    assert first["output"]["entities_created"] == 2
+    assert first["output"]["relationships_created"] == 1
+    # A re-sync de-duplicates entities by slug — nothing new is created.
+    second = _run_sync()
+    assert second["output"]["entities_created"] == 0
+
+
+def test_logosforge_return_notes_is_admin_gated_and_recorded(
+    client: TestClient, editor_client: TestClient
+) -> None:
+    point = _lf_point(client)
+    run = _request_op(
+        client, point["id"], "return_editorial_notes",
+        {"manuscript_id": "ms-1", "notes": [{"text": "tighten act II"}]},
+    )
+    rid = run["id"]
+    assert run["status"] == "pending_approval"
+    # External -> a non-admin cannot approve.
+    assert editor_client.post(f"/api/integrations/runs/{rid}/approve").status_code == 403
+    assert client.post(f"/api/integrations/runs/{rid}/approve").json()["status"] == "approved"
+    executed = client.post(f"/api/integrations/runs/{rid}/execute").json()
+    assert executed["status"] == "succeeded"
+    # Recorded, never dispatched (local-first; no live LOGOSFORGE API).
+    assert executed["output"]["mode"] == "recorded"
+    assert executed["output"]["dispatched"] is False

@@ -851,6 +851,7 @@ class IntegrationAdapterKind(str, Enum):
     COMFYUI = "comfyui"  # local image/video generation backend
     GITHUB = "github"  # source-control project bridge
     FILE_EXCHANGE = "file_exchange"  # desktop-app export/import packages
+    LOGOSFORGE = "logosforge"  # sibling writing subsystem bundle exchange
     OTHER = "other"
 
 

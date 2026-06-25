@@ -21,15 +21,21 @@ from app.models import (
     AssetType,
     AssetVersion,
     AssetVisibility,
+    Author,
     CommercialUseReviewStatus,
     IntegrationLink,
     IntegrationLinkKind,
     IntegrationPoint,
+    KnowledgeEntity,
+    KnowledgeRelationship,
+    Manuscript,
     ProductionItem,
     ProvenanceKind,
     ProvenanceRecord,
 )
 from app.models.base import utcnow
+from app.models.enums import EntityKind, RelationshipKind, WorkType
+from app.services.knowledge import slugify
 from app.services.storage import get_storage
 
 
@@ -47,6 +53,29 @@ def _asset_type(value) -> AssetType:
         return AssetType(value)
     except (ValueError, TypeError):
         return AssetType.OTHER
+
+
+def _work_type(value) -> WorkType:
+    if isinstance(value, WorkType):
+        return value
+    try:
+        return WorkType(value)
+    except (ValueError, TypeError):
+        return WorkType.BOOK
+
+
+def _entity_kind(value) -> EntityKind:
+    try:
+        return EntityKind(value)
+    except (ValueError, TypeError):
+        return EntityKind.OTHER
+
+
+def _relationship_kind(value) -> RelationshipKind:
+    try:
+        return RelationshipKind(value)
+    except (ValueError, TypeError):
+        return RelationshipKind.RELATED_TO
 
 
 def _provenance_kind(value, default: ProvenanceKind) -> ProvenanceKind:
@@ -224,6 +253,121 @@ def create_task_link(
         "external_kind": external_kind.value,
         "external_ref": link.external_ref,
         "target_id": target_id,
+    }
+
+
+def _resolve_author(session: Session, author: dict, *, fallback_name: str) -> Author:
+    author = author or {}
+    aid = author.get("id")
+    if aid:
+        existing = session.get(Author, aid)
+        if existing is None:
+            raise ValueError(f"Author {aid} not found.")
+        return existing
+    name = (author.get("full_name") or fallback_name or "").strip()
+    if not name:
+        raise ValueError("The bundle must name an author (id or full_name).")
+    # Re-use an author of the same name rather than duplicating on re-import.
+    match = session.exec(select(Author).where(Author.full_name == name)).first()
+    if match is not None:
+        return match
+    created = Author(
+        full_name=name,
+        pen_name=author.get("pen_name"),
+        email=author.get("email"),
+        biography=author.get("biography"),
+    )
+    session.add(created)
+    session.flush()
+    return created
+
+
+def import_manuscript_bundle(
+    session: Session, *, bundle: dict, owner_id: Optional[str] = None
+) -> dict:
+    """Ingest a LOGOSFORGE draft *bundle* as a SUPERVOID ``Manuscript``.
+
+    Local-first: ``bundle`` is a structured dict already parsed from a file the
+    sibling writing app exported — no network call is made. The author is
+    resolved by id or re-used/created by name. Returns the new manuscript id.
+    """
+    manuscript = bundle.get("manuscript") or {}
+    title = (manuscript.get("title") or "").strip()
+    if not title:
+        raise ValueError("The bundle manuscript must have a title.")
+    author = _resolve_author(
+        session,
+        bundle.get("author") or {},
+        fallback_name=manuscript.get("author_name", ""),
+    )
+    work_id = bundle.get("work_id")
+    ms = Manuscript(
+        title=title,
+        subtitle=manuscript.get("subtitle"),
+        synopsis=manuscript.get("synopsis"),
+        genre=manuscript.get("genre"),
+        language=manuscript.get("language", "en"),
+        word_count=_int(manuscript.get("word_count")),
+        version=str(manuscript.get("version", "1")),
+        work_type=_work_type(manuscript.get("work_type")),
+        author_id=author.id,
+        work_id=work_id,
+        file_format=manuscript.get("body_format"),
+    )
+    session.add(ms)
+    session.flush()
+    return {
+        "manuscript_id": ms.id,
+        "author_id": author.id,
+        "title": ms.title,
+        "work_id": work_id,
+    }
+
+
+def seed_knowledge_graph(
+    session: Session, *, entities: list, relationships: list
+) -> dict:
+    """Seed the editorial knowledge graph from LOGOSFORGE story entities.
+
+    De-duplicates entities by canonical slug so a re-sync is idempotent, then
+    links them. Returns counts of what was created."""
+    resolved: dict[str, KnowledgeEntity] = {}
+    created_entities = 0
+    for raw in entities or []:
+        name = (raw.get("name") or "").strip()
+        if not name:
+            continue
+        slug = slugify(name) or "entity"
+        entity = session.exec(
+            select(KnowledgeEntity).where(KnowledgeEntity.slug == slug)
+        ).first()
+        if entity is None:
+            entity = KnowledgeEntity(
+                name=name, slug=slug, kind=_entity_kind(raw.get("kind")),
+                description=raw.get("description"),
+            )
+            session.add(entity)
+            session.flush()
+            created_entities += 1
+        resolved[slug] = entity
+
+    created_rels = 0
+    for rel in relationships or []:
+        src = resolved.get(slugify(rel.get("source", "")))
+        tgt = resolved.get(slugify(rel.get("target", "")))
+        if src is None or tgt is None or src.id == tgt.id:
+            continue
+        session.add(KnowledgeRelationship(
+            source_id=src.id, target_id=tgt.id,
+            kind=_relationship_kind(rel.get("kind")),
+            description=rel.get("description"),
+        ))
+        created_rels += 1
+    session.flush()
+    return {
+        "entities_created": created_entities,
+        "entities_resolved": len(resolved),
+        "relationships_created": created_rels,
     }
 
 
