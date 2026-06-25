@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{(BASE_DIR / 'supervoid.db').as_posix()}"
     database_echo: bool = False
 
+    # How the schema is prepared at application startup:
+    #   create_all -> SQLModel.metadata.create_all (fast, fresh dev DBs; default)
+    #   migrate    -> Alembic; non-destructively adopts a legacy DB then upgrades
+    #   skip       -> do nothing (migrations run out-of-band, e.g. in deploy/CI)
+    # ``create_all`` keeps the current developer experience; production/managed
+    # deployments set ``migrate`` (or ``skip`` + run migrations explicitly).
+    db_init_strategy: str = "create_all"
+
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

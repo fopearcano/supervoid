@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
-from app.db import init_db
+from app.db import prepare_database
 from app.routers import ALL_ROUTERS, public_reader
 from app.utils.logging import configure_logging, get_logger
 from app.utils.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
@@ -36,8 +36,8 @@ async def lifespan(_: FastAPI):
         settings.environment,
         _safe_db_url(settings.database_url),
     )
-    init_db()
-    log.info("schema initialised")
+    mode = prepare_database()
+    log.info("database ready · strategy=%s", mode)
     yield
     log.info("%s stopping", settings.app_name)
 

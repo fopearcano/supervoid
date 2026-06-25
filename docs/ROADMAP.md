@@ -88,10 +88,15 @@ The contract already exists at `/api/integrations/supervoid_movies`:
 - ⚪ Extract reusable domain/workflow packages so SUPERVOID Movies can build on
   them without forking.
 
-## Phase 6 — Platform hardening ⚪
+## Phase 6 — Platform hardening 🟡
 
-- ⚪ Database migrations (Alembic) for non-destructive schema evolution.
-- ⚪ Postgres as a first-class deployment target with CI coverage.
+- ✅ **Database migrations (Alembic)** — baseline of the current schema,
+  non-destructive adoption of existing DBs (stamp), strategy-driven startup
+  (`create_all` / `migrate` / `skip`), a migration CLI, a CI-safe schema
+  verification (`manage_db.py check`), and migration tests. SQLite tested;
+  Postgres supported via the same env. See [`MIGRATIONS.md`](MIGRATIONS.md).
+- ⚪ Postgres as a first-class deployment target with CI coverage (validate the
+  baseline against a real Postgres instance).
 - ⚪ PDF export (currently a reserved placeholder).
 - ⚪ Real AI providers behind the existing provider interface (opt-in).
 

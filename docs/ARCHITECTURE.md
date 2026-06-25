@@ -23,8 +23,9 @@ the publishing division of **SUPERVOID ENTANGLED**, built so that the future
 backend/
   app/
     main.py          FastAPI application factory + middleware + error handlers
-    db.py            Engine, session, init_db (SQLite FK pragma)
-    config.py        Env-driven settings (app name, db url, secret, AI)
+    db.py            Engine, session, init_db + prepare_database (startup)
+    migrations.py    Alembic helpers (config, upgrade/stamp/ensure/verify)
+    config.py        Env-driven settings (app name, db url, db_init_strategy, AI)
     seed.py          Idempotent demo corpus
     auth/            Password hashing, JWT, DI dependencies (roles)
     models/          SQLModel domain entities + enums
@@ -35,6 +36,9 @@ backend/
     integrations/    Ecosystem integration contracts (LOGOSFORGE, Movies)
     static/demo/     Local placeholder media for the public reader
     utils/           crud, logging, request-id middleware, pagination
+  alembic/           Migration environment + versions/ (baseline schema)
+  alembic.ini        Alembic config (URL resolved from settings in env.py)
+  scripts/manage_db.py  Migration CLI (upgrade/stamp/ensure/verify/check)
   tests/             Pytest suite
 frontend/
   src/
@@ -178,9 +182,30 @@ playback) is content-agnostic by design — the seam SUPERVOID Movies can reuse.
 ## Local-first & Postgres
 
 Defaults require nothing external: SQLite on disk, `dry_run` AI, no network.
-Switching to Postgres is a single `DATABASE_URL` change (plus a driver); the
-ORM layer is engine-agnostic and `docker-compose.yml` provides a
+Switching to Postgres is a single `DATABASE_URL` change (plus the `psycopg`
+driver); the ORM layer is engine-agnostic and `docker-compose.yml` provides a
 production-shaped stack.
+
+## Schema migrations (Alembic)
+
+Alembic manages non-destructive schema evolution for both SQLite and Postgres
+(see [`MIGRATIONS.md`](MIGRATIONS.md)). The URL is resolved from
+`settings.database_url` in `alembic/env.py` (no hardcoded URL/credentials);
+SQLite runs in batch mode for portable `ALTER`s.
+
+Startup is strategy-driven (`settings.db_init_strategy`):
+
+- `create_all` *(default)* — `init_db()` builds the schema directly; the fast
+  path for fresh dev databases. `init_db()` is retained for back-compat.
+- `migrate` — `prepare_database()` → `ensure_migrated()`: a pre-Alembic
+  database (tables but no `alembic_version`) is **stamped** at the baseline
+  (never recreated); otherwise it is upgraded/created.
+- `skip` — migrations run out-of-band (deploy/CI).
+
+Shared helpers live in `app/migrations.py`; the CLI is `scripts/manage_db.py`
+(`upgrade`/`downgrade`/`stamp`/`ensure`/`verify`/`check`). `manage_db.py check`
+is a CI-safe guard that builds the schema from migrations on a throwaway DB and
+asserts it matches `SQLModel.metadata`.
 
 ## Extending the system
 

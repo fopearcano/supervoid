@@ -148,6 +148,21 @@ uvicorn app.main:app --reload --port 8000
 The seed is idempotent: it loads a small editorial corpus the first
 time, and reports `Seed skipped` on subsequent runs.
 
+### Database migrations
+
+Schema changes are managed with **Alembic** (full procedures in
+[`docs/MIGRATIONS.md`](docs/MIGRATIONS.md)). Fresh dev databases use `create_all`
+by default; managed databases use migrations:
+
+```bash
+python scripts/manage_db.py upgrade   # apply migrations (to head)
+python scripts/manage_db.py ensure    # adopt an existing DB (stamp) or upgrade/create
+python scripts/manage_db.py check     # CI: migrations build a schema matching the models
+```
+
+Set `DB_INIT_STRATEGY=migrate` to run migrations at startup; a pre-existing
+database is stamped at the baseline (never recreated).
+
 ### Tests
 
 ```bash
