@@ -39,6 +39,8 @@
   --c-signal-dim: 94 66 62;
 }
 
+/* SHELVED — the "hacker" theme is kept for later but not currently applied
+   (nothing sets data-theme="hacker"; the app runs the archival theme only). */
 [data-theme='hacker'] {
   /* Darker, near-neutral charcoal base — VS-Code-dark, only a faint green cast
      so the bright foreground reads as high-contrast. */

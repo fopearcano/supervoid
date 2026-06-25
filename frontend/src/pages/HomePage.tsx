@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { SignInModal } from '@/components/SignInModal';
 
 // Community / external links. Placeholders — replace with the real invites and
@@ -34,7 +33,6 @@ export function HomePage() {
         <span className="font-mono text-[0.6rem] uppercase tracking-widest text-parchment-dim">
           SUPERVOID Entangled
         </span>
-        <ThemeToggle />
       </header>
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">

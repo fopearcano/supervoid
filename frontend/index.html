@@ -1,25 +1,11 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-theme="archival">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>SUPERVOID Publishing</title>
     <link rel="icon" href="data:," />
-    <script>
-      // Apply the saved theme before paint to avoid a flash of the default.
-      (function () {
-        try {
-          var t = localStorage.getItem('supervoid.theme');
-          document.documentElement.setAttribute(
-            'data-theme',
-            t === 'hacker' ? 'hacker' : 'archival',
-          );
-        } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'archival');
-        }
-      })();
-    </script>
   </head>
   <body class="bg-ink-800 text-parchment antialiased">
     <div id="root"></div>

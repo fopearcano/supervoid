@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { AppShell, type AppView } from '@/layouts/AppShell';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
-import { ThemeProvider } from '@/theme/ThemeContext';
 import { HomePage } from '@/pages/HomePage';
 import { Dashboard } from '@/pages/Dashboard';
 import { ManuscriptView } from '@/pages/ManuscriptView';
@@ -172,10 +171,8 @@ function Gate() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }

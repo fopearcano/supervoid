@@ -1,3 +1,5 @@
+// SHELVED — not mounted anywhere right now (the app runs the classic theme
+// only). Kept for when we re-introduce theme switching.
 import { THEME_LABELS, useTheme, type Theme } from '@/theme/ThemeContext';
 
 const ORDER: Theme[] = ['archival', 'hacker'];

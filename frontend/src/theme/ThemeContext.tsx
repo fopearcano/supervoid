@@ -1,3 +1,8 @@
+// SHELVED — the app currently runs the classic "archival" theme only (set
+// statically via data-theme on <html>). This provider and the ThemeToggle are
+// kept dormant (not mounted anywhere) so the alternate "hacker" theme can be
+// brought back when we revisit styling. The hacker palette also still lives in
+// index.css.
 import {
   createContext,
   useCallback,

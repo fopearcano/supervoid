@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { ROLE_LABELS } from '@/types/auth';
 
 export type AppView =
@@ -198,10 +197,9 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
           </nav>
 
           <AccountBadge />
-          <div className="flex items-center justify-between gap-2 border-t border-rule px-3 py-3">
-            <ThemeToggle />
+          <div className="border-t border-rule px-3 py-3">
             <span className="font-mono text-[0.54rem] uppercase tracking-widest text-parchment-dim">
-              SQLite
+              Locally hosted · SQLite
             </span>
           </div>
         </aside>
