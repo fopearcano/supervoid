@@ -2,6 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme palettes. Colours are channel triplets ("R G B") consumed by Tailwind
+ * as rgb(var(--c-*) / <alpha>). Switching `data-theme` on <html> re-themes the
+ * whole admin app at runtime. The archival palette is the default; `hacker` is a
+ * green-on-dark, terminal/VS-Code-flavoured alternative.
+ */
+:root,
+[data-theme='archival'] {
+  --c-ink-50: 232 230 223;
+  --c-ink-100: 201 198 188;
+  --c-ink-200: 156 152 140;
+  --c-ink-300: 111 108 99;
+  --c-ink-400: 61 59 54;
+  --c-ink-500: 38 36 31;
+  --c-ink-600: 28 26 22;
+  --c-ink-650: 24 22 18;
+  --c-ink-700: 20 19 16;
+  --c-ink-800: 13 12 10;
+  --c-ink-900: 7 6 5;
+
+  /* Foreground parchment — dim/muted lifted for legibility of small text. */
+  --c-parchment: 234 229 217;
+  --c-parchment-muted: 198 192 178;
+  --c-parchment-dim: 160 153 137;
+  --c-parchment-shadow: 110 105 95;
+
+  --c-accent: 198 152 100;
+  --c-accent-soft: 146 114 74;
+  --c-accent-deep: 90 70 50;
+
+  --c-rule: 47 44 38;
+
+  --c-signal: 196 132 120;
+  --c-signal-soft: 150 96 86;
+  --c-signal-dim: 94 66 62;
+}
+
+[data-theme='hacker'] {
+  /* Near-black with a faint green cast, VS-Code-dark in feel. */
+  --c-ink-50: 214 238 216;
+  --c-ink-100: 184 216 188;
+  --c-ink-200: 132 172 136;
+  --c-ink-300: 96 128 100;
+  --c-ink-400: 52 76 56;
+  --c-ink-500: 32 48 35;
+  --c-ink-600: 23 36 26;
+  --c-ink-650: 19 30 22;
+  --c-ink-700: 16 25 18;
+  --c-ink-800: 10 16 11;
+  --c-ink-900: 6 10 7;
+
+  /* Terminal green foreground, tuned for contrast rather than neon glare. */
+  --c-parchment: 192 232 190;
+  --c-parchment-muted: 146 200 150;
+  --c-parchment-dim: 116 176 122;
+  --c-parchment-shadow: 84 124 88;
+
+  --c-accent: 92 222 116;
+  --c-accent-soft: 60 158 86;
+  --c-accent-deep: 36 96 52;
+
+  --c-rule: 30 52 34;
+
+  --c-signal: 236 110 110;
+  --c-signal-soft: 182 84 84;
+  --c-signal-dim: 112 56 56;
+}
+
 @layer base {
   :root {
     color-scheme: dark;
@@ -15,8 +83,8 @@
 
   body {
     font-family: theme('fontFamily.sans');
-    background-color: theme('colors.ink.800');
-    color: theme('colors.parchment.DEFAULT');
+    background-color: rgb(var(--c-ink-800));
+    color: rgb(var(--c-parchment));
     font-feature-settings: 'ss01', 'cv11', 'liga', 'kern';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -32,6 +100,16 @@
     font-feature-settings: 'liga', 'kern', 'onum';
   }
 
+  /* The hacker theme leans monospace — headings included — for the terminal
+     register; the archival serif identity is restored when it is off. */
+  [data-theme='hacker'] h1,
+  [data-theme='hacker'] h2,
+  [data-theme='hacker'] h3,
+  [data-theme='hacker'] h4 {
+    font-family: theme('fontFamily.mono');
+    letter-spacing: -0.01em;
+  }
+
   /* Serif paragraphs lean into a literary cadence. */
   p,
   blockquote {
@@ -39,8 +117,8 @@
   }
 
   ::selection {
-    background: theme('colors.accent.soft');
-    color: theme('colors.ink.900');
+    background: rgb(var(--c-accent-soft));
+    color: rgb(var(--c-ink-900));
   }
 
   /* A single hairline focus ring across native form fields. No glow. */
@@ -58,7 +136,7 @@
   input[type='search'],
   textarea,
   select {
-    accent-color: theme('colors.accent.DEFAULT');
+    accent-color: rgb(var(--c-accent));
   }
 }
 
@@ -81,7 +159,7 @@
      filters, panels, and inline editors. */
   .field-input {
     @apply border border-rule bg-ink-700 px-3 py-1.5 text-parchment
-           placeholder:text-parchment-dim/60
+           placeholder:text-parchment-dim
            focus:border-accent focus:outline-none;
   }
   .field-select {
@@ -94,7 +172,7 @@
   /* Compact, restrained button used in form footers. */
   .button-quiet {
     @apply font-mono text-[0.62rem] uppercase tracking-widest
-           text-parchment-dim transition-colors hover:text-parchment-muted;
+           text-parchment-muted transition-colors hover:text-parchment;
   }
   .button-accent {
     @apply border border-accent px-3 py-1 font-mono text-[0.62rem]
@@ -103,17 +181,27 @@
            disabled:cursor-not-allowed disabled:opacity-40;
   }
 
-  /* Navigation links in the header. */
+  /* Legacy horizontal nav links (kept for any remaining use). */
   .nav-link {
     @apply relative font-mono text-[0.72rem] uppercase tracking-widest
-           text-parchment-dim transition-colors hover:text-parchment-muted;
+           text-parchment-muted transition-colors hover:text-parchment;
   }
   .nav-link-active {
     @apply text-parchment;
   }
-  .nav-link-active::after {
-    content: '';
-    @apply absolute left-0 right-0 -bottom-2 h-px bg-accent/80;
+
+  /* Left-sidebar navigation. */
+  .side-link {
+    @apply flex items-center gap-3 rounded-sm px-3 py-1.5 font-mono
+           text-[0.72rem] uppercase tracking-wider text-parchment-muted
+           transition-colors hover:bg-ink-700/60 hover:text-parchment;
+  }
+  .side-link-active {
+    @apply bg-ink-700/70 text-parchment;
+  }
+  .side-group-label {
+    @apply px-3 pb-1 pt-4 font-mono text-[0.58rem] uppercase tracking-widest
+           text-parchment-dim;
   }
 
   /* A subtle hover treatment for clickable table rows. */

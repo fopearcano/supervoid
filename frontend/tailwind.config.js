@@ -1,4 +1,12 @@
 /** @type {import('tailwindcss').Config} */
+
+// Colours are driven by CSS custom properties (channel triplets like "13 12 10")
+// so the whole admin app can be re-themed at runtime by switching `data-theme`
+// on <html> — see src/index.css for the archival (default) and hacker palettes.
+// The `rgb(var(--c-*) / <alpha-value>)` form keeps Tailwind's opacity modifiers
+// (e.g. text-parchment/90, bg-ink-700/40) working per theme.
+const v = (name) => `rgb(var(${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',
@@ -6,37 +14,36 @@ export default {
     extend: {
       colors: {
         ink: {
-          50: '#e8e6df',
-          100: '#c9c6bc',
-          200: '#9c988c',
-          300: '#6f6c63',
-          400: '#3d3b36',
-          500: '#26241f',
-          600: '#1c1a16',
-          650: '#181612', // a quiet half-step of elevation
-          700: '#141310',
-          800: '#0d0c0a',
-          900: '#070605',
+          50: v('--c-ink-50'),
+          100: v('--c-ink-100'),
+          200: v('--c-ink-200'),
+          300: v('--c-ink-300'),
+          400: v('--c-ink-400'),
+          500: v('--c-ink-500'),
+          600: v('--c-ink-600'),
+          650: v('--c-ink-650'),
+          700: v('--c-ink-700'),
+          800: v('--c-ink-800'),
+          900: v('--c-ink-900'),
         },
         parchment: {
-          DEFAULT: '#e8e3d3',
-          muted: '#b8b2a2',
-          dim: '#7a7466',
-          shadow: '#56524a',
+          DEFAULT: v('--c-parchment'),
+          muted: v('--c-parchment-muted'),
+          dim: v('--c-parchment-dim'),
+          shadow: v('--c-parchment-shadow'),
         },
         accent: {
-          DEFAULT: '#b08456', // warmed brass; pulled slightly from the buttery side
-          soft: '#82643f',
-          deep: '#5a4632',
+          DEFAULT: v('--c-accent'),
+          soft: v('--c-accent-soft'),
+          deep: v('--c-accent-deep'),
         },
-        rule: '#272520',
-        // Muted oxblood — used wherever the editorial register signals
-        // trouble (overdue, blocked, reject, errors). Replaces all
-        // generic `red-*` references so the palette stays archival.
+        rule: v('--c-rule'),
+        // Trouble states (overdue, blocked, reject, errors) — oxblood in the
+        // archival theme, a readable red in the hacker theme.
         signal: {
-          DEFAULT: '#a8736a',
-          soft: '#825048',
-          dim: '#5e423e',
+          DEFAULT: v('--c-signal'),
+          soft: v('--c-signal-soft'),
+          dim: v('--c-signal-dim'),
         },
       },
       fontFamily: {
