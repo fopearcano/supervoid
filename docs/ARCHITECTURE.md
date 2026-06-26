@@ -704,6 +704,67 @@ client cancellation is handled in the stream's `finally`, which persists the
 partial turn on a fresh session bound to the request's engine (the streamed
 response outlives the request-scoped session).
 
+## SUPERVOID Brain — stateful sessions & prefix-cache strategy
+
+A thin, additive layer (`backend/app/services/brain/session.py`,
+`app/services/brain/session_signature.py`, `app/models/brain.py::BrainSession`,
+migration `0019`) that stops the model conceptually restarting from zero each
+turn — without ever claiming vLLM durably remembers a conversation. vLLM's
+prefix cache is a best-effort optimisation we make **eligible**; the
+`BrainSession` row is the source of truth.
+
+**One session per conversation.** `BrainSession` records the active project /
+profile, the current state versions + checksums, the stable `last_prefix_hash`,
+the last processed event cursor (`head_sequence`), last activity, warm/cold
+state, and turn / invalidation counters. The per-prefix `BrainCheckpoint` stays
+the cache-key ledger; the session is the live lifecycle record on top.
+
+**Stable prefix vs variable suffix** is the assembler's existing split
+(constitution + profile + permissions + compiled project state are the stable
+prefix; the delta-since-last-state, recent turns, the new request and retrieved
+details are the variable suffix). Prompt 8 adds a project-state delta line to the
+suffix (mirroring the studio delta) so a state advance N→N+1 shows only the
+**delta**, never a re-stated prior state.
+
+**Invalidation rules.** `diff_signature(prev, curr)` maps each rule to a
+component comparison and a machine reason: `constitution_version_changed`,
+`profile_changed`, `user_permissions_changed`, `active_project_changed`,
+`studio_state_changed` / `project_state_changed` (keyed off the compiled
+**checksum** — the true material-change signal), `model_or_template_changed`.
+`is_warm_eligible` is **authoritative on the assembler's `prefix_hash`** (not the
+component diff): the diff only explains a change, so eligibility can never be
+falsely warm even if a future assembler change adds an untracked prefix input.
+Eligibility is computed against the PRIOR turn's signature snapshotted **before**
+assemble runs — never a post-assemble checkpoint lookup (which would always read
+warm).
+
+**Per-turn metrics** (persisted in the assistant message's
+`structured_content["session_metrics"]`): prompt tokens, stable-prefix tokens,
+suffix tokens, state-delta size, estimated prefix-cache eligibility,
+time-to-first-token (streaming only; non-stream records `None` honestly), and
+full latency, plus the invalidation reasons that fired.
+
+**Hot / warm / cold.** `classify_warmth`: HOT = recently active conversation;
+WARM = idle within the warm window with a saved checkpoint + compiled state;
+COLD = archived, aged out, or no checkpoint. `sweep_lifecycle` reclassifies and,
+past the archive horizon, marks the conversation ARCHIVED — it **never deletes
+messages** (cold = the full archive, retained).
+
+**Prewarming** (`prewarm_active`, default-off `brain_prewarm_on_startup`):
+best-effort priming of vLLM's prefix cache for ACTIVE project prefixes via a
+1-token completion. A no-op under the dry-run provider (no socket), archived
+projects excluded by query, rate-limited (token bucket) and per-session
+cooldown-debounced. It never asserts vLLM retained anything.
+
+**Compaction** (`compact_conversation`): deterministic decision/task extraction
+into a durable conversation-scoped digest memory item; original messages are
+retained; **approved decisions are never silently dropped** (a hard post⊇pre
+check fails closed). An optional LLM summary is a secondary, fact-guarded
+artifact that never replaces the deterministic facts.
+
+Inspect/operate via `/api/brain/conversations/{id}/session[/metrics|/invalidation|/compact]`
+(owner-or-admin) and `/api/brain/sessions[/sweep|/prewarm]` (admin).
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

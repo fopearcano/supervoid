@@ -229,6 +229,7 @@ def _resolve_conversation(
 def _persist_assistant(
     session: Session, conversation, *, content, model, provider_name, usage, finish,
     tool_calls, latency_ms, ctx, retrieval_ids, rid, cancelled=False, reasoning=None,
+    session_metrics=None,
 ) -> None:
     usage = usage or {}
     state_version = ctx.versions.get("studio_state") or ctx.versions.get("project_state")
@@ -250,6 +251,7 @@ def _persist_assistant(
             "versions": ctx.versions,
             "reasoning": reasoning,
             "cancelled": cancelled,
+            "session_metrics": session_metrics,
         },
     )
     session.commit()
@@ -337,9 +339,28 @@ async def chat_completions(
         user_text = _last_user_text(messages)
         brain.append_message(session, conversation, role=BrainMessageRole.USER,
                              content=user_text, request_id=rid)
+        # Snapshot the PRIOR session signature BEFORE assemble (which upserts the
+        # checkpoint for the NEW prefix). Prefix-cache eligibility is "did THIS
+        # prefix_hash equal the PREVIOUS turn's", never a post-assemble checkpoint
+        # query (that row was just inserted, so it would always read True).
+        turn = None
+        try:
+            prior_session = brain.session.get_or_create_session(session, conversation)
+            prev_sig = brain.PrefixSignature.from_session(prior_session)
+            prev_prefix_hash = prior_session.last_prefix_hash
+        except Exception:  # the session layer must never break a completion
+            log.exception("brain-gateway: session snapshot failed · rid=%s", rid)
+            prev_sig, prev_prefix_hash = None, None
         ctx = brain.assemble(session, conversation, user=user, model=settings.ai_model,
                              include_evidence=True, question=None, persist=True)
-        session.commit()
+        try:
+            turn = brain.session.begin_turn(
+                session, conversation, ctx,
+                prev_prefix_hash=prev_prefix_hash, prev_signature=prev_sig)
+        except Exception:
+            log.exception("brain-gateway: session begin_turn failed · rid=%s", rid)
+            turn = None
+        session.commit()  # the EXISTING commit — now also persists the session row
 
         refs = _evidence_refs(ctx)
         supervoid_meta = {
@@ -350,6 +371,12 @@ async def chat_completions(
                        "profile": conversation.active_profile},
             "request_id": rid,
         }
+        if turn is not None:
+            supervoid_meta["session"] = {
+                "warmth": turn.warmth.value,
+                "prefix_cache_eligible": turn.prefix_cache_eligible,
+                "invalidation_reasons": turn.invalidation.reason_values(),
+            }
 
         provider = get_provider()
         caps = provider.capabilities()
@@ -373,7 +400,7 @@ async def chat_completions(
             slot_handed_off = True  # the generator owns the slot now
             return StreamingResponse(
                 _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
-                        conv_id, user.id, rid, served, bind, guard),
+                        conv_id, user.id, rid, served, bind, guard, turn),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
                          REQUEST_ID_HEADER: rid},
@@ -382,7 +409,7 @@ async def chat_completions(
         # --- non-streaming ---
         return await _complete_nonstream(
             session, provider, req, chat_messages, ctx, conversation, refs,
-            supervoid_meta, served, rid,
+            supervoid_meta, served, rid, turn,
         )
     finally:
         # Release the slot unless it was handed to the streaming generator.
@@ -391,7 +418,7 @@ async def chat_completions(
 
 
 async def _complete_nonstream(session, provider, req, chat_messages, ctx, conversation,
-                              refs, supervoid_meta, served, rid):
+                              refs, supervoid_meta, served, rid, turn=None):
     try:
         t0 = perf_counter()
         if hasattr(provider, "acomplete"):
@@ -426,11 +453,24 @@ async def _complete_nonstream(session, provider, req, chat_messages, ctx, conver
     prompt_text = " ".join((m.get("content") or "") for m in ctx.messages)
     usage_out = _ensure_usage(result.usage, prompt_text=prompt_text,
                               completion_text=result.content or "")
+    # Per-turn session metrics (Prompt 8) — non-stream TTFT is undefined (single
+    # round-trip), recorded honestly as None rather than faked to equal latency.
+    metrics = None
+    if turn is not None:
+        try:
+            metrics = brain.session.record_metrics(
+                ctx, prefix_cache_eligible=turn.prefix_cache_eligible,
+                invalidation=turn.invalidation, usage=usage_out,
+                response_latency_ms=latency_ms, ttft_ms=None,
+                warmth=turn.warmth.value).as_dict()
+        except Exception:
+            log.exception("brain-gateway: metrics computation failed · rid=%s", rid)
     _persist_assistant(
         session, conversation, content=result.content, model=result.model,
         provider_name=result.provider, usage=usage_out, finish=result.finish_reason,
         tool_calls=tool_calls, latency_ms=latency_ms, ctx=ctx, retrieval_ids=refs,
         rid=(result.request_id or rid), reasoning=result.reasoning,
+        session_metrics=metrics,
     )
 
     message = {"role": "assistant", "content": result.content or ""}
@@ -455,7 +495,7 @@ async def _complete_nonstream(session, provider, req, chat_messages, ctx, conver
 
 
 async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
-                  conv_id, user_id, rid, served, bind=None, guard=None):
+                  conv_id, user_id, rid, served, bind=None, guard=None, turn=None):
     stream_id = f"chatcmpl-{token_hex(6)}"
     created = int(time.time())
     acc: list[str] = []
@@ -464,6 +504,7 @@ async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
     tool_calls_final: list[dict] = []
     cancelled = False
     errored = False
+    ttft_ms = None  # time-to-first-token, set at the first content-bearing frame
 
     def frame(delta, finish_reason=None):
         return "data: " + json.dumps({
@@ -483,6 +524,8 @@ async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
                     delta["role"] = "assistant"
                     first = False
                 if chunk.content:
+                    if ttft_ms is None:
+                        ttft_ms = (perf_counter() - t0) * 1000
                     delta["content"] = chunk.content
                     acc.append(chunk.content)
                 if chunk.tool_calls:
@@ -517,6 +560,7 @@ async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
             ]
             yield frame({"role": "assistant"})
             if result.content:
+                ttft_ms = (perf_counter() - t0) * 1000
                 yield frame({"content": result.content})
             if tool_calls_final:
                 yield frame({"tool_calls": tool_calls_final})
@@ -576,12 +620,26 @@ async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
                     persist_usage = _ensure_usage(
                         last_usage, prompt_text=prompt_text, completion_text="".join(acc)
                     )
+                    # Per-turn metrics from the already-decided `turn` (decided in
+                    # the request session). We READ it here — never re-run
+                    # begin_turn in this fresh session (no double-mutation).
+                    metrics = None
+                    if turn is not None:
+                        try:
+                            metrics = brain.session.record_metrics(
+                                ctx, prefix_cache_eligible=turn.prefix_cache_eligible,
+                                invalidation=turn.invalidation, usage=persist_usage,
+                                response_latency_ms=latency_ms, ttft_ms=ttft_ms,
+                                warmth=turn.warmth.value).as_dict()
+                        except Exception:
+                            log.exception("brain-gateway: stream metrics failed · rid=%s", rid)
                     _persist_assistant(
                         s, conv, content="".join(acc), model=settings.ai_model,
                         provider_name=settings.ai_provider, usage=persist_usage,
                         finish=(finish or ("cancelled" if cancelled else None)),
                         tool_calls=tool_calls_final, latency_ms=latency_ms, ctx=ctx,
                         retrieval_ids=refs, rid=rid, cancelled=cancelled,
+                        session_metrics=metrics,
                     )
         except Exception:  # never let persistence break the (already-sent) stream
             log.exception("brain-gateway: failed to persist streamed assistant turn")

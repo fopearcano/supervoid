@@ -1208,6 +1208,38 @@ class BrainCheckpointStatus(str, Enum):
     COLD = "cold"
 
 
+class BrainSessionWarmth(str, Enum):
+    """Lifecycle tier of a stateful Brain session (Prompt 8 hot/warm/cold).
+
+    HOT  = recently active conversation; prefix kept eligible / prewarmed.
+    WARM = idle but has a saved checkpoint + compiled state to resume from.
+    COLD = archived / aged out; full reconstruction from messages on next use.
+
+    Distinct from ``BrainCheckpointStatus`` (a single prefix's WARM/COLD cache
+    flag). This is the conversation-level session lifecycle.
+    """
+
+    HOT = "hot"
+    WARM = "warm"
+    COLD = "cold"
+
+
+class SessionInvalidationReason(str, Enum):
+    """Machine-readable reason a stable prompt prefix was invalidated (Prompt 8).
+
+    One distinct code per rule. The compiled-state rule is split studio vs
+    project so an operator can tell which compiled state advanced.
+    """
+
+    CONSTITUTION_CHANGED = "constitution_version_changed"
+    PROFILE_CHANGED = "profile_changed"
+    PERMISSIONS_CHANGED = "user_permissions_changed"
+    PROJECT_CHANGED = "active_project_changed"
+    STUDIO_STATE_CHANGED = "studio_state_changed"
+    PROJECT_STATE_CHANGED = "project_state_changed"
+    MODEL_OR_TEMPLATE_CHANGED = "model_or_template_changed"
+
+
 class BrainScope(str, Enum):
     """Scope a memory item or decision applies to."""
 

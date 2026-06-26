@@ -95,6 +95,21 @@ class Settings(BaseSettings):
     # configured model name from whatever upstream model the provider serves).
     brain_gateway_model: str = "supervoid-brain"
 
+    # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
+    # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
+    # memory. These windows drive the hot/warm/cold lifecycle.
+    brain_session_hot_window_minutes: int = 30        # idle ≤ this ⇒ HOT
+    brain_session_warm_window_hours: int = 72         # idle ≤ this (+ checkpoint) ⇒ WARM
+    brain_session_archive_horizon_days: int = 14      # COLD past this ⇒ archive conversation
+    brain_session_compact_after_turns: int = 40       # suggest compaction beyond this
+    brain_session_compaction_use_llm: bool = False    # LLM summary is SECONDARY, off by default
+    # Prewarming (best-effort vLLM prefix-cache priming; never durable memory).
+    brain_prewarm_on_startup: bool = False            # default OFF — keeps dry_run/test path inert
+    brain_prewarm_rate_per_min: int = 30
+    brain_prewarm_burst: int = 10
+    brain_prewarm_batch: int = 25
+    brain_prewarm_cooldown_seconds: int = 300         # per-session prewarm debounce
+
     # --- Integration hub ---
     # Local-first by default: external network operations (webhook dispatch,
     # ComfyUI queueing, remote GitHub sync) are *recorded* rather than fired

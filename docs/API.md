@@ -246,6 +246,20 @@ the per-route request/response schemas.
   `DELETE /{id}` (revoke; effective on the next gateway request). Only a
   SHA-256 hash is stored; tokens carry a name, optional expiry, last-used time,
   and optional project restrictions, and are strictly per-user.
+- **brain sessions** — the stateful-session / prefix-cache layer (Prompt 8). The
+  gateway maintains one `BrainSession` per conversation (live prefix signature,
+  event cursor, hot/warm/cold) and stamps each completion's `supervoid.session`
+  with `{warmth, prefix_cache_eligible, invalidation_reasons}`. Owner-or-admin:
+  `GET /api/brain/conversations/{id}/session` (the session row),
+  `GET …/session/metrics` (per-turn token / TTFT / latency / eligibility),
+  `POST …/session/compact` (deterministic decision/task digest; messages
+  retained, approved decisions never dropped); admin diagnostic
+  `GET …/session/invalidation` (which rule would fire next). Admin ops:
+  `GET /api/brain/sessions`, `POST /api/brain/sessions/sweep` (reclassify +
+  archive aged-out; never deletes messages), `POST /api/brain/sessions/prewarm`
+  (best-effort vLLM prefix-cache priming for ACTIVE projects; a no-op under
+  dry-run, never claims vLLM durably remembers a conversation). See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--stateful-sessions--prefix-cache-strategy).
 
 ---
 

@@ -13,6 +13,7 @@ from app.models.enums import (
     BrainMessageRole,
     BrainRevisionApproval,
     BrainScope,
+    BrainSessionWarmth,
     BrainStateStatus,
     BrainStateType,
     DecisionStatus,
@@ -263,3 +264,61 @@ class DecisionRecordRead(TimestampedRead):
     approver_id: Optional[str] = None
     effective_date: Optional[datetime] = None
     superseded_by_id: Optional[str] = None
+
+
+# --- stateful sessions & prefix-cache strategy (Prompt 8) -----------------
+class BrainSessionRead(TimestampedRead):
+    conversation_id: str
+    work_id: Optional[str] = None
+    story_world_id: Optional[str] = None
+    active_profile: Optional[str] = None
+    model: Optional[str] = None
+    last_prefix_hash: Optional[str] = None
+    constitution_version: Optional[int] = None
+    profile_version: Optional[int] = None
+    studio_state_version: Optional[int] = None
+    project_state_version: Optional[int] = None
+    permissions_fingerprint: Optional[str] = None
+    last_event_cursor: int = 0
+    last_activity_at: Optional[datetime] = None
+    warmth: BrainSessionWarmth
+    turn_count: int = 0
+    invalidation_count: int = 0
+    last_invalidation_reason: Optional[str] = None
+    last_prewarmed_at: Optional[datetime] = None
+
+
+class InvalidationReport(BaseModel):
+    """Human-readable "which rule fired" diagnostic for the next turn."""
+
+    invalidated: bool
+    reasons: list[str] = []
+    prev_prefix_hash: Optional[str] = None
+    new_prefix_hash: Optional[str] = None
+    prefix_cache_eligible: bool = False
+
+
+class SweepResult(BaseModel):
+    scanned: int = 0
+    hot: int = 0
+    warm: int = 0
+    cold: int = 0
+    archived: int = 0
+
+
+class PrewarmResult(BaseModel):
+    selected: int = 0
+    prewarmed: int = 0
+    skipped: int = 0
+    rate_limited: int = 0
+    reason: Optional[str] = None
+
+
+class CompactionResultRead(BaseModel):
+    conversation_id: str
+    extracted_decisions: list[str] = []
+    approved_decisions: list[str] = []
+    extracted_tasks: list[str] = []
+    memory_item_id: Optional[str] = None
+    retained_message_count: int = 0
+    used_llm: bool = False

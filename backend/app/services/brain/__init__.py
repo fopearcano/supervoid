@@ -655,3 +655,11 @@ from app.services.brain.context_assembler import (  # noqa: E402
     debug_context,
     wrap_untrusted,
 )
+from app.services.brain import session  # noqa: E402,F401
+from app.services.brain.session_signature import (  # noqa: E402,F401
+    PrefixSignature,
+    TurnMetrics,
+    compute_turn_metrics,
+    diff_signature,
+    is_warm_eligible,
+)

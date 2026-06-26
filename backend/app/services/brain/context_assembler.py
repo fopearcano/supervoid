@@ -311,8 +311,19 @@ def assemble(
     turn_text = "\n".join(f"{m['role']}: {m['content']}" for m in turn_msgs)
     segments.append(Segment(7, "Recent turns", "variable-suffix", turn_text, bool(turn_msgs)))
 
-    # 8. State delta since the previous checkpoint (variable)
-    delta_text = _state_delta(session, prev_ckpt, studio_state)
+    # 8. State delta since the previous checkpoint (variable) — both the studio
+    #    state and, when scoped, the project state. Only the DELTA is shown, so a
+    #    state advance N→N+1 never re-states the full prior state. Each delta is
+    #    gated by the SAME visibility as its full-state segment, so a project-scoped
+    #    non-admin never sees studio-wide change structure.
+    delta_lines = [
+        line for line in (
+            _state_delta(session, prev_ckpt, studio_state) if can_view_studio else "",
+            _project_state_delta(session, prev_ckpt, project_state)
+            if (work_id or story_world_id) and can_view and profile_ok else "",
+        ) if line
+    ]
+    delta_text = "\n".join(delta_lines)
     segments.append(Segment(8, "State delta", "variable-suffix",
                             _cap(delta_text, "state_delta"), bool(delta_text)))
 
@@ -457,6 +468,36 @@ def _state_delta(session: Session, prev_ckpt, studio_state) -> str:
         return ""
     changed = ", ".join(delta["changed"]) or "none"
     return f"Studio state changed since your last checkpoint (v{prev_v}→v{studio_state.version}): {changed}"
+
+
+def _project_state_delta(session: Session, prev_ckpt, project_state) -> str:
+    """The project-state counterpart of ``_state_delta`` (Prompt 8 delta updates):
+    diff the previous checkpoint's project_state_version against the current one
+    and render only the changed sections, so a state advance N→N+1 shows the
+    DELTA rather than re-stating the full prior project state."""
+    if prev_ckpt is None or project_state is None:
+        return ""
+    prev_v = prev_ckpt.project_state_version
+    if not prev_v or prev_v == project_state.version:
+        return ""
+    revs = brain.list_revisions(
+        session, state_type=BrainStateType.PROJECT, state_id=project_state.id, limit=200
+    )
+    prev_rev = next((r for r in revs if r.version == prev_v), None)
+    cur_rev = next((r for r in revs if r.version == project_state.version), None)
+    if not prev_rev or not cur_rev:
+        return ""
+    try:
+        delta = compiler.revision_delta(
+            session, revision_a_id=prev_rev.id, revision_b_id=cur_rev.id
+        )
+    except ValueError:
+        return ""
+    changed = ", ".join(delta["changed"]) or "none"
+    return (
+        f"Project state changed since your last checkpoint "
+        f"(v{prev_v}→v{project_state.version}): {changed}"
+    )
 
 
 def _retrieved_evidence(

@@ -53,16 +53,21 @@ from app.schemas.brain import (
     BrainMemoryVerify,
     BrainMessageCreate,
     BrainMessageRead,
+    BrainSessionRead,
     BrainStateRevisionRead,
+    CompactionResultRead,
     DecisionDecision,
     DecisionRecordCreate,
     DecisionRecordRead,
+    InvalidationReport,
     OutboxReplayRequest,
     OutboxStatusRead,
+    PrewarmResult,
     ProjectBrainStateRead,
     RebuildRequest,
     RebuildResult,
     StudioBrainStateRead,
+    SweepResult,
 )
 from app.schemas.instruction import (
     AssembleRequest,
@@ -990,4 +995,146 @@ def debug_context(
         raise HTTPException(status_code=404, detail="Conversation not found")
     return brain.debug_context(
         session, conv, user=user, include_evidence=include_evidence
+    )
+
+
+# === stateful sessions & prefix-cache strategy (Prompt 8) ==================
+@router.get("/conversations/{conversation_id}/session", response_model=BrainSessionRead)
+def get_conversation_session(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainSessionRead:
+    """The live session for a conversation: warmth, signature versions, event
+    cursor and counters. Creates the row read-only if absent."""
+    conv = _owned_conversation(session, conversation_id, user)
+    sess = brain.session.get_or_create_session(session, conv)
+    session.commit()
+    return sess
+
+
+@router.get("/conversations/{conversation_id}/session/metrics")
+def get_session_metrics(
+    conversation_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """The per-turn session metrics recorded on recent assistant messages
+    (prompt/stable-prefix/suffix tokens, state-delta size, prefix-cache
+    eligibility, TTFT, latency)."""
+    conv = _owned_conversation(session, conversation_id, user)
+    msgs = brain.list_messages(session, conv.id, limit=1000)
+    turns = [
+        {
+            "message_id": m.id,
+            "created_at": m.created_at,
+            **(m.structured_content.get("session_metrics") or {}),
+        }
+        for m in msgs
+        if m.role == BrainMessageRole.ASSISTANT
+        and (m.structured_content or {}).get("session_metrics")
+    ]
+    return {"conversation_id": conv.id, "turns": turns[-limit:]}
+
+
+@router.get(
+    "/conversations/{conversation_id}/session/invalidation",
+    response_model=InvalidationReport,
+    dependencies=ADMIN_ONLY,
+)
+def get_session_invalidation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> InvalidationReport:
+    """Diagnostic (admin): assemble read-only and diff the result against the
+    stored session signature → which invalidation rule WOULD fire on the next
+    turn, and whether the prefix would still be cache-eligible."""
+    conv = brain.get_conversation(session, conversation_id)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    sess = brain.session.get_or_create_session(session, conv)
+    prev_sig = brain.PrefixSignature.from_session(sess)
+    ctx = brain.assemble(session, conv, user=user, include_evidence=True, persist=False)
+    studio_state = brain.get_studio_state(session)
+    project_state = (
+        brain.get_project_state(session, work_id=conv.work_id, story_world_id=conv.story_world_id)
+        if (conv.work_id or conv.story_world_id) else None
+    )
+    curr_sig = brain.PrefixSignature.from_context(
+        ctx, conv, studio_state=studio_state, project_state=project_state
+    )
+    result = brain.diff_signature(prev_sig, curr_sig)
+    return InvalidationReport(
+        invalidated=result.invalidated,
+        reasons=result.reason_values(),
+        prev_prefix_hash=result.prev_prefix_hash,
+        new_prefix_hash=result.new_prefix_hash,
+        prefix_cache_eligible=brain.is_warm_eligible(prev_sig, curr_sig),
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/session/compact",
+    response_model=CompactionResultRead,
+)
+def compact_conversation_session(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> CompactionResultRead:
+    """Compact a conversation: deterministic decision/task extraction into a
+    durable digest. Original messages are retained; approved decisions are never
+    dropped."""
+    conv = _owned_conversation(session, conversation_id, user)
+    result = brain.session.compact_conversation(session, conv)
+    session.commit()
+    return CompactionResultRead(**result.__dict__)
+
+
+@router.get("/sessions", response_model=list[BrainSessionRead], dependencies=ADMIN_ONLY)
+def list_sessions(
+    warmth: Optional[str] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+) -> list[BrainSessionRead]:
+    """Operational listing of sessions by warmth / project (admin)."""
+    from sqlmodel import select
+
+    from app.models import BrainSession as _BrainSession
+
+    stmt = select(_BrainSession)
+    if warmth:
+        stmt = stmt.where(_BrainSession.warmth == warmth)
+    if work_id:
+        stmt = stmt.where(_BrainSession.work_id == work_id)
+    stmt = stmt.order_by(_BrainSession.last_activity_at.desc()).offset(offset).limit(limit)
+    return list(session.exec(stmt).all())
+
+
+@router.post("/sessions/sweep", response_model=SweepResult, dependencies=ADMIN_ONLY)
+def sweep_sessions(
+    archive: bool = Query(default=True),
+    session: Session = Depends(get_session),
+) -> SweepResult:
+    """Reclassify session warmth and archive aged-out conversations (admin). Never
+    deletes messages — cold means the full archive is retained."""
+    return SweepResult(**brain.session.sweep_lifecycle(session, archive=archive))
+
+
+@router.post("/sessions/prewarm", response_model=PrewarmResult, dependencies=ADMIN_ONLY)
+def prewarm_sessions(
+    limit: Optional[int] = Query(default=None, ge=1, le=500),
+    session: Session = Depends(get_session),
+) -> PrewarmResult:
+    """Best-effort prime of vLLM's prefix cache for ACTIVE project prefixes
+    (admin). A no-op under the dry-run provider — it NEVER asserts vLLM durably
+    remembers a conversation."""
+    from app.services.ai.providers import get_provider
+
+    return PrewarmResult(
+        **brain.session.prewarm_active(session, provider=get_provider(), limit=limit)
     )

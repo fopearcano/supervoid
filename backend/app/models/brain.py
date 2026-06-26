@@ -32,6 +32,7 @@ from app.models.enums import (
     BrainMessageRole,
     BrainRevisionApproval,
     BrainScope,
+    BrainSessionWarmth,
     BrainStateStatus,
     BrainStateType,
     DecisionStatus,
@@ -250,6 +251,59 @@ class BrainCheckpoint(BaseEntity, table=True):
         default=BrainCheckpointStatus.COLD, index=True
     )
     last_used_at: Optional[datetime] = Field(default=None, index=True)
+
+
+class BrainSession(BaseEntity, table=True):
+    """The live, per-conversation Brain session (Prompt 8 stateful sessions).
+
+    EXACTLY ONE row per conversation (unique ``conversation_id``). It is the
+    source of truth for "is the next turn prefix-cache eligible" and for the
+    hot/warm/cold lifecycle. The per-prefix ``BrainCheckpoint`` stays the
+    cache-key ledger; this row never asserts vLLM still holds anything — vLLM
+    prefix caching is an optimisation we make *eligible*, not durable memory.
+    """
+
+    __tablename__ = "brain_sessions"
+    __table_args__ = (
+        Index("ix_brain_sessions_warmth_activity", "warmth", "last_activity_at"),
+        Index("ix_brain_sessions_scope", "work_id", "story_world_id"),
+    )
+
+    conversation_id: str = Field(
+        foreign_key="brain_conversations.id", index=True, unique=True
+    )
+    # Active binding (mirrored from the conversation so the sweep / prewarm can
+    # select without joining every turn).
+    work_id: Optional[str] = Field(default=None, index=True)
+    story_world_id: Optional[str] = Field(default=None, index=True)
+    active_profile: Optional[str] = Field(default=None, max_length=80)
+    model: Optional[str] = Field(default=None, max_length=160)
+
+    # The CURRENT prefix signature (the invalidation inputs). ``last_prefix_hash``
+    # is the assembler's authoritative cache key from the LAST turn — what the
+    # NEXT turn compares against to decide prefix-cache eligibility.
+    last_prefix_hash: Optional[str] = Field(default=None, max_length=128, index=True)
+    constitution_version: Optional[int] = Field(default=None)
+    profile_version: Optional[int] = Field(default=None)
+    studio_state_version: Optional[int] = Field(default=None)
+    project_state_version: Optional[int] = Field(default=None)
+    studio_state_checksum: Optional[str] = Field(default=None, max_length=128)
+    project_state_checksum: Optional[str] = Field(default=None, max_length=128)
+    permissions_fingerprint: Optional[str] = Field(default=None, max_length=64)
+
+    # Cursor + lifecycle.
+    last_event_cursor: int = Field(default=0)  # head_sequence() at last turn
+    last_message_id: Optional[str] = Field(
+        default=None, foreign_key="brain_messages.id", index=True
+    )
+    last_activity_at: Optional[datetime] = Field(default=None, index=True)
+    warmth: BrainSessionWarmth = Field(default=BrainSessionWarmth.HOT, index=True)
+    turn_count: int = Field(default=0, ge=0)
+    invalidation_count: int = Field(default=0, ge=0)
+    last_invalidation_reason: Optional[str] = Field(default=None, max_length=64)
+
+    # Prewarming bookkeeping.
+    last_prewarmed_at: Optional[datetime] = Field(default=None, index=True)
 
 
 class BrainMemoryItem(BaseEntity, table=True):

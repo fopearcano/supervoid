@@ -41,6 +41,33 @@ async def lifespan(_: FastAPI):
     )
     mode = prepare_database()
     log.info("database ready · strategy=%s", mode)
+    # Optional, best-effort prefix-cache prewarming for ACTIVE project prefixes
+    # (Prompt 8). Default OFF and a no-op under dry_run, so dev/test boot is
+    # unchanged. Fire-and-forget on a fresh session; never blocks startup.
+    if settings.brain_prewarm_on_startup and settings.ai_provider != "dry_run":
+        import asyncio
+
+        async def _prewarm_on_startup() -> None:
+            try:
+                from sqlmodel import Session as _Session
+
+                from app.db import engine as _engine
+                from app.services import brain as _brain
+
+                # prewarm_active is synchronous (it drives the provider via
+                # asyncio.run), so run the whole DB+provider pass in a worker
+                # thread — calling asyncio.run() from this running loop would
+                # raise, and the session must not cross threads.
+                def _run() -> dict:
+                    with _Session(_engine) as s:
+                        return _brain.session.prewarm_active(s)
+
+                summary = await asyncio.to_thread(_run)
+                log.info("brain prewarm complete · %s", summary)
+            except Exception:
+                log.exception("brain prewarm on startup failed")
+
+        asyncio.create_task(_prewarm_on_startup())
     yield
     log.info("%s stopping", settings.app_name)
 
