@@ -1151,3 +1151,91 @@ class PanelTransition(str, Enum):
     DISSOLVE = "dissolve"
     SLIDE = "slide"
     ZOOM = "zoom"
+
+
+# --- SUPERVOID Brain (persistence layer) ----------------------------------
+class BrainStateType(str, Enum):
+    """Which compiled-state family a revision belongs to."""
+
+    STUDIO = "studio"
+    PROJECT = "project"
+
+
+class BrainStateStatus(str, Enum):
+    """Lifecycle of a compiled Brain state."""
+
+    PENDING = "pending"          # created, never compiled yet
+    COMPILING = "compiling"      # a compile pass is in flight
+    READY = "ready"              # current and fresh
+    STALE = "stale"             # newer events exist; needs recompile
+    FAILED = "failed"            # last compile failed
+
+
+class BrainRevisionApproval(str, Enum):
+    """Approval state of a state revision whose semantic (LLM-assisted)
+    content could affect canon. Deterministic-only revisions are NOT_REQUIRED."""
+
+    NOT_REQUIRED = "not_required"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class BrainEventStatus(str, Enum):
+    """Processing state of an append-only domain event."""
+
+    PENDING = "pending"
+    PROCESSED = "processed"
+    FAILED = "failed"
+
+
+class BrainConversationStatus(str, Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class BrainMessageRole(str, Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
+
+class BrainCheckpointStatus(str, Enum):
+    """Whether a prompt-prefix checkpoint is warm (cached) or cold."""
+
+    WARM = "warm"
+    COLD = "cold"
+
+
+class BrainScope(str, Enum):
+    """Scope a memory item or decision applies to."""
+
+    STUDIO = "studio"
+    PROJECT = "project"
+    MEMBER = "member"
+    CONVERSATION = "conversation"
+
+
+class BrainMemoryKind(str, Enum):
+    FACT = "fact"
+    PREFERENCE = "preference"
+    PROCEDURE = "procedure"
+    DECISION = "decision"
+    UNRESOLVED_QUESTION = "unresolved_question"
+    COMMITMENT = "commitment"
+
+
+class BrainMemoryVerification(str, Enum):
+    UNVERIFIED = "unverified"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+    EXPIRED = "expired"
+
+
+class DecisionStatus(str, Enum):
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"

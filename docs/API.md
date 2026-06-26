@@ -186,6 +186,12 @@ the per-route request/response schemas.
   propagation, bounded transient-only retries); `openai_compatible` stays the
   generic catch-all with conservative, declared capabilities. No
   OpenAI-compatible SUPERVOID endpoint is exposed yet.
+- **brain** — SUPERVOID Brain persistence (`/api/brain`, private). Conversations
+  + messages (owner-scoped); memory items and decision records (scope-gated via
+  the policy service: studio = admin, project = project scopes, member =
+  self); read-only compiled state (`/state/studio`, `/works/{id}/state`,
+  `/story-worlds/{id}/state`); and read-only, admin-only `events` (append-only)
+  and `revisions` (immutable). Storage only — no state is compiled yet.
 
 ---
 

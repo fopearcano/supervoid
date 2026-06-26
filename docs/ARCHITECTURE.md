@@ -480,6 +480,37 @@ Declared agent permissions are checked through the policy service (admin
 bypasses; project scopes resolve against the target work). The private UI adds
 an **Agent Centre** (registry, run, history, findings inbox, proposals).
 
+## SUPERVOID Brain — persistence layer
+
+The durable storage for the persistent, governed conversational Brain
+(`backend/app/models/brain.py`, migration `0014`). **Storage only — no state is
+compiled here** (the compiler is a later phase). Nine tables:
+
+- **StudioBrainState / ProjectBrainState** — the single current compiled state
+  for the studio, and one per Work / StoryWorld (version, status, source-event
+  cursor, structured state, digests, checksum, stale flag). Upserted in place.
+- **BrainStateRevision** — the immutable snapshot of every compiled version
+  (deterministic payload + optional LLM summary + source-event range + approval
+  status where semantic content could affect canon). Never edited.
+- **BrainEvent** — the append-only domain-event log with a monotonic, unique
+  `sequence` (assigned by the service); processing fields advanced only by the
+  future processor.
+- **BrainConversation / BrainMessage / BrainCheckpoint** — persistent
+  conversations, their turns (model/provider/tokens/request-id/state-version/
+  retrieval + tool-call ids), and prompt-prefix cache checkpoints.
+- **BrainMemoryItem** — scoped durable memory (studio / project / member /
+  conversation) with kind, confidence, verification state and supersede chain.
+- **DecisionRecord** — recorded decisions with a proposed → approved / rejected
+  / superseded lifecycle.
+
+Invariants live in `backend/app/services/brain` (revisions/events never edited;
+sequences monotonic; current-state upsert + revision snapshot). The private API
+(`/api/brain`) applies user/project permissions via the policy service:
+conversations are owner-scoped; memory/decisions are scope-gated (studio =
+admin, project = project scopes, member = self); compiled state is read-only;
+events and revisions are read-only and admin-only. No field stores a model
+secret or credential.
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

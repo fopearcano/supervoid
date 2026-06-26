@@ -14,6 +14,17 @@ from app.models.agent import (
 )
 from app.models.ai_insight import AIInsight
 from app.models.approval_request import ApprovalRequest
+from app.models.brain import (
+    BrainCheckpoint,
+    BrainConversation,
+    BrainEvent,
+    BrainMemoryItem,
+    BrainMessage,
+    BrainStateRevision,
+    DecisionRecord,
+    ProjectBrainState,
+    StudioBrainState,
+)
 from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -107,6 +118,19 @@ from app.models.enums import (
     WorkflowStatus,
     WorkStatus,
     WorkType,
+)
+from app.models.enums import (  # SUPERVOID Brain (persistence layer)
+    BrainCheckpointStatus,
+    BrainConversationStatus,
+    BrainEventStatus,
+    BrainMemoryKind,
+    BrainMemoryVerification,
+    BrainMessageRole,
+    BrainRevisionApproval,
+    BrainScope,
+    BrainStateStatus,
+    BrainStateType,
+    DecisionStatus,
 )
 from app.models.enums import (  # business layer (rights / CRM / editions)
     ChainOfTitleType,
@@ -205,6 +229,26 @@ __all__ = [
     "AgentToolKind",
     "AIFeature",
     "AIInsight",
+    "BrainCheckpoint",
+    "BrainCheckpointStatus",
+    "BrainConversation",
+    "BrainConversationStatus",
+    "BrainEvent",
+    "BrainEventStatus",
+    "BrainMemoryItem",
+    "BrainMemoryKind",
+    "BrainMemoryVerification",
+    "BrainMessage",
+    "BrainMessageRole",
+    "BrainRevisionApproval",
+    "BrainScope",
+    "BrainStateRevision",
+    "BrainStateStatus",
+    "BrainStateType",
+    "DecisionRecord",
+    "DecisionStatus",
+    "ProjectBrainState",
+    "StudioBrainState",
     "FindingSeverity",
     "PromptTemplate",
     "PromptTemplateVersion",
