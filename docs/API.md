@@ -211,6 +211,18 @@ the per-route request/response schemas.
   incremental, or a full rebuild for validation / disaster recovery). State is
   built deterministically from SQL; the LLM never computes facts. See
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--deterministic-state-compiler).
+- **brain instruction layer** — the stable, versioned instruction records on
+  `/api/brain`: `GET /constitution`, `GET /profiles` + `GET /profiles/{key}`,
+  `GET /context-templates/{key}`, `GET /policies/{key}`, `GET /glossary` (authed
+  reads), and admin-only `POST …/versions` to append a new immutable version
+  (the `current_version` pointer bumps in the same transaction). `POST
+  /conversations/{id}/assemble` returns the ordered, permission-filtered,
+  ChatRequest-ready context (messages + model + temperature + max_tokens + tools
+  + prefix_hash + state versions) and persists the prefix-cache checkpoint;
+  scoped conversations require `VIEW_PROJECT`. `GET
+  /conversations/{id}/debug/context` (admin-only) shows per-segment sizes +
+  redacted previews and never echoes a key. See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--stable-instruction-layer--contextassembler).
 
 ---
 

@@ -649,3 +649,9 @@ from app.services.brain.compiler import (  # noqa: E402
     revision_delta,
     stale_states,
 )
+from app.services.brain import instruction  # noqa: E402,F401
+from app.services.brain.context_assembler import (  # noqa: E402
+    assemble,
+    debug_context,
+    wrap_untrusted,
+)

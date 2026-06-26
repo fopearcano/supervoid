@@ -237,7 +237,8 @@ class BrainCheckpoint(BaseEntity, table=True):
 
     conversation_id: str = Field(foreign_key="brain_conversations.id", index=True)
     model: Optional[str] = Field(default=None, max_length=160)
-    prompt_template_version: Optional[int] = Field(default=None)
+    prompt_template_version: Optional[int] = Field(default=None)  # constitution version
+    profile_version: Optional[int] = Field(default=None)
     studio_state_version: Optional[int] = Field(default=None)
     project_state_version: Optional[int] = Field(default=None)
     last_message_id: Optional[str] = Field(

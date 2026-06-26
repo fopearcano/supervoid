@@ -1239,3 +1239,12 @@ class DecisionStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     SUPERSEDED = "superseded"
+
+
+class SafetyApprovalMode(str, Enum):
+    """How a safety/approval policy gates an assistant profile's actions."""
+
+    AUTO = "auto"                        # no human gate (read-only assistants)
+    REQUIRE_REVIEW = "require_review"    # a reviewer must look before acting
+    REQUIRE_APPROVE = "require_approve"  # an approver must sign off
+    OWNER_ONLY = "owner_only"            # only the rights/IP owner (or admin) may act

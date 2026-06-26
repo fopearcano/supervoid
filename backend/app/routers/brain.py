@@ -64,7 +64,22 @@ from app.schemas.brain import (
     RebuildResult,
     StudioBrainStateRead,
 )
+from app.schemas.instruction import (
+    AssembleRequest,
+    ConstitutionRead,
+    ConstitutionVersionCreate,
+    GlossaryRead,
+    GlossaryVersionCreate,
+    PolicyRead,
+    PolicyVersionCreate,
+    ProfileRead,
+    ProfileVersionCreate,
+    TemplateRead,
+    TemplateVersionCreate,
+    VersionRef,
+)
 from app.services import brain
+from app.services.brain import instruction as instruction_svc
 from app.services.policy import ensure_can
 
 router = APIRouter(prefix="/brain", tags=["brain"])
@@ -701,3 +716,278 @@ def rebuild_world_state(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+# === stable instruction layer (Studio Constitution, profiles, …) ===========
+def _constitution_read(parent, v) -> ConstitutionRead:
+    return ConstitutionRead(
+        key=parent.key, name=parent.name, description=parent.description,
+        current_version=parent.current_version, body=v.body if v else "",
+    )
+
+
+def _profile_read(parent, v) -> ProfileRead:
+    return ProfileRead(
+        key=parent.key, name=parent.name, description=parent.description,
+        current_version=parent.current_version,
+        purpose=v.purpose if v else "",
+        permitted_domains=v.permitted_domains if v else [],
+        required_project_scope=v.required_project_scope if v else True,
+        available_tools=v.available_tools if v else [],
+        tone=v.tone if v else "", response_format=v.response_format if v else "prose",
+        approval_policy=v.approval_policy if v else "default",
+        default_temperature=v.default_temperature if v else 0.3,
+        output_limit=v.output_limit if v else 1500,
+        model_preference=v.model_preference if v else None,
+        required_scopes=v.required_scopes if v else [],
+    )
+
+
+def _version_refs(rows) -> list[VersionRef]:
+    return [VersionRef(version=r.version, notes=r.notes, created_by_id=r.created_by_id) for r in rows]
+
+
+@router.get("/constitution", response_model=ConstitutionRead)
+def get_constitution(
+    user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> ConstitutionRead:
+    parent, v = instruction_svc.get_active(session, "constitution", "studio-constitution")
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Constitution not seeded")
+    return _constitution_read(parent, v)
+
+
+@router.get("/constitution/versions", response_model=list[VersionRef], dependencies=ADMIN_ONLY)
+def list_constitution_versions(session: Session = Depends(get_session)) -> list[VersionRef]:
+    return _version_refs(instruction_svc.list_versions(session, "constitution", "studio-constitution"))
+
+
+@router.post("/constitution/versions", response_model=ConstitutionRead, dependencies=ADMIN_ONLY)
+def add_constitution_version(
+    body: ConstitutionVersionCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> ConstitutionRead:
+    try:
+        instruction_svc.add_version(
+            session, "constitution", "studio-constitution",
+            fields={"body": body.body, "notes": body.notes}, created_by_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    session.commit()
+    parent, v = instruction_svc.get_active(session, "constitution", "studio-constitution")
+    return _constitution_read(parent, v)
+
+
+@router.get("/profiles", response_model=list[ProfileRead])
+def list_profiles(
+    user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> list[ProfileRead]:
+    return [_profile_read(p, v) for p, v in instruction_svc.list_profiles(session)]
+
+
+@router.get("/profiles/{key}", response_model=ProfileRead)
+def get_profile(
+    key: str, user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> ProfileRead:
+    parent, v = instruction_svc.get_active(session, "profile", key)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return _profile_read(parent, v)
+
+
+@router.get("/profiles/{key}/versions", response_model=list[VersionRef], dependencies=ADMIN_ONLY)
+def list_profile_versions(key: str, session: Session = Depends(get_session)) -> list[VersionRef]:
+    return _version_refs(instruction_svc.list_versions(session, "profile", key))
+
+
+@router.post("/profiles/{key}/versions", response_model=ProfileRead, dependencies=ADMIN_ONLY)
+def add_profile_version(
+    key: str,
+    body: ProfileVersionCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> ProfileRead:
+    fields = body.model_dump()
+    notes = fields.pop("notes", None)
+    fields["notes"] = notes
+    try:
+        instruction_svc.add_version(session, "profile", key, fields=fields, created_by_id=user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    session.commit()
+    parent, v = instruction_svc.get_active(session, "profile", key)
+    return _profile_read(parent, v)
+
+
+@router.get("/context-templates/{key}", response_model=TemplateRead)
+def get_context_template(
+    key: str, user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> TemplateRead:
+    parent, v = instruction_svc.get_active(session, "template", key)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return TemplateRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        segment_key=v.segment_key if v else "", body=v.body if v else "",
+    )
+
+
+@router.post("/context-templates/{key}/versions", response_model=TemplateRead, dependencies=ADMIN_ONLY)
+def add_template_version(
+    key: str,
+    body: TemplateVersionCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> TemplateRead:
+    try:
+        instruction_svc.add_version(
+            session, "template", key,
+            fields={"segment_key": body.segment_key, "body": body.body, "notes": body.notes},
+            created_by_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    session.commit()
+    parent, v = instruction_svc.get_active(session, "template", key)
+    return TemplateRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        segment_key=v.segment_key, body=v.body,
+    )
+
+
+@router.get("/policies/{key}", response_model=PolicyRead)
+def get_policy(
+    key: str, user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> PolicyRead:
+    parent, v = instruction_svc.get_active(session, "policy", key)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return PolicyRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        mode=v.mode, required_scope_to_act=v.required_scope_to_act,
+        blocked_tools=v.blocked_tools,
+    )
+
+
+@router.post("/policies/{key}/versions", response_model=PolicyRead, dependencies=ADMIN_ONLY)
+def add_policy_version(
+    key: str,
+    body: PolicyVersionCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> PolicyRead:
+    try:
+        instruction_svc.add_version(
+            session, "policy", key,
+            fields={
+                "mode": body.mode, "required_scope_to_act": body.required_scope_to_act,
+                "blocked_tools": body.blocked_tools, "rules": body.rules, "notes": body.notes,
+            },
+            created_by_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    session.commit()
+    parent, v = instruction_svc.get_active(session, "policy", key)
+    return PolicyRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        mode=v.mode, required_scope_to_act=v.required_scope_to_act, blocked_tools=v.blocked_tools,
+    )
+
+
+@router.get("/glossary", response_model=GlossaryRead)
+def get_glossary(
+    user: User = Depends(get_current_user), session: Session = Depends(get_session)
+) -> GlossaryRead:
+    parent, v = instruction_svc.get_active(session, "glossary", "studio-glossary")
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Glossary not seeded")
+    return GlossaryRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        entries=v.entries if v else [], body=v.body if v else "",
+    )
+
+
+@router.post("/glossary/versions", response_model=GlossaryRead, dependencies=ADMIN_ONLY)
+def add_glossary_version(
+    body: GlossaryVersionCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> GlossaryRead:
+    entries = sorted(body.entries, key=lambda e: e.get("term", "") if isinstance(e, dict) else str(e))
+    rendered = "\n".join(
+        f"{e.get('term', '')}: {e.get('definition', '')}" for e in entries if isinstance(e, dict)
+    )
+    try:
+        instruction_svc.add_version(
+            session, "glossary", "studio-glossary",
+            fields={"entries": entries, "body": rendered, "notes": body.notes},
+            created_by_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    session.commit()
+    parent, v = instruction_svc.get_active(session, "glossary", "studio-glossary")
+    return GlossaryRead(
+        key=parent.key, name=parent.name, current_version=parent.current_version,
+        entries=v.entries, body=v.body,
+    )
+
+
+# === context assembly ======================================================
+@router.post("/conversations/{conversation_id}/assemble")
+def assemble_context(
+    conversation_id: str,
+    body: AssembleRequest = AssembleRequest(),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Assemble the ordered, permission-filtered context for a conversation and
+    persist its prefix-cache checkpoint. Scoped conversations require
+    VIEW_PROJECT (admins bypass)."""
+    conv = brain.get_conversation(session, conversation_id)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conv.owner_user_id != user.id and not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Not your conversation")
+    if (conv.work_id or conv.story_world_id) and not _is_admin(user):
+        ensure_can(
+            session, user, _PS.VIEW_PROJECT,
+            work_id=conv.work_id, story_world_id=conv.story_world_id,
+        )
+    ctx = brain.assemble(
+        session, conv, user=user, model=body.model,
+        include_evidence=body.include_evidence, question=body.question,
+    )
+    session.commit()
+    return {
+        "messages": ctx.messages,
+        "model": ctx.model,
+        "temperature": ctx.temperature,
+        "max_tokens": ctx.max_tokens,
+        "tools": ctx.tools,
+        "prefix_hash": ctx.prefix_hash,
+        "context_checksum": ctx.context_checksum,
+        "versions": ctx.versions,
+        "resolved_scopes": ctx.resolved_scopes,
+    }
+
+
+@router.get("/conversations/{conversation_id}/debug/context", dependencies=ADMIN_ONLY)
+def debug_context(
+    conversation_id: str,
+    include_evidence: bool = Query(default=False),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Admin debug view: per-segment sizes + REDACTED content, prefix hash and
+    state versions — computed for the calling admin, and read-only (it never
+    writes a checkpoint). Never reads or echoes any API key / Authorization header."""
+    conv = brain.get_conversation(session, conversation_id)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return brain.debug_context(
+        session, conv, user=user, include_evidence=include_evidence
+    )

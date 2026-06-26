@@ -25,6 +25,18 @@ from app.models.brain import (
     ProjectBrainState,
     StudioBrainState,
 )
+from app.models.instruction_layer import (
+    AssistantProfile,
+    AssistantProfileVersion,
+    ContextTemplate,
+    ContextTemplateVersion,
+    SafetyApprovalPolicy,
+    SafetyApprovalPolicyVersion,
+    StudioConstitution,
+    StudioConstitutionVersion,
+    TerminologyGlossary,
+    TerminologyGlossaryVersion,
+)
 from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -131,6 +143,7 @@ from app.models.enums import (  # SUPERVOID Brain (persistence layer)
     BrainStateStatus,
     BrainStateType,
     DecisionStatus,
+    SafetyApprovalMode,
 )
 from app.models.enums import (  # business layer (rights / CRM / editions)
     ChainOfTitleType,
@@ -249,6 +262,17 @@ __all__ = [
     "DecisionStatus",
     "ProjectBrainState",
     "StudioBrainState",
+    "SafetyApprovalMode",
+    "StudioConstitution",
+    "StudioConstitutionVersion",
+    "AssistantProfile",
+    "AssistantProfileVersion",
+    "ContextTemplate",
+    "ContextTemplateVersion",
+    "SafetyApprovalPolicy",
+    "SafetyApprovalPolicyVersion",
+    "TerminologyGlossary",
+    "TerminologyGlossaryVersion",
     "FindingSeverity",
     "PromptTemplate",
     "PromptTemplateVersion",
