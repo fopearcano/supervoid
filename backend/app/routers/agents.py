@@ -44,6 +44,7 @@ from app.schemas.agent import (
     ToolRead,
 )
 from app.services import agents as agent_svc
+from app.services import brain
 from app.services import policy
 from app.utils import (
     Page,
@@ -97,6 +98,25 @@ def _check_permissions(session, user, definition, target_type, target_id) -> Non
             )
 
 
+def _target_scope(
+    session: Session, target_type: Optional[str], target_id: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve ``(work_id, story_world_id)`` from an agent target, guarded."""
+    if not target_id:
+        return (None, None)
+    try:
+        if target_type == "work":
+            return brain.work_scope(session, target_id)
+        if target_type == "manuscript":
+            from app.models import Manuscript
+
+            m = session.get(Manuscript, target_id)
+            return brain.work_scope(session, m.work_id) if m else (None, None)
+    except Exception:
+        return (None, None)
+    return (None, None)
+
+
 # --- registry --------------------------------------------------------------
 
 
@@ -148,6 +168,17 @@ def run_agent(
         target_type=payload.target_type, target_id=payload.target_id,
         correlation_id=getattr(request.state, "request_id", None),
     )
+    work_id, story_world_id = _target_scope(
+        session, run.target_type, run.target_id
+    )
+    for finding in getattr(run, "findings", []) or []:
+        brain.emit(
+            session, event_type=brain.BrainEventType.AGENT_FINDING_CREATED,
+            aggregate_type="agent_finding", aggregate_id=finding.id,
+            work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+            changes={"severity": getattr(finding.severity, "value", None),
+                     "agent_key": run.agent_key},
+        )
     session.commit()
     session.refresh(run)
     return _run_detail(run)
@@ -300,6 +331,15 @@ def approve_proposal(
     proposal.approved_by_id = user.id
     proposal.approved_at = utcnow()
     session.add(proposal)
+    work_id, story_world_id = _target_scope(
+        session, proposal.target_type, proposal.target_id
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.AGENT_PROPOSAL_APPROVED,
+        aggregate_type="agent_proposal", aggregate_id=proposal.id,
+        work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+        changes={"tool_key": proposal.tool_key},
+    )
     session.commit()
     session.refresh(proposal)
     return AgentProposalRead.model_validate(proposal)
@@ -332,6 +372,15 @@ def execute_proposal(
 ) -> AgentProposalRead:
     proposal = get_or_404(session, AgentActionProposal, proposal_id, name="AgentActionProposal")
     agent_svc.execute_proposal(session, proposal, user=user)
+    work_id, story_world_id = _target_scope(
+        session, proposal.target_type, proposal.target_id
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.AGENT_PROPOSAL_EXECUTED,
+        aggregate_type="agent_proposal", aggregate_id=proposal.id,
+        work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+        changes={"tool_key": proposal.tool_key},
+    )
     session.commit()
     session.refresh(proposal)
     return AgentProposalRead.model_validate(proposal)

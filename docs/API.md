@@ -192,6 +192,15 @@ the per-route request/response schemas.
   self); read-only compiled state (`/state/studio`, `/works/{id}/state`,
   `/story-worlds/{id}/state`); and read-only, admin-only `events` (append-only)
   and `revisions` (immutable). Storage only — no state is compiled yet.
+- **brain outbox** — admin-only operations for the transactional domain-event
+  outbox (`/api/brain/outbox`): `GET /` (monitoring: unprocessed/failed counts,
+  current cursor, compiler lag, stale-project count), `GET /failed` (the
+  dead-letter list), `POST /process` (deterministic one-shot drain),
+  `POST /reconcile` (re-queue failures + mark stale anything missed), and
+  `POST /replay` (requeue named or all `FAILED` events). Events are emitted in
+  the same transaction as the domain mutation they describe; the consumer marks
+  the affected project/studio state stale (it does not compile it). See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--domain-event-outbox).
 
 ---
 

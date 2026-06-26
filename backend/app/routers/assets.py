@@ -65,6 +65,7 @@ from app.schemas.provenance_record import (
     ProvenanceWrite,
 )
 from app.services import assets as asset_service
+from app.services import brain
 from app.services.storage import get_storage, safe_filename
 from app.utils import (
     Page,
@@ -234,6 +235,13 @@ def create_asset(
         data["owner_id"] = user.id
     asset = Asset(**data)
     session.add(asset)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ASSET_CREATED,
+        aggregate_type="asset", aggregate_id=asset.id,
+        work_id=asset.work_id, story_world_id=asset.story_world_id,
+        actor_id=user.id,
+        changes={"title": asset.title, "asset_type": asset.asset_type.value},
+    )
     session.commit()
     session.refresh(asset)
     return _asset_detail(session, asset)
@@ -260,6 +268,12 @@ def update_asset(
         ensure_exists(session, User, payload.owner_id, name="User")
     apply_patch(asset, payload)
     session.add(asset)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ASSET_UPDATED,
+        aggregate_type="asset", aggregate_id=asset.id,
+        work_id=asset.work_id, story_world_id=asset.story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(asset)
     return _asset_detail(session, asset)
@@ -270,10 +284,16 @@ def update_asset(
 )
 def delete_asset(asset_id: str, session: Session = Depends(get_session)):
     asset = get_or_404(session, Asset, asset_id, name="Asset")
+    work_id, story_world_id = asset.work_id, asset.story_world_id
     storage = get_storage()
     for version in asset.versions:
         storage.delete(version.storage_key)
     session.delete(asset)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ASSET_DELETED,
+        aggregate_type="asset", aggregate_id=asset_id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
 
 
@@ -400,6 +420,13 @@ def promote_version(
     asset = get_or_404(session, Asset, asset_id, name="Asset")
     version = _get_version(session, asset_id, version_id)
     asset_service.set_current_version(session, asset, version)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ASSET_VERSION_PROMOTED,
+        aggregate_type="asset", aggregate_id=asset.id,
+        work_id=asset.work_id, story_world_id=asset.story_world_id,
+        changes={"version_id": version.id,
+                 "version_number": version.version_number},
+    )
     session.commit()
     session.refresh(asset)
     return _asset_detail(session, asset)
@@ -533,6 +560,14 @@ def upsert_provenance(
         for key, value in payload.model_dump().items():
             setattr(prov, key, value)
     session.add(prov)
+    asset = session.get(Asset, version.asset_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PROVENANCE_RECORDED,
+        aggregate_type="provenance", aggregate_id=prov.id,
+        work_id=asset.work_id if asset else None,
+        story_world_id=asset.story_world_id if asset else None,
+        changes={"asset_version_id": version.id},
+    )
     session.commit()
     session.refresh(prov)
     return ProvenanceRead.model_validate(prov)
@@ -632,9 +667,15 @@ def add_licence(
     payload: LicenceCreate,
     session: Session = Depends(get_session),
 ) -> LicenceRead:
-    get_or_404(session, Asset, asset_id, name="Asset")
+    asset = get_or_404(session, Asset, asset_id, name="Asset")
     licence = LicenceRecord(asset_id=asset_id, **payload.model_dump())
     session.add(licence)
+    brain.emit(
+        session, event_type=brain.BrainEventType.LICENCE_CREATED,
+        aggregate_type="licence", aggregate_id=licence.id,
+        work_id=asset.work_id, story_world_id=asset.story_world_id,
+        changes={"asset_id": asset_id},
+    )
     session.commit()
     session.refresh(licence)
     return LicenceRead.model_validate(licence)
@@ -654,6 +695,14 @@ def update_licence(
         raise HTTPException(status_code=404, detail="Licence not found on this asset")
     apply_patch(licence, payload)
     session.add(licence)
+    asset = session.get(Asset, asset_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.LICENCE_UPDATED,
+        aggregate_type="licence", aggregate_id=licence.id,
+        work_id=asset.work_id if asset else None,
+        story_world_id=asset.story_world_id if asset else None,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(licence)
     return LicenceRead.model_validate(licence)
@@ -668,5 +717,12 @@ def delete_licence(
     licence = get_or_404(session, LicenceRecord, licence_id, name="LicenceRecord")
     if licence.asset_id != asset_id:
         raise HTTPException(status_code=404, detail="Licence not found on this asset")
+    asset = session.get(Asset, asset_id)
     session.delete(licence)
+    brain.emit(
+        session, event_type=brain.BrainEventType.LICENCE_DELETED,
+        aggregate_type="licence", aggregate_id=licence_id,
+        work_id=asset.work_id if asset else None,
+        story_world_id=asset.story_world_id if asset else None,
+    )
     session.commit()

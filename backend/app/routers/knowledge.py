@@ -33,6 +33,7 @@ from app.schemas import (
     ManuscriptEntityLinkUpdate,
     NeighborhoodResult,
 )
+from app.services import brain
 from app.services.knowledge import neighborhood, slugify
 from app.utils import (
     Page,
@@ -178,6 +179,11 @@ def create_entity(
         extras=payload.extras,
     )
     session.add(entity)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_ENTITY_CREATED,
+        aggregate_type="knowledge_entity", aggregate_id=entity.id,
+        changes={"name": entity.name, "kind": entity.kind.value},
+    )
     session.commit()
     session.refresh(entity)
     return entity
@@ -198,6 +204,11 @@ def update_entity(
     )
     apply_patch(entity, payload)
     session.add(entity)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_ENTITY_UPDATED,
+        aggregate_type="knowledge_entity", aggregate_id=entity.id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(entity)
     return entity
@@ -237,6 +248,10 @@ def delete_entity(
     for link in links:
         session.delete(link)
     session.delete(entity)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_ENTITY_DELETED,
+        aggregate_type="knowledge_entity", aggregate_id=entity_id,
+    )
     session.commit()
 
 
@@ -353,6 +368,12 @@ def create_relationship(
     )
     rel = KnowledgeRelationship(**payload.model_dump())
     session.add(rel)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_RELATIONSHIP_CREATED,
+        aggregate_type="knowledge_relationship", aggregate_id=rel.id,
+        changes={"source_id": rel.source_id, "target_id": rel.target_id,
+                 "kind": rel.kind.value},
+    )
     session.commit()
     session.refresh(rel)
     return rel
@@ -373,6 +394,11 @@ def update_relationship(
     )
     apply_patch(rel, payload)
     session.add(rel)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_RELATIONSHIP_UPDATED,
+        aggregate_type="knowledge_relationship", aggregate_id=rel.id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(rel)
     return rel
@@ -390,6 +416,10 @@ def delete_relationship(
         session, KnowledgeRelationship, rel_id, name="KnowledgeRelationship"
     )
     session.delete(rel)
+    brain.emit(
+        session, event_type=brain.BrainEventType.KNOWLEDGE_RELATIONSHIP_DELETED,
+        aggregate_type="knowledge_relationship", aggregate_id=rel_id,
+    )
     session.commit()
 
 

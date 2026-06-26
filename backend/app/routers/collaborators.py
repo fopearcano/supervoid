@@ -36,7 +36,7 @@ from app.schemas.project_membership import (
     ProjectMembershipRead,
     ProjectMembershipRoleUpdate,
 )
-from app.services import policy
+from app.services import brain, policy
 from app.utils import ensure_exists, get_or_404
 
 router = APIRouter(tags=["collaboration"])
@@ -97,6 +97,12 @@ def _invite(
         role=membership.role,
         to_status=MembershipStatus.INVITED,
         note=payload.notes,
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.COLLABORATOR_INVITED,
+        aggregate_type="collaborator", aggregate_id=membership.id,
+        work_id=membership.work_id, story_world_id=membership.story_world_id,
+        actor_id=actor.id, changes={"role": membership.role.value},
     )
     session.commit()
     session.refresh(membership)
@@ -221,6 +227,13 @@ def change_membership_role(
             role=payload.role,
             note=f"{old.value} -> {payload.role.value}",
         )
+        brain.emit(
+            session, event_type=brain.BrainEventType.COLLABORATOR_ROLE_CHANGED,
+            aggregate_type="collaborator", aggregate_id=m.id,
+            work_id=m.work_id, story_world_id=m.story_world_id,
+            actor_id=actor.id,
+            changes={"from_role": old.value, "to_role": payload.role.value},
+        )
         session.commit()
         session.refresh(m)
     return _read(m)
@@ -251,6 +264,11 @@ def suspend_membership(
         membership=m,
         from_status=MembershipStatus.ACTIVE,
         to_status=MembershipStatus.SUSPENDED,
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.COLLABORATOR_SUSPENDED,
+        aggregate_type="collaborator", aggregate_id=m.id,
+        work_id=m.work_id, story_world_id=m.story_world_id, actor_id=actor.id,
     )
     session.commit()
     session.refresh(m)
@@ -283,6 +301,11 @@ def reactivate_membership(
         from_status=MembershipStatus.SUSPENDED,
         to_status=MembershipStatus.ACTIVE,
     )
+    brain.emit(
+        session, event_type=brain.BrainEventType.COLLABORATOR_REACTIVATED,
+        aggregate_type="collaborator", aggregate_id=m.id,
+        work_id=m.work_id, story_world_id=m.story_world_id, actor_id=actor.id,
+    )
     session.commit()
     session.refresh(m)
     return _read(m)
@@ -310,6 +333,11 @@ def revoke_membership(
         membership=m,
         from_status=previous,
         to_status=MembershipStatus.REVOKED,
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.COLLABORATOR_REVOKED,
+        aggregate_type="collaborator", aggregate_id=m.id,
+        work_id=m.work_id, story_world_id=m.story_world_id, actor_id=actor.id,
     )
     session.commit()
 

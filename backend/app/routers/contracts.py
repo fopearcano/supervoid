@@ -10,6 +10,7 @@ from app.db import get_session
 from app.models import Author, Contract, Manuscript, Work
 from app.models.enums import ContractStatus
 from app.schemas import ContractCreate, ContractRead, ContractUpdate
+from app.services import brain
 from app.utils import (
     Page,
     PageParams,
@@ -72,6 +73,12 @@ def create_contract(
         ensure_exists(session, Work, payload.work_id, name="Work")
     contract = Contract(**payload.model_dump())
     session.add(contract)
+    work_id, story_world_id = brain.work_scope(session, contract.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.CONTRACT_CREATED,
+        aggregate_type="contract", aggregate_id=contract.id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
     session.refresh(contract)
     return contract
@@ -86,6 +93,13 @@ def update_contract(
     contract = get_or_404(session, Contract, contract_id, name="Contract")
     apply_patch(contract, payload)
     session.add(contract)
+    work_id, story_world_id = brain.work_scope(session, contract.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.CONTRACT_UPDATED,
+        aggregate_type="contract", aggregate_id=contract.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(contract)
     return contract
@@ -98,5 +112,12 @@ def update_contract(
 )
 def delete_contract(contract_id: str, session: Session = Depends(get_session)):
     contract = get_or_404(session, Contract, contract_id, name="Contract")
+    work_id, story_world_id = brain.work_scope(session, contract.work_id)
     session.delete(contract)
+    brain.emit(
+        session, event_type=brain.BrainEventType.CONTRACT_UPDATED,
+        aggregate_type="contract", aggregate_id=contract_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()

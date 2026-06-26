@@ -112,6 +112,9 @@ def transition(
             f"'{to_status.value}' is not allowed."
         )
 
+    from app.services import brain
+
+    from_status = manuscript.status
     event = WorkflowEvent(
         manuscript_id=manuscript.id,
         actor_id=actor.id if actor is not None else None,
@@ -122,6 +125,14 @@ def transition(
     manuscript.status = to_status
     session.add(manuscript)
     session.add(event)
+    work_id, story_world_id = brain.work_scope(session, manuscript.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.MANUSCRIPT_TRANSITIONED,
+        aggregate_type="manuscript", aggregate_id=manuscript.id,
+        work_id=work_id, story_world_id=story_world_id,
+        actor_id=actor.id if actor is not None else None,
+        changes={"from_status": from_status.value, "to_status": to_status.value},
+    )
     session.commit()
     session.refresh(manuscript)
     session.refresh(event)

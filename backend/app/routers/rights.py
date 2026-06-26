@@ -35,6 +35,7 @@ from app.schemas import (
     RightsWindowCreate,
     RightsWindowRead,
 )
+from app.services import brain
 from app.services import rights as rights_service
 from app.utils import (
     Page,
@@ -134,6 +135,13 @@ def create_rights(
     ensure_exists(session, Work, payload.work_id, name="Work")
     rights = Rights(**payload.model_dump())
     session.add(rights)
+    work_id, story_world_id = brain.work_scope(session, rights.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.RIGHTS_UPDATED,
+        aggregate_type="rights", aggregate_id=rights.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"created": True},
+    )
     session.commit()
     session.refresh(rights)
     return rights
@@ -146,6 +154,13 @@ def update_rights(
     rights = get_or_404(session, Rights, rights_id, name="Rights")
     apply_patch(rights, payload)
     session.add(rights)
+    work_id, story_world_id = brain.work_scope(session, rights.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.RIGHTS_UPDATED,
+        aggregate_type="rights", aggregate_id=rights.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(rights)
     return rights
@@ -156,7 +171,14 @@ def update_rights(
 )
 def delete_rights(rights_id: str, session: Session = Depends(get_session)):
     rights = get_or_404(session, Rights, rights_id, name="Rights")
+    work_id, story_world_id = brain.work_scope(session, rights.work_id)
     session.delete(rights)
+    brain.emit(
+        session, event_type=brain.BrainEventType.RIGHTS_UPDATED,
+        aggregate_type="rights", aggregate_id=rights_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 

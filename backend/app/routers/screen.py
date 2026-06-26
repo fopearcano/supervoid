@@ -61,6 +61,8 @@ from app.schemas.screen import (
     ShotUpdate,
     StoryboardRef,
 )
+from app.models.enums import AssetApprovalStatus
+from app.services import brain
 from app.services import graphic_novel as gn
 from app.services import screen as screen_service
 from app.utils import (
@@ -74,6 +76,31 @@ from app.utils import (
 )
 
 router = APIRouter(prefix="/screen", tags=["screen"])
+
+
+# --- brain scope resolvers (best-effort; never break the mutation) ---------
+
+
+def _project_scope(project: ScreenProject) -> tuple[Optional[str], Optional[str]]:
+    return (project.source_work_id, project.story_world_id)
+
+
+def _scene_scope(
+    session: Session, scene: Scene
+) -> tuple[Optional[str], Optional[str]]:
+    seq = session.get(ScreenSequence, scene.sequence_id)
+    unit = session.get(ScreenUnit, seq.unit_id) if seq else None
+    project = (
+        session.get(ScreenProject, unit.screen_project_id) if unit else None
+    )
+    return _project_scope(project) if project else (None, None)
+
+
+def _shot_scope(
+    session: Session, shot: Shot
+) -> tuple[Optional[str], Optional[str]]:
+    scene = session.get(Scene, shot.scene_id)
+    return _scene_scope(session, scene) if scene else (None, None)
 
 
 # --- read builders ---------------------------------------------------------
@@ -158,6 +185,13 @@ def create_project_from_dossier(
     project = screen_service.create_project_from_dossier(
         session, dossier, fmt=payload.format, title=payload.title
     )
+    work_id, story_world_id = _project_scope(project)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCREEN_PROJECT_CREATED,
+        aggregate_type="screen_project", aggregate_id=project.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"title": project.title, "format": project.format.value},
+    )
     session.commit()
     session.refresh(project)
     return project
@@ -201,6 +235,13 @@ def update_project(
     project = get_or_404(session, ScreenProject, project_id, name="ScreenProject")
     apply_patch(project, payload)
     session.add(project)
+    work_id, story_world_id = _project_scope(project)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCREEN_PROJECT_UPDATED,
+        aggregate_type="screen_project", aggregate_id=project.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(project)
     return project
@@ -209,7 +250,14 @@ def update_project(
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=ADMIN_ONLY)
 def delete_project(project_id: str, session: Session = Depends(get_session)):
     project = get_or_404(session, ScreenProject, project_id, name="ScreenProject")
+    work_id, story_world_id = _project_scope(project)
     session.delete(project)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCREEN_PROJECT_UPDATED,
+        aggregate_type="screen_project", aggregate_id=project_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 
@@ -315,6 +363,13 @@ def create_scene(sequence_id: str, payload: SceneCreate, session: Session = Depe
     get_or_404(session, ScreenSequence, sequence_id, name="ScreenSequence")
     scene = Scene(sequence_id=sequence_id, **payload.model_dump())
     session.add(scene)
+    session.flush()
+    work_id, story_world_id = _scene_scope(session, scene)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCENE_CREATED,
+        aggregate_type="scene", aggregate_id=scene.id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
     session.refresh(scene)
     return _scene_detail(scene)
@@ -331,6 +386,13 @@ def update_scene(scene_id: str, payload: SceneUpdate, session: Session = Depends
     scene = get_or_404(session, Scene, scene_id, name="Scene")
     apply_patch(scene, payload)
     session.add(scene)
+    work_id, story_world_id = _scene_scope(session, scene)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCENE_UPDATED,
+        aggregate_type="scene", aggregate_id=scene.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(scene)
     return _scene_detail(scene)
@@ -339,7 +401,14 @@ def update_scene(scene_id: str, payload: SceneUpdate, session: Session = Depends
 @router.delete("/scenes/{scene_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=AUTHED)
 def delete_scene(scene_id: str, session: Session = Depends(get_session)):
     scene = get_or_404(session, Scene, scene_id, name="Scene")
+    work_id, story_world_id = _scene_scope(session, scene)
     session.delete(scene)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SCENE_UPDATED,
+        aggregate_type="scene", aggregate_id=scene_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 
@@ -384,6 +453,13 @@ def create_shot(scene_id: str, payload: ShotCreate, session: Session = Depends(g
         ensure_exists(session, GraphicNovelPanel, payload.source_storyboard_panel_id, name="GraphicNovelPanel")
     shot = Shot(scene_id=scene_id, **payload.model_dump())
     session.add(shot)
+    session.flush()
+    work_id, story_world_id = _shot_scope(session, shot)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SHOT_CREATED,
+        aggregate_type="shot", aggregate_id=shot.id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
     session.refresh(shot)
     return _shot_read(shot)
@@ -400,8 +476,25 @@ def update_shot(shot_id: str, payload: ShotUpdate, session: Session = Depends(ge
     shot = get_or_404(session, Shot, shot_id, name="Shot")
     if payload.source_storyboard_panel_id is not None:
         ensure_exists(session, GraphicNovelPanel, payload.source_storyboard_panel_id, name="GraphicNovelPanel")
+    prev_approval = shot.approval
     apply_patch(shot, payload)
     session.add(shot)
+    work_id, story_world_id = _shot_scope(session, shot)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SHOT_UPDATED,
+        aggregate_type="shot", aggregate_id=shot.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
+    if (
+        shot.approval == AssetApprovalStatus.APPROVED
+        and prev_approval != AssetApprovalStatus.APPROVED
+    ):
+        brain.emit(
+            session, event_type=brain.BrainEventType.SHOT_APPROVED,
+            aggregate_type="shot", aggregate_id=shot.id,
+            work_id=work_id, story_world_id=story_world_id,
+        )
     session.commit()
     session.refresh(shot)
     return _shot_read(shot)
@@ -410,7 +503,14 @@ def update_shot(shot_id: str, payload: ShotUpdate, session: Session = Depends(ge
 @router.delete("/shots/{shot_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=AUTHED)
 def delete_shot(shot_id: str, session: Session = Depends(get_session)):
     shot = get_or_404(session, Shot, shot_id, name="Shot")
+    work_id, story_world_id = _shot_scope(session, shot)
     session.delete(shot)
+    brain.emit(
+        session, event_type=brain.BrainEventType.SHOT_UPDATED,
+        aggregate_type="shot", aggregate_id=shot_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 

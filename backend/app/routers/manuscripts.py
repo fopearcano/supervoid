@@ -11,6 +11,7 @@ from app.db import get_session
 from app.models import Author, Manuscript, Work
 from app.models.enums import WorkflowStatus, WorkType
 from app.schemas import ManuscriptCreate, ManuscriptRead, ManuscriptUpdate
+from app.services import brain
 from app.utils import (
     Page,
     PageParams,
@@ -109,6 +110,12 @@ def create_manuscript(
         ensure_exists(session, Work, payload.work_id, name="Work")
     manuscript = Manuscript(**payload.model_dump())
     session.add(manuscript)
+    work_id, story_world_id = brain.work_scope(session, manuscript.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.MANUSCRIPT_CREATED,
+        aggregate_type="manuscript", aggregate_id=manuscript.id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
     session.refresh(manuscript)
     return manuscript
@@ -123,6 +130,13 @@ def update_manuscript(
     manuscript = get_or_404(session, Manuscript, manuscript_id, name="Manuscript")
     apply_patch(manuscript, payload)
     session.add(manuscript)
+    work_id, story_world_id = brain.work_scope(session, manuscript.work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.MANUSCRIPT_UPDATED,
+        aggregate_type="manuscript", aggregate_id=manuscript.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(manuscript)
     return manuscript
@@ -137,5 +151,11 @@ def delete_manuscript(
     manuscript_id: str, session: Session = Depends(get_session)
 ):
     manuscript = get_or_404(session, Manuscript, manuscript_id, name="Manuscript")
+    work_id, story_world_id = brain.work_scope(session, manuscript.work_id)
     session.delete(manuscript)
+    brain.emit(
+        session, event_type=brain.BrainEventType.MANUSCRIPT_DELETED,
+        aggregate_type="manuscript", aggregate_id=manuscript_id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()

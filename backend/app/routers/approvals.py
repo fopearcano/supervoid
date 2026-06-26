@@ -28,10 +28,22 @@ from app.schemas.approval_request import (
     ApprovalDecisionRequest,
     ApprovalRead,
 )
-from app.services import production
+from app.services import brain, production
 from app.utils import Page, PageParams, ensure_exists, get_or_404, page_params, paginate
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
+
+
+def _approval_scope(
+    session: Session, approval: ApprovalRequest
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve ``(work_id, story_world_id)`` from the approval's task, if any."""
+    if approval.task_id is None:
+        return (None, None)
+    item = session.get(ProductionItem, approval.task_id)
+    if item is None:
+        return (None, None)
+    return (item.work_id, item.story_world_id)
 
 _DECISION_STATUS = {
     ApprovalDecision.APPROVED: ApprovalStatus.APPROVED,
@@ -109,6 +121,13 @@ def create_approval(
             actor_id=user.id,
             summary=f"approval requested from {payload.approver_id}",
         )
+    work_id, story_world_id = _approval_scope(session, approval)
+    brain.emit(
+        session, event_type=brain.BrainEventType.APPROVAL_REQUESTED,
+        aggregate_type="approval", aggregate_id=approval.id,
+        work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+        changes={"target_type": approval.target_type, "target_id": approval.target_id},
+    )
     session.commit()
     session.refresh(approval)
     return ApprovalRead.model_validate(approval)
@@ -153,6 +172,13 @@ def decide_approval(
             summary=f"approval {payload.decision.value}",
             detail=payload.comments,
         )
+    work_id, story_world_id = _approval_scope(session, approval)
+    brain.emit(
+        session, event_type=brain.BrainEventType.APPROVAL_DECIDED,
+        aggregate_type="approval", aggregate_id=approval.id,
+        work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+        changes={"decision": payload.decision.value, "status": approval.status.value},
+    )
     session.commit()
     session.refresh(approval)
     return ApprovalRead.model_validate(approval)

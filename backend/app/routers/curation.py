@@ -65,6 +65,7 @@ from app.schemas.curation import (
     SetVisibilityRequest,
 )
 from app.schemas.public_reader import PublishedPageRead, PublishedWorkDetail
+from app.services import brain
 from app.services import curation
 from app.services import public_reader_service as reader
 from app.services.knowledge import slugify
@@ -84,6 +85,13 @@ def _unique_slug(session: Session, base: str, exclude_id: Optional[str] = None) 
         if clash is None or clash.id == exclude_id:
             return candidate
         candidate, i = f"{base}-{i}", i + 1
+
+
+def _pub_scope(
+    session: Session, work: PublishedWork
+) -> tuple[Optional[str], Optional[str]]:
+    """Best-effort upstream ``(work_id, story_world_id)`` for a published work."""
+    return brain.work_scope(session, getattr(work, "source_work_id", None))
 
 
 # --- PublishedWork ---------------------------------------------------------
@@ -261,6 +269,14 @@ def approve_publication(
 ) -> PublicationApproval:
     approval = get_or_404(session, PublicationApproval, approval_id, name="PublicationApproval")
     curation.decide_approval(session, approval, approve=True, user=user, note=payload.note)
+    pub = session.get(PublishedWork, approval.published_work_id)
+    work_id, story_world_id = _pub_scope(session, pub) if pub else (None, None)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PUBLICATION_APPROVED,
+        aggregate_type="publication", aggregate_id=approval.id,
+        work_id=work_id, story_world_id=story_world_id, actor_id=user.id,
+        changes={"published_work_id": approval.published_work_id},
+    )
     session.commit()
     session.refresh(approval)
     return approval
@@ -285,6 +301,12 @@ def publish_work(
 ) -> PublishedWork:
     work = get_or_404(session, PublishedWork, work_id, name="PublishedWork")
     curation.publish(session, work, user=user)
+    src_work_id, story_world_id = _pub_scope(session, work)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PUBLICATION_PUBLISHED,
+        aggregate_type="publication", aggregate_id=work.id,
+        work_id=src_work_id, story_world_id=story_world_id, actor_id=user.id,
+    )
     session.commit()
     session.refresh(work)
     return work
@@ -297,6 +319,12 @@ def unpublish_work(
 ) -> PublishedWork:
     work = get_or_404(session, PublishedWork, work_id, name="PublishedWork")
     curation.unpublish(session, work, user=user, note=payload.note if payload else None)
+    src_work_id, story_world_id = _pub_scope(session, work)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PUBLICATION_UNPUBLISHED,
+        aggregate_type="publication", aggregate_id=work.id,
+        work_id=src_work_id, story_world_id=story_world_id, actor_id=user.id,
+    )
     session.commit()
     session.refresh(work)
     return work
@@ -581,6 +609,10 @@ def handoff_page(
     user: User = Depends(get_current_user),
 ) -> PublishedPage:
     page = curation.hand_off_page(session, payload, user=user)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PUBLICATION_PAGE_HANDED_OFF,
+        aggregate_type="publication", aggregate_id=page.id, actor_id=user.id,
+    )
     session.commit()
     session.refresh(page)
     return page

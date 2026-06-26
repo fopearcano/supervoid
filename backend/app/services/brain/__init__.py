@@ -626,3 +626,16 @@ def decide_decision(
     session.add(record)
     session.flush()
     return record
+
+
+# --- outbox: emitter + consumer (imported last to avoid an import cycle) ----
+# These submodules import the functions defined above; importing them here, at
+# the bottom, keeps the package's public surface in one place.
+from app.services.brain.events import BrainEventType, emit, work_scope  # noqa: E402
+from app.services.brain.consumer import (  # noqa: E402
+    drain,
+    outbox_status,
+    process_pending,
+    reconcile,
+    replay_failed,
+)

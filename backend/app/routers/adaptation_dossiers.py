@@ -19,6 +19,7 @@ from app.schemas.adaptation_dossier import (
     AdaptationDossierRead,
     AdaptationDossierUpdate,
 )
+from app.services import brain
 from app.utils import (
     Page,
     PageParams,
@@ -83,6 +84,12 @@ def create_adaptation_dossier(
         ensure_exists(session, Work, payload.target_work_id, name="Work")
     dossier = AdaptationDossier(**payload.model_dump())
     session.add(dossier)
+    work_id, story_world_id = brain.work_scope(session, dossier.source_work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ADAPTATION_CREATED,
+        aggregate_type="adaptation", aggregate_id=dossier.id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
     session.refresh(dossier)
     return dossier
@@ -99,6 +106,13 @@ def update_adaptation_dossier(
         ensure_exists(session, Work, payload.target_work_id, name="Work")
     apply_patch(dossier, payload)
     session.add(dossier)
+    work_id, story_world_id = brain.work_scope(session, dossier.source_work_id)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ADAPTATION_UPDATED,
+        aggregate_type="adaptation", aggregate_id=dossier.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(dossier)
     return dossier
@@ -107,5 +121,12 @@ def update_adaptation_dossier(
 @router.delete("/{dossier_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=ADMIN_ONLY)
 def delete_adaptation_dossier(dossier_id: str, session: Session = Depends(get_session)):
     dossier = get_or_404(session, AdaptationDossier, dossier_id, name="AdaptationDossier")
+    work_id, story_world_id = brain.work_scope(session, dossier.source_work_id)
     session.delete(dossier)
+    brain.emit(
+        session, event_type=brain.BrainEventType.ADAPTATION_UPDATED,
+        aggregate_type="adaptation", aggregate_id=dossier_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()

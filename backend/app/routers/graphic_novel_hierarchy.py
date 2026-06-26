@@ -29,6 +29,7 @@ from app.models import (
     GraphicNovelVolume,
     KnowledgeEntity,
 )
+from app.models.enums import GNStatus
 from app.schemas.graphic_novel_hierarchy import (
     ChapterCreate,
     ChapterRead,
@@ -59,6 +60,7 @@ from app.schemas.graphic_novel_hierarchy import (
     VolumeRead,
     VolumeUpdate,
 )
+from app.services import brain
 from app.services import graphic_novel as gn
 from app.utils import apply_patch, ensure_exists, get_or_404
 
@@ -114,6 +116,16 @@ def _recalc_for_page(session: Session, page: GraphicNovelPage) -> None:
     production = _production_for_page(session, page)
     if production is not None:
         gn.recalculate_production(session, production)
+
+
+def _page_scope(
+    session: Session, page: GraphicNovelPage
+) -> tuple[Optional[str], Optional[str]]:
+    """Best-effort ``(work_id, story_world_id)`` for a GN page via its production."""
+    production = _production_for_page(session, page)
+    if production is None:
+        return (None, None)
+    return brain.work_scope(session, production.work_id)
 
 
 def _child_or_404(child, parent_id: str, parent_attr: str, name: str):
@@ -373,6 +385,13 @@ def create_page(
     session.add(page)
     session.flush()
     _recalc_for_page(session, page)
+    work_id, story_world_id = _page_scope(session, page)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PAGE_UPDATED,
+        aggregate_type="page", aggregate_id=page.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"page_number": page.page_number, "created": True},
+    )
     session.commit()
     session.refresh(page)
     return _page_detail(page)
@@ -393,9 +412,23 @@ def update_page(
 
     if payload.master_asset_id is not None:
         ensure_exists(session, Asset, payload.master_asset_id, name="Asset")
+    prev_status = page.status
     apply_patch(page, payload)
     session.add(page)
     _recalc_for_page(session, page)
+    work_id, story_world_id = _page_scope(session, page)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PAGE_UPDATED,
+        aggregate_type="page", aggregate_id=page.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
+    if page.status == GNStatus.COMPLETE and prev_status != GNStatus.COMPLETE:
+        brain.emit(
+            session, event_type=brain.BrainEventType.PAGE_APPROVED,
+            aggregate_type="page", aggregate_id=page.id,
+            work_id=work_id, story_world_id=story_world_id,
+        )
     session.commit()
     session.refresh(page)
     return _page_detail(page)
@@ -405,10 +438,21 @@ def update_page(
 def delete_page(page_id: str, session: Session = Depends(get_session)):
     page = get_or_404(session, GraphicNovelPage, page_id, name="GraphicNovelPage")
     production = _production_for_page(session, page)
+    work_id, story_world_id = (
+        brain.work_scope(session, production.work_id)
+        if production is not None
+        else (None, None)
+    )
     session.delete(page)
     session.flush()
     if production is not None:
         gn.recalculate_production(session, production)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PAGE_UPDATED,
+        aggregate_type="page", aggregate_id=page_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 
@@ -522,6 +566,13 @@ def create_panel(
     session.add(panel)
     session.flush()
     _recalc_for_page(session, page)
+    work_id, story_world_id = _page_scope(session, page)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PANEL_UPDATED,
+        aggregate_type="panel", aggregate_id=panel.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"panel_number": panel.panel_number, "created": True},
+    )
     session.commit()
     session.refresh(panel)
     return _panel_detail(panel)
@@ -538,11 +589,27 @@ def update_panel(
     panel_id: str, payload: PanelUpdate, session: Session = Depends(get_session)
 ) -> PanelDetail:
     panel = get_or_404(session, GraphicNovelPanel, panel_id, name="GraphicNovelPanel")
+    prev_status = panel.status
     apply_patch(panel, payload)
     session.add(panel)
     page = session.get(GraphicNovelPage, panel.page_id)
     if page is not None:
         _recalc_for_page(session, page)
+    work_id, story_world_id = (
+        _page_scope(session, page) if page is not None else (None, None)
+    )
+    brain.emit(
+        session, event_type=brain.BrainEventType.PANEL_UPDATED,
+        aggregate_type="panel", aggregate_id=panel.id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
+    if panel.status == GNStatus.COMPLETE and prev_status != GNStatus.COMPLETE:
+        brain.emit(
+            session, event_type=brain.BrainEventType.PANEL_APPROVED,
+            aggregate_type="panel", aggregate_id=panel.id,
+            work_id=work_id, story_world_id=story_world_id,
+        )
     session.commit()
     session.refresh(panel)
     return _panel_detail(panel)
@@ -552,10 +619,19 @@ def update_panel(
 def delete_panel(panel_id: str, session: Session = Depends(get_session)):
     panel = get_or_404(session, GraphicNovelPanel, panel_id, name="GraphicNovelPanel")
     page = session.get(GraphicNovelPage, panel.page_id)
+    work_id, story_world_id = (
+        _page_scope(session, page) if page is not None else (None, None)
+    )
     session.delete(panel)
     session.flush()
     if page is not None:
         _recalc_for_page(session, page)
+    brain.emit(
+        session, event_type=brain.BrainEventType.PANEL_UPDATED,
+        aggregate_type="panel", aggregate_id=panel_id,
+        work_id=work_id, story_world_id=story_world_id,
+        changes={"deleted": True},
+    )
     session.commit()
 
 

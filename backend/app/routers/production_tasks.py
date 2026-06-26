@@ -44,7 +44,7 @@ from app.schemas.production_task import (
     ProductionTaskUpdate,
     StatusTransitionRequest,
 )
-from app.services import production
+from app.services import brain, production
 from app.utils import (
     Page,
     PageParams,
@@ -268,6 +268,30 @@ def list_tasks(
     )
 
 
+def _emit_task_status(
+    session: Session,
+    item: ProductionItem,
+    from_status: ProductionItemStatus,
+    to_status: ProductionItemStatus,
+    actor_id: Optional[str],
+) -> None:
+    """Emit the transition event (and ``task.completed`` when reaching DONE)."""
+    brain.emit(
+        session, event_type=brain.BrainEventType.TASK_TRANSITIONED,
+        aggregate_type="task", aggregate_id=item.id,
+        work_id=item.work_id, story_world_id=item.story_world_id,
+        actor_id=actor_id,
+        changes={"from_status": from_status.value, "to_status": to_status.value},
+    )
+    if to_status == ProductionItemStatus.DONE:
+        brain.emit(
+            session, event_type=brain.BrainEventType.TASK_COMPLETED,
+            aggregate_type="task", aggregate_id=item.id,
+            work_id=item.work_id, story_world_id=item.story_world_id,
+            actor_id=actor_id,
+        )
+
+
 @router.post(
     "", response_model=ProductionTaskDetail,
     status_code=status.HTTP_201_CREATED, dependencies=AUTHED,
@@ -296,6 +320,12 @@ def create_task(
             actor_id=user.id,
             field="assignee_id",
         )
+    brain.emit(
+        session, event_type=brain.BrainEventType.TASK_CREATED,
+        aggregate_type="task", aggregate_id=item.id,
+        work_id=item.work_id, story_world_id=item.story_world_id,
+        actor_id=user.id, changes={"title": item.title, "status": item.status.value},
+    )
     session.commit()
     session.refresh(item)
     return _detail(session, item)
@@ -320,9 +350,11 @@ def update_task(
     data = payload.model_dump(exclude_unset=True)
     new_status = data.pop("status", None)
     prev_assignee = item.assignee_id
+    prev_status = item.status
 
     # Status changes go through the validated transition engine first.
-    if new_status is not None and new_status != item.status:
+    status_changed = new_status is not None and new_status != item.status
+    if status_changed:
         production.apply_transition(
             session, item, new_status, actor_id=user.id
         )
@@ -341,6 +373,15 @@ def update_task(
         )
 
     session.add(item)
+    if status_changed:
+        _emit_task_status(session, item, prev_status, item.status, user.id)
+    if data:
+        brain.emit(
+            session, event_type=brain.BrainEventType.TASK_UPDATED,
+            aggregate_type="task", aggregate_id=item.id,
+            work_id=item.work_id, story_world_id=item.story_world_id,
+            actor_id=user.id, changes=data,
+        )
     session.commit()
     session.refresh(item)
     return _detail(session, item)
@@ -359,7 +400,13 @@ def delete_task(task_id: str, session: Session = Depends(get_session)):
         )
     ).all():
         session.delete(dep)
+    work_id, story_world_id = item.work_id, item.story_world_id
     session.delete(item)
+    brain.emit(
+        session, event_type=brain.BrainEventType.TASK_DELETED,
+        aggregate_type="task", aggregate_id=task_id,
+        work_id=work_id, story_world_id=story_world_id,
+    )
     session.commit()
 
 
@@ -376,9 +423,11 @@ def transition_task(
     user: User = Depends(get_current_user),
 ) -> ProductionTaskDetail:
     item = get_or_404(session, ProductionItem, task_id, name="ProductionItem")
+    prev_status = item.status
     production.apply_transition(
         session, item, payload.to_status, actor_id=user.id, note=payload.note
     )
+    _emit_task_status(session, item, prev_status, item.status, user.id)
     session.commit()
     session.refresh(item)
     return _detail(session, item)

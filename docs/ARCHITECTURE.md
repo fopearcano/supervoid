@@ -511,6 +511,56 @@ admin, project = project scopes, member = self); compiled state is read-only;
 events and revisions are read-only and admin-only. No field stores a model
 secret or credential.
 
+The Brain is a **strictly downstream observer**: its references to domain rows
+(`work_id` / `story_world_id`) and users (`actor_id`, …) are deliberately
+FK-less (migration `0015`), so recording an event or compiled state can never
+block — or be blocked by — an upstream domain mutation (deleting a Work,
+StoryWorld or User). Internal Brain references (conversation → message → event →
+memory → decision) keep their foreign keys.
+
+## SUPERVOID Brain — domain-event outbox
+
+The mechanism that keeps the Brain current without re-reading the whole database
+after every question (`backend/app/services/brain/events.py` +
+`consumer.py`, migration `0015`). A **transactional outbox**: `BrainEvent` rows
+are the outbox table, written in the *same* DB transaction as the mutation they
+describe — so the change and its event commit (or roll back) together. No second
+datastore, no Redis/Kafka/cloud requirement; PostgreSQL (or SQLite) + the
+existing app is enough.
+
+- **Single emitter** — `brain.emit(session, *, event_type, aggregate_type,
+  aggregate_id, work_id?, story_world_id?, actor_id?, changes?, …)` appends one
+  event inside the caller's transaction. Stable, dotted event names
+  (`work.updated`, `page.approved`, `asset.version_promoted`,
+  `decision.approved`, `task.completed`, `rights.updated`,
+  `publication.approved`, …) live on `BrainEventType` and are never renamed.
+  Payloads carry **identifiers + a changed-field summary only** — secret-like
+  keys are redacted and structured/oversized values are elided, never a full
+  secret-bearing record. `correlation_id` defaults to the current request id.
+- **Wired into the 13 principal mutation domains** — Work; StoryWorld /
+  StorySeries; Manuscript (incl. workflow transitions); knowledge
+  entities/relationships; production tasks + approvals; assets / versions /
+  provenance / licences; graphic-novel pages + panels; screen projects / scenes
+  / shots; rights + contracts; adaptations; collaborators; publishing / public
+  curation; agent findings + approved/executed proposals.
+- **Consumer** (`consumer.py`) — selects `PENDING` events in `sequence` order,
+  processes each inside its own `SAVEPOINT` (a failure isolates to that event),
+  advances `attempts` and dead-letters to `FAILED` after `max_attempts`. The
+  cursor is derived as `max(sequence WHERE status = PROCESSED)`; `compiler_lag =
+  head_sequence − cursor`. Processing is **project-scoped recompilation
+  scheduling only** — it marks the studio state and the affected Work/StoryWorld
+  `ProjectBrainState` `stale` (creating a placeholder STALE row if none exists).
+  *It does not compile state* (the compiler is a later phase). Duplicate
+  consumption is therefore idempotent.
+- **Operations** — a background worker, a deterministic one-shot `drain()`, a
+  `reconcile()` that re-queues `FAILED` events and marks stale any scope whose
+  state cursor trails the latest event (catching anything missed), and manual
+  `replay_failed()`. Driven by `backend/scripts/brain_outbox.py`
+  (`status` / `run-once` / `worker` / `reconcile` / `replay`) and by admin-only
+  endpoints under `/api/brain/outbox` (`/`, `/failed`, `/replay`, `/process`,
+  `/reconcile`). Monitoring surfaces unprocessed/failed counts, the current
+  cursor and the compiler lag.
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

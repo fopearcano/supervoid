@@ -14,6 +14,7 @@ from app.schemas import WorkCreate, WorkRead, WorkUpdate
 from app.schemas.adaptation_dossier import AdaptationDossierRead, WorkTransmediaOverview
 from app.schemas.story_series import StorySeriesRead
 from app.schemas.story_world import StoryWorldRead
+from app.services import brain
 from app.utils import (
     Page,
     PageParams,
@@ -163,6 +164,11 @@ def create_work(payload: WorkCreate, session: Session = Depends(get_session)) ->
     _validate_links(session, payload)
     work = Work(**payload.model_dump())
     session.add(work)
+    brain.emit(
+        session, event_type=brain.BrainEventType.WORK_CREATED,
+        aggregate_type="work", aggregate_id=work.id,
+        work_id=work.id, story_world_id=work.story_world_id,
+    )
     session.commit()
     session.refresh(work)
     return work
@@ -178,6 +184,12 @@ def update_work(
     _validate_links(session, payload)
     apply_patch(work, payload)
     session.add(work)
+    brain.emit(
+        session, event_type=brain.BrainEventType.WORK_UPDATED,
+        aggregate_type="work", aggregate_id=work.id,
+        work_id=work.id, story_world_id=work.story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(work)
     return work
@@ -190,5 +202,13 @@ def update_work(
 )
 def delete_work(work_id: str, session: Session = Depends(get_session)):
     work = get_or_404(session, Work, work_id, name="Work")
+    # work_id scope omitted on delete (the work row is going away — FK-safe);
+    # the surviving story world still goes stale.
+    story_world_id = work.story_world_id
     session.delete(work)
+    brain.emit(
+        session, event_type=brain.BrainEventType.WORK_DELETED,
+        aggregate_type="work", aggregate_id=work_id,
+        work_id=None, story_world_id=story_world_id,
+    )
     session.commit()

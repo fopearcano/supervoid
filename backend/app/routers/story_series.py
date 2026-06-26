@@ -14,6 +14,7 @@ from app.schemas.story_series import (
     StorySeriesRead,
     StorySeriesUpdate,
 )
+from app.services import brain
 from app.utils import (
     Page,
     PageParams,
@@ -66,6 +67,11 @@ def create_story_series(
     ensure_exists(session, StoryWorld, payload.story_world_id, name="StoryWorld")
     series = StorySeries(**payload.model_dump())
     session.add(series)
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_SERIES_CREATED,
+        aggregate_type="story_series", aggregate_id=series.id,
+        story_world_id=series.story_world_id,
+    )
     session.commit()
     session.refresh(series)
     return series
@@ -82,6 +88,12 @@ def update_story_series(
         ensure_exists(session, StoryWorld, payload.story_world_id, name="StoryWorld")
     apply_patch(series, payload)
     session.add(series)
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_SERIES_UPDATED,
+        aggregate_type="story_series", aggregate_id=series.id,
+        story_world_id=series.story_world_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(series)
     return series
@@ -90,5 +102,11 @@ def update_story_series(
 @router.delete("/{series_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=ADMIN_ONLY)
 def delete_story_series(series_id: str, session: Session = Depends(get_session)):
     series = get_or_404(session, StorySeries, series_id, name="StorySeries")
+    story_world_id = series.story_world_id
     session.delete(series)
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_SERIES_DELETED,
+        aggregate_type="story_series", aggregate_id=series_id,
+        story_world_id=story_world_id,
+    )
     session.commit()

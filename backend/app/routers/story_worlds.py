@@ -11,6 +11,7 @@ from app.db import get_session
 from app.models import Author, StoryWorld
 from app.models.enums import StoryWorldStatus
 from app.schemas.story_world import StoryWorldCreate, StoryWorldRead, StoryWorldUpdate
+from app.services import brain
 from app.services.knowledge import slugify
 from app.utils import (
     Page,
@@ -99,6 +100,11 @@ def create_story_world(
     data["slug"] = _unique_slug(session, payload.slug or payload.name)
     world = StoryWorld(**data)
     session.add(world)
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_WORLD_CREATED,
+        aggregate_type="story_world", aggregate_id=world.id,
+        story_world_id=world.id,
+    )
     session.commit()
     session.refresh(world)
     return world
@@ -121,6 +127,12 @@ def update_story_world(
         payload.slug = _unique_slug(session, payload.slug, exclude_id=world_id)
     apply_patch(world, payload)
     session.add(world)
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_WORLD_UPDATED,
+        aggregate_type="story_world", aggregate_id=world.id,
+        story_world_id=world.id,
+        changes=payload.model_dump(exclude_unset=True),
+    )
     session.commit()
     session.refresh(world)
     return world
@@ -130,4 +142,9 @@ def update_story_world(
 def delete_story_world(world_id: str, session: Session = Depends(get_session)):
     world = get_or_404(session, StoryWorld, world_id, name="StoryWorld")
     session.delete(world)
+    # The world row is going away — scope omitted (FK-safe); studio goes stale.
+    brain.emit(
+        session, event_type=brain.BrainEventType.STORY_WORLD_DELETED,
+        aggregate_type="story_world", aggregate_id=world_id,
+    )
     session.commit()

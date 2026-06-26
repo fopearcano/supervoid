@@ -70,6 +70,13 @@ class Settings(BaseSettings):
     # timeout, selected 5xx). Never used to re-issue a completed call.
     ai_max_retries: int = 2
 
+    # --- Brain event outbox ---
+    # Consumer retry budget before an event is dead-lettered (FAILED), the
+    # batch size per pass, and the background worker's poll interval (seconds).
+    brain_event_max_attempts: int = 5
+    brain_worker_batch: int = 500
+    brain_worker_interval: float = 2.0
+
     # --- Integration hub ---
     # Local-first by default: external network operations (webhook dispatch,
     # ComfyUI queueing, remote GitHub sync) are *recorded* rather than fired

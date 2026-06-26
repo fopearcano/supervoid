@@ -74,10 +74,10 @@ class ProjectBrainState(BaseEntity, table=True):
     __tablename__ = "project_brain_states"
 
     work_id: Optional[str] = Field(
-        default=None, foreign_key="works.id", unique=True, index=True
+        default=None, unique=True, index=True
     )
     story_world_id: Optional[str] = Field(
-        default=None, foreign_key="story_worlds.id", unique=True, index=True
+        default=None, unique=True, index=True
     )
 
     version: int = Field(default=0, index=True)
@@ -132,7 +132,7 @@ class BrainStateRevision(BaseEntity, table=True):
         default=BrainRevisionApproval.NOT_REQUIRED, index=True
     )
     approved_by_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
     approved_at: Optional[datetime] = Field(default=None)
 
@@ -158,11 +158,11 @@ class BrainEvent(BaseEntity, table=True):
     aggregate_type: str = Field(max_length=80, index=True)
     aggregate_id: str = Field(max_length=64, index=True)
 
-    work_id: Optional[str] = Field(default=None, foreign_key="works.id", index=True)
+    work_id: Optional[str] = Field(default=None, index=True)
     story_world_id: Optional[str] = Field(
-        default=None, foreign_key="story_worlds.id", index=True
+        default=None, index=True
     )
-    actor_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
+    actor_id: Optional[str] = Field(default=None, index=True)
     correlation_id: Optional[str] = Field(default=None, max_length=80, index=True)
 
     payload: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
@@ -179,10 +179,10 @@ class BrainConversation(BaseEntity, table=True):
 
     __tablename__ = "brain_conversations"
 
-    owner_user_id: str = Field(foreign_key="users.id", index=True)
-    work_id: Optional[str] = Field(default=None, foreign_key="works.id", index=True)
+    owner_user_id: str = Field(index=True)
+    work_id: Optional[str] = Field(default=None, index=True)
     story_world_id: Optional[str] = Field(
-        default=None, foreign_key="story_worlds.id", index=True
+        default=None, index=True
     )
     librechat_conversation_id: Optional[str] = Field(
         default=None, max_length=120, index=True
@@ -257,12 +257,12 @@ class BrainMemoryItem(BaseEntity, table=True):
     __tablename__ = "brain_memory_items"
 
     scope: BrainScope = Field(index=True)
-    work_id: Optional[str] = Field(default=None, foreign_key="works.id", index=True)
+    work_id: Optional[str] = Field(default=None, index=True)
     story_world_id: Optional[str] = Field(
-        default=None, foreign_key="story_worlds.id", index=True
+        default=None, index=True
     )
     member_user_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
     conversation_id: Optional[str] = Field(
         default=None, foreign_key="brain_conversations.id", index=True
@@ -291,10 +291,10 @@ class BrainMemoryItem(BaseEntity, table=True):
     expires_at: Optional[datetime] = Field(default=None, index=True)
 
     created_by_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
     approved_by_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
 
 
@@ -308,9 +308,9 @@ class DecisionRecord(BaseEntity, table=True):
     )
 
     scope: BrainScope = Field(index=True)
-    work_id: Optional[str] = Field(default=None, foreign_key="works.id", index=True)
+    work_id: Optional[str] = Field(default=None, index=True)
     story_world_id: Optional[str] = Field(
-        default=None, foreign_key="story_worlds.id", index=True
+        default=None, index=True
     )
 
     subject: str = Field(default="", max_length=300)
@@ -326,10 +326,10 @@ class DecisionRecord(BaseEntity, table=True):
         default=None, foreign_key="brain_conversations.id", index=True
     )
     proposer_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
     approver_id: Optional[str] = Field(
-        default=None, foreign_key="users.id", index=True
+        default=None, index=True
     )
     effective_date: Optional[datetime] = Field(default=None)
     superseded_by_id: Optional[str] = Field(

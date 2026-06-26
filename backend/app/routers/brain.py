@@ -57,6 +57,8 @@ from app.schemas.brain import (
     DecisionDecision,
     DecisionRecordCreate,
     DecisionRecordRead,
+    OutboxReplayRequest,
+    OutboxStatusRead,
     ProjectBrainStateRead,
     StudioBrainStateRead,
 )
@@ -491,6 +493,13 @@ def _decide(decision_id: str, *, approve: bool, body: DecisionDecision, user: Us
         session, record, approve=approve, approver_id=user.id,
         effective_date=body.effective_date,
     )
+    if approve:
+        brain.emit(
+            session, event_type=brain.BrainEventType.DECISION_APPROVED,
+            aggregate_type="decision", aggregate_id=record.id,
+            work_id=record.work_id, story_world_id=record.story_world_id,
+            actor_id=user.id, changes={"subject": record.subject},
+        )
     session.commit()
     session.refresh(record)
     return DecisionRecordRead.model_validate(record)
@@ -581,3 +590,44 @@ def list_events(
         limit=limit, offset=skip,
     )
     return [BrainEventRead.model_validate(e) for e in rows]
+
+
+# === outbox monitoring + operations (admin-only) ===========================
+@router.get("/outbox", response_model=OutboxStatusRead, dependencies=ADMIN_ONLY)
+def outbox_status(session: Session = Depends(get_session)) -> OutboxStatusRead:
+    """Unprocessed + failed counts, current cursor, and compiler lag."""
+    return OutboxStatusRead(**brain.outbox_status(session))
+
+
+@router.get("/outbox/failed", response_model=list[BrainEventRead], dependencies=ADMIN_ONLY)
+def outbox_failed(
+    session: Session = Depends(get_session),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+) -> list[BrainEventRead]:
+    rows = brain.list_events(
+        session, status=BrainEventStatus.FAILED, limit=limit, offset=skip
+    )
+    return [BrainEventRead.model_validate(e) for e in rows]
+
+
+@router.post("/outbox/replay", dependencies=ADMIN_ONLY)
+def outbox_replay(
+    body: OutboxReplayRequest = OutboxReplayRequest(),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Manual replay: re-queue dead-lettered events (all, or a given set)."""
+    requeued = brain.replay_failed(session, event_ids=body.event_ids)
+    return {"requeued": requeued}
+
+
+@router.post("/outbox/process", dependencies=ADMIN_ONLY)
+def outbox_process(session: Session = Depends(get_session)) -> dict:
+    """One-shot: drain the current backlog (also available as a CLI)."""
+    return brain.drain(session)
+
+
+@router.post("/outbox/reconcile", dependencies=ADMIN_ONLY)
+def outbox_reconcile(session: Session = Depends(get_session)) -> dict:
+    """Detect and re-flag any scope whose state is behind the latest event."""
+    return brain.reconcile(session)

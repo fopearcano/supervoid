@@ -69,6 +69,23 @@ class BrainStateRevisionRead(TimestampedRead):
 
 
 # --- events (append-only; read-only surface) ------------------------------
+class OutboxStatusRead(BaseModel):
+    """Monitoring snapshot of the event outbox."""
+
+    head_sequence: int
+    cursor: int            # high-water mark = max processed sequence
+    unprocessed: int       # PENDING events awaiting the consumer
+    failed: int            # dead-lettered events
+    compiler_lag: int      # head_sequence - cursor
+    studio_stale: Optional[bool] = None
+    studio_version: Optional[int] = None
+    stale_projects: int
+
+
+class OutboxReplayRequest(BaseModel):
+    event_ids: Optional[list[str]] = None  # None = replay all dead-letters
+
+
 class BrainEventRead(TimestampedRead):
     sequence: int
     event_type: str
