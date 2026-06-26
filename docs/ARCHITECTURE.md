@@ -654,6 +654,56 @@ or credential ever enters the context, the hash, or the admin debug view
 (`/api/brain/conversations/{id}/debug/context`, which shows per-segment sizes +
 redacted previews).
 
+## SUPERVOID Brain — OpenAI-compatible gateway
+
+The **Brain Gateway** is the API surface LibreChat (and any OpenAI client) talks
+to — it never connects to vLLM directly. Mounted at `/brain` outside the private
+`/api` prefix (`backend/app/routers/brain_gateway.py`,
+`app/routers/brain_tokens.py`, `app/models/brain_access_token.py`,
+`app/utils/throttle.py`, migration `0018`).
+
+**Wire shape.** It speaks the OpenAI Chat Completions protocol so existing
+clients work unchanged: `GET /brain/v1/models` (`object:"list"`),
+`POST /brain/v1/chat/completions` for ordinary completions (`chat.completion`)
+and streaming (`chat.completion.chunk` SSE frames, `data: {json}\n\n`, ending in
+a literal `data: [DONE]`), `GET /brain/health` (unauthenticated liveness), and
+`POST /brain/v1/responses` (returns `501` — deferred until provider/mock support
+exists). SUPERVOID extension data rides in an **optional** top-level `supervoid`
+object on both request and response (never inside an OpenAI `delta`/`message`),
+so strict clients simply ignore it. Compatibility is proven by tests that
+validate every response against the OpenAI Python client's own Pydantic models,
+plus curl-shaped and LibreChat-shaped request fixtures.
+
+**Authentication.** A request authenticates with a dedicated **Brain access
+token** (`Authorization: Bearer sk-brain-…`), resolved by SHA-256 hash lookup —
+the browser JWT is rejected and the upstream vLLM key is never exposed. Tokens
+belong to a user, store only the hash (the plaintext is shown once on
+create/rotate), and carry a name, optional expiry, last-used stamp, revocation
+flag, and optional project restrictions. They are created/rotated/revoked from
+the private UI (`/api/brain-tokens`, JWT-guarded, strictly per-user).
+
+**Resolve → assemble → call → persist.** The gateway resolves the user,
+permitted projects, requested profile, Work/StoryWorld, and conversation binding
+from the (optional) extension metadata. With no metadata it continues the user's
+general Studio-Director lane; with a LibreChat conversation id it continues that
+binding; it **never guesses access to an unauthorised project** (token
+restriction + `policy.can(VIEW_PROJECT)` both gate it, else `403`). It persists
+the inbound user turn, builds the request through the `ContextAssembler`, and
+calls the model **provider** (which alone holds the vLLM key). The assistant turn
+is persisted with usage, request id, tool calls, retrieval references, assembled
+state versions, and latency. Machine-readable evidence references are returned in
+the response `supervoid.citations` field while human-readable citations remain in
+the answer text. Usage is normalised to the OpenAI shape (estimated when the
+provider — e.g. the offline dry-run — reports none).
+
+**Limits & resilience.** Per-user token-bucket **rate** limiting and an
+`asyncio.Semaphore` **concurrency** cap (both per-worker) protect the backend;
+exceeding them returns `429`. Provider failures map to graceful OpenAI-shaped
+errors (`502` malformed, `503` unavailable, `504` timeout) in both modes;
+client cancellation is handled in the stream's `finally`, which persists the
+partial turn on a fresh session bound to the request's engine (the streamed
+response outlives the request-scoped session).
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

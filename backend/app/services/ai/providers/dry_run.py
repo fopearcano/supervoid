@@ -89,7 +89,9 @@ class DryRunProvider(LLMProvider):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
     ) -> CompletionResult:
-        joined = "\n".join(m.content for m in messages)
+        # Tolerate messages with no text body (e.g. an assistant tool-call turn
+        # whose content is None) — join only the textual parts.
+        joined = "\n".join(m.content for m in messages if m.content)
         payload = _DEFAULT_PAYLOAD
         for tag, canned in _CANNED_PAYLOADS.items():
             if tag in joined:

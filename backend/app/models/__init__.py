@@ -37,6 +37,7 @@ from app.models.instruction_layer import (
     TerminologyGlossary,
     TerminologyGlossaryVersion,
 )
+from app.models.brain_access_token import BrainAccessToken
 from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -262,6 +263,7 @@ __all__ = [
     "DecisionStatus",
     "ProjectBrainState",
     "StudioBrainState",
+    "BrainAccessToken",
     "SafetyApprovalMode",
     "StudioConstitution",
     "StudioConstitutionVersion",

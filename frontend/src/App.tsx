@@ -19,6 +19,7 @@ import { GraphicNovelStudioPage } from '@/pages/GraphicNovelStudioPage';
 import { PicturesStudioPage } from '@/pages/PicturesStudioPage';
 import { AgentCentrePage } from '@/pages/AgentCentrePage';
 import { BrainStatePage } from '@/pages/BrainStatePage';
+import { BrainTokensPage } from '@/pages/BrainTokensPage';
 import { IntegrationsHubPage } from '@/pages/IntegrationsHubPage';
 import { RightsDeskPage } from '@/pages/RightsDeskPage';
 import { ContactsPage } from '@/pages/ContactsPage';
@@ -41,6 +42,7 @@ type View =
   | { name: 'pictures-studio' }
   | { name: 'agent-centre' }
   | { name: 'brain-state' }
+  | { name: 'brain-tokens' }
   | { name: 'integrations-hub' }
   | { name: 'rights-desk' }
   | { name: 'contacts' }
@@ -114,6 +116,7 @@ function StudioRoot() {
       {view.name === 'pictures-studio' && <PicturesStudioPage />}
       {view.name === 'agent-centre' && <AgentCentrePage />}
       {view.name === 'brain-state' && <BrainStatePage />}
+      {view.name === 'brain-tokens' && <BrainTokensPage />}
       {view.name === 'integrations-hub' && <IntegrationsHubPage />}
       {view.name === 'rights-desk' && <RightsDeskPage />}
       {view.name === 'contacts' && <ContactsPage />}

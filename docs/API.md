@@ -223,6 +223,29 @@ the per-route request/response schemas.
   /conversations/{id}/debug/context` (admin-only) shows per-segment sizes +
   redacted previews and never echoes a key. See
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--stable-instruction-layer--contextassembler).
+- **brain gateway** — the **OpenAI-compatible** surface LibreChat (and any
+  OpenAI client) connects to. Mounted at `/brain` (NOT under `/api`):
+  `GET /brain/health` (unauthenticated liveness), `GET /brain/v1/models`,
+  `POST /brain/v1/chat/completions` (ordinary **and** streaming, `data:` SSE
+  ending in `data: [DONE]`), and `POST /brain/v1/responses` (returns `501` —
+  deferred). Authenticated by a dedicated **Brain access token**
+  (`Authorization: Bearer sk-brain-…`), never the browser JWT and never the
+  upstream vLLM key. Optional SUPERVOID extension metadata rides in a top-level
+  `supervoid` object (project/story-world id, assistant profile, LibreChat
+  conversation id, state-version hint) that strict clients ignore; responses
+  echo a `supervoid` object carrying state versions, machine-readable evidence
+  citations, and the request id. Each turn is persisted (user message, assembled
+  state versions, model response, usage, request id, tool calls, retrieval
+  refs, latency) via the `ContextAssembler`. Per-user rate + concurrency limits
+  apply; provider-unavailable maps to graceful `502/503/504`. See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--openai-compatible-gateway).
+- **brain tokens** — private, JWT-authenticated management of Brain access
+  tokens (`/api/brain-tokens`): `GET` (list own; never returns the secret),
+  `POST` (create — returns the plaintext secret **exactly once**),
+  `POST /{id}/rotate` (new secret, old one dies immediately), and
+  `DELETE /{id}` (revoke; effective on the next gateway request). Only a
+  SHA-256 hash is stored; tokens carry a name, optional expiry, last-used time,
+  and optional project restrictions, and are strictly per-user.
 
 ---
 

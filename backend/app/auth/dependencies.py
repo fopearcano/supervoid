@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.auth.security import decode_token
 from app.config import settings
@@ -68,3 +69,52 @@ def require_any_role(allowed: Iterable[UserRole]):
 # everywhere — avoids 21 copies of the same Depends() call across CRUD routers.
 AUTHED: list = [Depends(get_current_user)]
 ADMIN_ONLY: list = [Depends(require_role(UserRole.ADMIN))]
+
+
+# --- Brain Gateway: opaque bearer-token authentication ---------------------
+@dataclass
+class BrainPrincipal:
+    """The authenticated principal behind a Brain access token."""
+
+    user: User
+    token: "BrainAccessToken"  # noqa: F821
+
+
+def get_brain_principal(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
+) -> BrainPrincipal:
+    """Authenticate a Brain Gateway request with a dedicated access token (NOT
+    the browser JWT). Looks the token up by its SHA-256 hash, rejects revoked /
+    expired tokens and inactive owners, and stamps ``last_used_at``."""
+    from datetime import timezone
+
+    from app.auth.security import hash_brain_token
+    from app.models import BrainAccessToken
+    from app.models.base import utcnow
+
+    row = session.exec(
+        select(BrainAccessToken).where(
+            BrainAccessToken.token_hash == hash_brain_token(token)
+        )
+    ).first()
+    if row is None:
+        raise _CREDENTIALS_EXCEPTION
+    now = utcnow()
+    # DB datetimes round-trip naive on SQLite; treat them as UTC for comparison.
+    expires = row.expires_at
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if row.revoked_at is not None or (expires is not None and expires < now):
+        raise _CREDENTIALS_EXCEPTION
+    user = session.get(User, row.user_id)
+    if user is None or not user.is_active:
+        raise _CREDENTIALS_EXCEPTION
+    # get_session() does not auto-commit, so persist last_used explicitly.
+    row.last_used_at = now
+    session.add(row)
+    session.commit()
+    return BrainPrincipal(user=user, token=row)
+
+
+BRAIN_AUTHED: list = [Depends(get_brain_principal)]

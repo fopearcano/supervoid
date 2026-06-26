@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.db import prepare_database
-from app.routers import ALL_ROUTERS, public_reader
+from app.routers import ALL_ROUTERS, brain_gateway, public_reader
 from app.utils.logging import configure_logging, get_logger
 from app.utils.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
 
@@ -79,6 +79,11 @@ def create_app() -> FastAPI:
             StaticFiles(directory=PUBLIC_DEMO_DIR),
             name="public-demo",
         )
+
+    # The Brain Gateway — an OpenAI-compatible surface for LibreChat. Mounted at
+    # /brain (NOT under the private /api prefix); authenticated by a dedicated
+    # Brain access token, never the browser JWT or the upstream vLLM key.
+    app.include_router(brain_gateway.router)
 
     # Every error response carries the same envelope: a human-readable
     # ``detail`` string plus the ``request_id`` (also on the header) so a

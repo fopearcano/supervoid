@@ -7,6 +7,7 @@ from app.models.enums import UserRole
 
 if TYPE_CHECKING:
     from app.models.attachment import Attachment
+    from app.models.brain_access_token import BrainAccessToken
     from app.models.editorial_note import EditorialNote
     from app.models.production_item import ProductionItem
     from app.models.review import Review
@@ -30,3 +31,7 @@ class User(BaseEntity, table=True):
         sa_relationship_kwargs={"foreign_keys": "[ProductionItem.assignee_id]"},
     )
     uploaded_attachments: list["Attachment"] = Relationship(back_populates="uploader")
+    brain_tokens: list["BrainAccessToken"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )

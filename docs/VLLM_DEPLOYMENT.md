@@ -7,8 +7,13 @@ SUPERVOID Brain. It is independent of the main application stack
 
 > This is **Phase 1** of the Brain initiative (see
 > [`BRAIN_IMPLEMENTATION_PLAN.md`](./BRAIN_IMPLEMENTATION_PLAN.md)). It adds **no
-> application code** and changes nothing in the existing backend/frontend. The
-> Brain Gateway, LibreChat and the MCP server are later phases.
+> application code** and changes nothing in the existing backend/frontend.
+>
+> The **SUPERVOID Brain Gateway is now built** (the OpenAI-compatible surface at
+> `/brain/v1`, authenticated by a dedicated Brain access token — see
+> [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--openai-compatible-gateway)).
+> Point LibreChat at the **Gateway**, not at vLLM — see *Connecting LibreChat*
+> below. The MCP server remains a later phase.
 
 ---
 
@@ -32,11 +37,11 @@ SUPERVOID Brain. It is independent of the main application stack
 ## Topology & ports
 
 ```
-SUPERVOID Brain Gateway (later phase)  ──>  vLLM  (this deployment)
-                                            ├─ container port: VLLM_PORT (default 8000)
-                                            ├─ host binding:   VLLM_BIND_ADDR:VLLM_PUBLISH_PORT
-                                            │                  (default 127.0.0.1:8000 — PRIVATE)
-                                            └─ docker network: supervoid-brain (reach as `vllm:8000`)
+LibreChat  ──>  SUPERVOID Brain Gateway  ──>  vLLM  (this deployment)
+                (/brain/v1, auth + policy)     ├─ container port: VLLM_PORT (default 8000)
+                                               ├─ host binding:   VLLM_BIND_ADDR:VLLM_PUBLISH_PORT
+                                               │                  (default 127.0.0.1:8000 — PRIVATE)
+                                               └─ docker network: supervoid-brain (reach as `vllm:8000`)
 ```
 
 | Setting | Default | Meaning |
@@ -285,6 +290,43 @@ hardware- and version-specific.
 | `trust_remote_code` error | set `VLLM_TRUST_REMOTE_CODE=1` |
 | Smoke `model-list` mismatch | client uses `VLLM_SERVED_MODEL_NAME`; the harness falls back to the first listed model and warns |
 | `--enable-request-id-headers` perf at very high QPS | terminate request-id at the Gateway/router instead; flag is fine for normal loads |
+
+---
+
+## Connecting LibreChat (via the Brain Gateway)
+
+LibreChat connects to the **SUPERVOID Brain Gateway**, never to vLLM. The Gateway
+re-exposes an OpenAI-compatible surface at **`/brain/v1`** and authenticates with
+a dedicated **Brain access token** (issued in the private UI under
+*System → Brain Tokens*, or via `POST /api/brain-tokens`). The upstream
+`VLLM_API_KEY` stays inside the backend's provider and is never given to
+LibreChat.
+
+In LibreChat's `librechat.yaml`, add a custom endpoint pointing at the Gateway:
+
+```yaml
+endpoints:
+  custom:
+    - name: "SUPERVOID Brain"
+      apiKey: "${SUPERVOID_BRAIN_TOKEN}"        # an sk-brain-… access token
+      baseURL: "https://studio.example.internal/brain/v1"
+      models:
+        default: ["supervoid-brain"]
+        fetch: true                              # GET /brain/v1/models
+      titleConvo: true
+      modelDisplayLabel: "SUPERVOID Brain"
+```
+
+Notes:
+- `baseURL` ends in **`/brain/v1`** (the Gateway prefix), not the vLLM port.
+- The model id is the Gateway's served name (`supervoid-brain` by default — see
+  `BRAIN_GATEWAY_MODEL`); the Gateway maps it onto the configured vLLM model.
+- LibreChat's per-conversation id flows through automatically; SUPERVOID
+  extension metadata (project / story-world / profile) is **optional** and, when
+  absent, the Gateway continues the user's general Studio-Director lane. It never
+  grants access to a project the token isn't authorised for.
+- Streaming works as-is (LibreChat sends `stream: true`); responses are standard
+  `chat.completion.chunk` SSE ending in `data: [DONE]`.
 
 ---
 

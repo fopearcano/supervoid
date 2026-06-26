@@ -1,6 +1,8 @@
 """Stateless security primitives: password hashing and JWT encode/decode."""
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -11,6 +13,21 @@ from app.config import settings
 
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+# --- Brain access tokens (opaque bearer secrets for the Brain Gateway) ------
+# Unlike a user password, a Brain token must be looked up by its hash, so the
+# hash has to be deterministic — a plain SHA-256 of a high-entropy secret (NOT
+# bcrypt, which is salted/non-deterministic). The plaintext is shown to the
+# owner exactly once at creation/rotation and never stored.
+def generate_brain_token() -> str:
+    """A high-entropy, URL-safe Brain access secret (~43 chars)."""
+    return "sk-brain-" + secrets.token_urlsafe(32)
+
+
+def hash_brain_token(plain: str) -> str:
+    """Deterministic SHA-256 hex digest used to look a token up by value."""
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
 
 
 def verify_password(plain: str, hashed: str) -> bool:

@@ -85,6 +85,15 @@ class Settings(BaseSettings):
     # Optional LLM prose-compression of the (already deterministic) summary. Off
     # by default — the compiler is fully deterministic without it.
     brain_compiler_use_llm: bool = False
+    # --- Brain Gateway (Prompt 7: OpenAI-compatible surface for LibreChat) ---
+    # Per-user, per-process rate + concurrency limits (these do NOT span uvicorn
+    # workers / replicas — the effective limit is multiplied by the worker count).
+    brain_gateway_rate_per_min: int = 60
+    brain_gateway_burst: int = 20
+    brain_gateway_max_concurrency: int = 4
+    # The model id the gateway advertises and accepts (decouples LibreChat's
+    # configured model name from whatever upstream model the provider serves).
+    brain_gateway_model: str = "supervoid-brain"
 
     # --- Integration hub ---
     # Local-first by default: external network operations (webhook dispatch,
