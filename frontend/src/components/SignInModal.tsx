@@ -45,7 +45,7 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
         className="w-full max-w-sm border-2 border-accent bg-ink-800 p-7"
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-sans text-2xl font-black uppercase tracking-tight text-parchment">
+          <h2 className="font-serif text-2xl tracking-tight text-parchment">
             Members only
           </h2>
           <button
@@ -96,11 +96,7 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full bg-accent px-4 py-2 font-mono text-[0.66rem] font-bold uppercase tracking-widest text-ink-900 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <button type="submit" disabled={submitting} className="button-accent mt-6 w-full">
           {submitting ? 'Signing in…' : 'Enter the studio'}
         </button>
       </form>

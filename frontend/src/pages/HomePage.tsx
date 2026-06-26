@@ -32,9 +32,7 @@ export function HomePage() {
       </div>
 
       <header className="flex items-center justify-between px-8 py-6">
-        <span className="font-mono text-[0.62rem] uppercase tracking-widest text-parchment-dim">
-          SUPERVOID Entangled
-        </span>
+        <span className="label-eyebrow">SUPERVOID Entangled</span>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
@@ -55,7 +53,7 @@ export function HomePage() {
             href={link.href}
             target="_blank"
             rel="noreferrer"
-            className="border border-rule px-4 py-2 font-mono text-[0.66rem] uppercase tracking-widest text-parchment-muted transition-colors hover:border-accent hover:text-parchment"
+            className="button-outline"
           >
             {link.label} ↗
           </a>
@@ -63,7 +61,7 @@ export function HomePage() {
         <button
           type="button"
           onClick={() => setSignInOpen(true)}
-          className="border border-accent px-5 py-2 font-mono text-[0.66rem] uppercase tracking-widest text-accent transition-colors hover:bg-accent hover:text-ink-900"
+          className="button-accent"
         >
           Members →
         </button>
