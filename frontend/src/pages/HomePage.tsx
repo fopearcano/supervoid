@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SignInModal } from '@/components/SignInModal';
+import cosmicWeb from '@/assets/cosmic-web.jpg';
 
 // External community links (open in a new tab). The Bookshop is an internal
 // public page (/shop); "Members" opens the sign-in.
@@ -39,9 +40,12 @@ export function HomePage() {
           {'I’ve got a mental'}
         </span>
 
-        {/* wordmark — Cinzel deco caps */}
-        <h1 className="font-display font-bold leading-[0.95] tracking-[0.015em] text-parchment text-[clamp(3rem,14vw,10rem)]">
-          SUPER<span className="text-accent">VOID</span>
+        {/* wordmark — Cinzel deco caps, filled with the cosmic-web image */}
+        <h1
+          className="wordmark-cosmic font-display font-bold leading-[0.95] tracking-[0.015em] text-[clamp(3rem,14vw,10rem)]"
+          style={{ backgroundImage: `url(${cosmicWeb})` }}
+        >
+          SUPERVOID
         </h1>
       </main>
 
