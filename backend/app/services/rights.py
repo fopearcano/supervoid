@@ -48,9 +48,15 @@ def rights_warnings(
     within_days: int = 90,
     work_id: Optional[str] = None,
     soon_days: int = 30,
+    today: Optional[date] = None,
 ) -> list[RightsWarning]:
-    """All reminders due on/before today+``within_days`` (plus anything overdue)."""
-    today = date.today()
+    """All reminders due on/before today+``within_days`` (plus anything overdue).
+
+    ``today`` may be pinned (e.g. by the deterministic Brain compiler) so the
+    computed ``days_remaining`` / ``status`` are reproducible; defaults to the
+    real current date.
+    """
+    today = today or date.today()
     horizon = today + timedelta(days=within_days)
     out: list[RightsWarning] = []
 
@@ -119,5 +125,8 @@ def rights_warnings(
             "Contract reversion date")
 
     severity = {"overdue": 0, "due_soon": 1, "upcoming": 2}
-    out.sort(key=lambda w: (severity[w.status], w.days_remaining))
+    # ``source``/``source_id`` give a total, stable order so the result is
+    # deterministic even when two reminders share a status + days_remaining
+    # (the underlying queries are unordered and merge four source tables).
+    out.sort(key=lambda w: (severity[w.status], w.days_remaining, w.source, w.source_id))
     return out

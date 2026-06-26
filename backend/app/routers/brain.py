@@ -60,6 +60,8 @@ from app.schemas.brain import (
     OutboxReplayRequest,
     OutboxStatusRead,
     ProjectBrainStateRead,
+    RebuildRequest,
+    RebuildResult,
     StudioBrainStateRead,
 )
 from app.services import brain
@@ -631,3 +633,71 @@ def outbox_process(session: Session = Depends(get_session)) -> dict:
 def outbox_reconcile(session: Session = Depends(get_session)) -> dict:
     """Detect and re-flag any scope whose state is behind the latest event."""
     return brain.reconcile(session)
+
+
+# === state compiler (admin-only) ===========================================
+@router.get("/health", dependencies=ADMIN_ONLY)
+def compiler_health(session: Session = Depends(get_session)) -> dict:
+    """Compiler health: head sequence, outbox status, and per-state version /
+    staleness / cursor lag for the studio and every project state."""
+    return brain.compiler_health(session)
+
+
+@router.get("/stale", dependencies=ADMIN_ONLY)
+def stale_states(session: Session = Depends(get_session)) -> dict:
+    """States needing (re)compilation — flagged stale or whose cursor trails the
+    latest in-scope event. Read-only (mirrors reconcile's comparison)."""
+    return brain.stale_states(session)
+
+
+@router.get("/revisions/{revision_a_id}/delta/{revision_b_id}", dependencies=ADMIN_ONLY)
+def revision_delta(
+    revision_a_id: str,
+    revision_b_id: str,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Deterministic section-level diff (added / removed / changed) between two
+    immutable revisions."""
+    try:
+        return brain.revision_delta(
+            session, revision_a_id=revision_a_id, revision_b_id=revision_b_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/state/studio/rebuild", response_model=RebuildResult, dependencies=ADMIN_ONLY)
+def rebuild_studio_state(
+    body: RebuildRequest = RebuildRequest(),
+    session: Session = Depends(get_session),
+) -> RebuildResult:
+    """Compile the studio state (incremental, or a full rebuild when ``full``)."""
+    return RebuildResult(**brain.compile_studio(session, full=body.full))
+
+
+@router.post("/works/{work_id}/state/rebuild", response_model=RebuildResult, dependencies=ADMIN_ONLY)
+def rebuild_work_state(
+    work_id: str,
+    body: RebuildRequest = RebuildRequest(),
+    session: Session = Depends(get_session),
+) -> RebuildResult:
+    try:
+        return RebuildResult(
+            **brain.compile_project(session, work_id=work_id, full=body.full)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/story-worlds/{world_id}/state/rebuild", response_model=RebuildResult, dependencies=ADMIN_ONLY)
+def rebuild_world_state(
+    world_id: str,
+    body: RebuildRequest = RebuildRequest(),
+    session: Session = Depends(get_session),
+) -> RebuildResult:
+    try:
+        return RebuildResult(
+            **brain.compile_project(session, story_world_id=world_id, full=body.full)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

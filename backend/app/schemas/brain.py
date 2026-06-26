@@ -86,6 +86,25 @@ class OutboxReplayRequest(BaseModel):
     event_ids: Optional[list[str]] = None  # None = replay all dead-letters
 
 
+# --- state compiler (Prompt 5) ---------------------------------------------
+class RebuildRequest(BaseModel):
+    """Trigger a (re)compile. ``full`` forces a full deterministic rebuild for
+    validation / disaster recovery; otherwise the compile is incremental."""
+
+    full: bool = False
+
+
+class RebuildResult(BaseModel):
+    scope: str
+    version: int
+    checksum: Optional[str] = None
+    changed: bool
+    from_seq: int
+    to_seq: int
+    work_id: Optional[str] = None
+    story_world_id: Optional[str] = None
+
+
 class BrainEventRead(TimestampedRead):
     sequence: int
     event_type: str

@@ -639,3 +639,13 @@ from app.services.brain.consumer import (  # noqa: E402
     reconcile,
     replay_failed,
 )
+from app.services.brain.compiler import (  # noqa: E402
+    checksum,
+    compile_project,
+    compile_stale,
+    compile_studio,
+    compiler_health,
+    head_sequence,
+    revision_delta,
+    stale_states,
+)

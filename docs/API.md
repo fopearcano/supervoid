@@ -201,6 +201,16 @@ the per-route request/response schemas.
   the same transaction as the domain mutation they describe; the consumer marks
   the affected project/studio state stale (it does not compile it). See
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--domain-event-outbox).
+- **brain state compiler** — admin-only deterministic state APIs on `/api/brain`:
+  `GET /state/studio`, `GET /works/{id}/state`, `GET /story-worlds/{id}/state`
+  (current compiled facts + summary + version + cursor + checksum; reads are
+  permission-scoped), `GET /revisions` (immutable history),
+  `GET /revisions/{a}/delta/{b}` (section-level diff between versions),
+  `GET /health` (head sequence, per-state version/staleness/lag), `GET /stale`
+  (states needing recompilation), and `POST …/state/rebuild` (`{full}` —
+  incremental, or a full rebuild for validation / disaster recovery). State is
+  built deterministically from SQL; the LLM never computes facts. See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-brain--deterministic-state-compiler).
 
 ---
 

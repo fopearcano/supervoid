@@ -561,6 +561,55 @@ existing app is enough.
   `/reconcile`). Monitoring surfaces unprocessed/failed counts, the current
   cursor and the compiler lag.
 
+## SUPERVOID Brain — deterministic state compiler
+
+The compiler keeps a ready-to-use, compact mental state *before* a user asks a
+question (`backend/app/services/brain/compiler.py` +
+`state_builders.py`). It turns the raw domain + outbox data into the current
+`StudioBrainState` and per-`ProjectBrainState`, plus an immutable
+`BrainStateRevision` per version, advancing each state's event cursor.
+
+- **Deterministic by construction.** Every section is built purely from SQL +
+  existing read services (`command_centre`-style aggregates, `production`,
+  `rights`, `assets`, `graphic_novel`, `screen`). The LLM is **never** asked to
+  compute counts, statuses, deadlines, rights ownership or permissions. The
+  checksum is `sha256` over a *canonical* JSON encoding (sorted keys, enums →
+  `.value`, dates → ISO, sets sorted, percentages rounded), so re-running over
+  the same data at the same pinned `compile_date` yields a byte-identical state.
+- **Studio state** carries studio identity + divisions, active StoryWorlds,
+  active Works, releases, major blockers, pending approvals, rights warnings,
+  asset health, collaborator load, integration health and strategic priorities.
+- **Project state** (per Work or StoryWorld) carries identity, Work/StoryWorld,
+  medium + division, canonical synopsis, canon facts, characters & locations,
+  current creative phase, production hierarchy, progress, blocked tasks, assets
+  & approved versions, continuity findings, rights constraints, adaptations,
+  pending approvals, recent decisions, unresolved questions, recent changes and
+  next priorities.
+- **Compact summary, facts authoritative.** A deterministic template renders the
+  summary from the structured facts (strict per-section + total character
+  budgets, deterministic truncation). An *optional* LLM step may compress the
+  prose only — and only if a guard proves every numeric fact survived; otherwise
+  it falls back to the template. The LLM never touches the structured state or
+  the checksum (`assist_version` records the prose model separately from the
+  deterministic `compiler_version`).
+- **Incremental == full.** `EVENT_SECTION_MAP` maps each domain-event prefix to
+  the sections it invalidates. An incremental compile consumes only events past
+  the cursor, rebuilds just the affected sections, carries the rest forward, and
+  emits a revision — and produces the *same* checksum a full rebuild would at the
+  same high-water mark (asserted in tests). A no-op compile (no new events,
+  unchanged checksum) writes no new revision. Full rebuild stays available for
+  validation and disaster recovery.
+- **Downstream-observer.** Like the outbox, the compiler marks state stale but is
+  never on the critical path of a domain mutation; it runs in a worker / CLI.
+
+Operated by `backend/scripts/brain_compiler.py`
+(`compile-studio` / `compile-project` / `compile-stale` / `rebuild-all` /
+`verify` / `health` / `worker`) and admin-only endpoints under `/api/brain`:
+`GET /health`, `GET /stale`, `GET /revisions/{a}/delta/{b}`, and
+`POST …/state/rebuild`. The private Brain State Inspector (frontend, admin-gated)
+shows the compiled facts, summary, version, event cursor, recent deltas and the
+rebuild controls.
+
 ## Integration layer (ecosystem seams)
 
 `backend/app/integrations/` declares **typed contracts** — not live clients —

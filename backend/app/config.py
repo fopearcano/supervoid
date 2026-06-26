@@ -76,6 +76,15 @@ class Settings(BaseSettings):
     brain_event_max_attempts: int = 5
     brain_worker_batch: int = 500
     brain_worker_interval: float = 2.0
+    # --- Brain state compiler (Prompt 5) ---
+    # Bump this string whenever the deterministic compilation logic or token
+    # budgets change so existing checksums/versions are intentionally invalidated.
+    brain_compiler_version: str = "det-v1"
+    brain_compiler_batch: int = 50
+    brain_compiler_max_attempts: int = 3
+    # Optional LLM prose-compression of the (already deterministic) summary. Off
+    # by default — the compiler is fully deterministic without it.
+    brain_compiler_use_llm: bool = False
 
     # --- Integration hub ---
     # Local-first by default: external network operations (webhook dispatch,

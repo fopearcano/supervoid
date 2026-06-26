@@ -15,6 +15,7 @@ export type AppView =
   | 'gn-studio'
   | 'pictures-studio'
   | 'agent-centre'
+  | 'brain-state'
   | 'integrations-hub'
   | 'rights-desk'
   | 'contacts'
@@ -87,6 +88,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'System',
     items: [
       { view: 'agent-centre', label: 'Agents' },
+      { view: 'brain-state', label: 'Brain' },
       { view: 'integrations-hub', label: 'Integrations' },
       { view: 'search', label: 'Search' },
       { view: 'archive', label: 'Archive' },
