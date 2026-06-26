@@ -36,6 +36,21 @@ def test_providers_endpoint_reports_dry_run_default(
     assert "openrouter" in body["known"]
 
 
+def test_health_endpoint_reports_dry_run_offline(
+    anon_client: TestClient,
+) -> None:
+    body = anon_client.get("/api/ai/health").json()
+    assert body["provider"] == "dry_run"
+    assert body["reachable"] is True
+    assert body["is_live"] is False
+    assert body["model"] == "stub"
+    assert isinstance(body["capabilities"], dict)
+    assert body["capabilities"]["health"] is True
+    # The API key must never be exposed by the health surface.
+    assert "api_key" not in body
+    assert "sk-" not in anon_client.get("/api/ai/health").text
+
+
 def test_summarize_endpoint_returns_typed_result(
     client: TestClient, session: Session
 ) -> None:

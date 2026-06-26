@@ -12,6 +12,7 @@ from app.db import get_session
 from app.models import AIInsight, Manuscript
 from app.models.enums import AIFeature
 from app.schemas.ai import (
+    AIHealthRead,
     AIInsightRead,
     AIProviderInfo,
     AIProviderListing,
@@ -189,6 +190,33 @@ def providers() -> AIProviderListing:
         is_live=provider.name != "dry_run",
     )
     return AIProviderListing(active=info, known=list(KNOWN_PROVIDERS))
+
+
+@router.get(
+    "/health",
+    response_model=AIHealthRead,
+    summary="Probe the configured AI backend (reachability, model, capabilities)",
+)
+def ai_health() -> AIHealthRead:
+    """Live health of the configured provider.
+
+    Reports whether the backend is reachable, the active model, declared
+    capabilities and round-trip latency. It performs a short network probe for
+    live providers (the dry-run provider answers offline). The API key is never
+    included in the response.
+    """
+    provider = get_provider()
+    health = provider.health()
+    return AIHealthRead(
+        provider=health.provider,
+        configured=health.configured,
+        reachable=health.reachable,
+        is_live=provider.name != "dry_run",
+        model=health.model,
+        latency_ms=health.latency_ms,
+        capabilities=health.capabilities.as_dict(),
+        detail=health.detail,
+    )
 
 
 # --- delete one insight ---------------------------------------------------

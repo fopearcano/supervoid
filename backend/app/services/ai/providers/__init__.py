@@ -1,7 +1,21 @@
 from app.services.ai.providers.base import (
+    CAPS_CONSERVATIVE,
+    CAPS_DRYRUN,
+    CAPS_OPENAI,
+    CAPS_VLLM,
+    CapabilityError,
+    ChatChunk,
     ChatMessage,
+    ChatRequest,
     CompletionResult,
     LLMProvider,
+    MalformedResponseError,
+    ProviderCapabilities,
+    ProviderError,
+    ProviderHealth,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+    ToolCall,
 )
 from app.services.ai.providers.dry_run import DryRunProvider
 from app.services.ai.providers.openai_compat import OpenAICompatibleProvider
@@ -11,15 +25,31 @@ from app.services.ai.providers.registry import (
     get_provider,
     reset_provider_cache,
 )
+from app.services.ai.providers.vllm import VLLMProvider
 
 __all__ = [
+    "CAPS_CONSERVATIVE",
+    "CAPS_DRYRUN",
+    "CAPS_OPENAI",
+    "CAPS_VLLM",
+    "CapabilityError",
+    "ChatChunk",
     "ChatMessage",
+    "ChatRequest",
     "CompletionResult",
     "DryRunProvider",
     "KNOWN_PROVIDERS",
     "LLMProvider",
+    "MalformedResponseError",
     "OpenAICompatibleProvider",
     "PROVIDER_DEFAULTS",
+    "ProviderCapabilities",
+    "ProviderError",
+    "ProviderHealth",
+    "ProviderTimeoutError",
+    "ProviderUnavailableError",
+    "ToolCall",
+    "VLLMProvider",
     "get_provider",
     "reset_provider_cache",
 ]

@@ -178,7 +178,14 @@ the per-route request/response schemas.
   metrics), **attachments** (upload/download), **exports**
   (`/api/manuscripts/{id}/export`, `/api/exports/formats`).
 - **ai** — manuscript AI features (summarize, consistency, style, tags,
-  editorial suggestions) + `providers`. Dry-run by default; see ROADMAP.
+  editorial suggestions) + `providers` + `health`. Dry-run by default; see
+  ROADMAP. `GET /api/ai/health` probes the configured backend (reachable,
+  active model, declared capabilities, latency) and never returns the API key.
+  Provider `vllm` selects the dedicated self-hosted vLLM client (async pool,
+  streaming, tools, structured JSON-schema output, reasoning, top_k, request-id
+  propagation, bounded transient-only retries); `openai_compatible` stays the
+  generic catch-all with conservative, declared capabilities. No
+  OpenAI-compatible SUPERVOID endpoint is exposed yet.
 
 ---
 

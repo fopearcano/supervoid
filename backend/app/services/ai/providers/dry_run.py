@@ -4,9 +4,12 @@ import json
 from typing import Optional, Sequence
 
 from app.services.ai.providers.base import (
+    CAPS_DRYRUN,
     ChatMessage,
     CompletionResult,
     LLMProvider,
+    ProviderCapabilities,
+    ProviderHealth,
 )
 
 
@@ -98,4 +101,25 @@ class DryRunProvider(LLMProvider):
             model=model or "stub",
             provider=self.name,
             usage=None,
+            finish_reason="stop",
+        )
+
+    # The dry-run provider is offline: it is always "reachable" (it never
+    # leaves the process) and advertises only the basics. This keeps the
+    # health endpoint meaningful even with no backend configured.
+    def capabilities(self) -> ProviderCapabilities:
+        return CAPS_DRYRUN
+
+    def list_models(self) -> list[str]:
+        return ["stub"]
+
+    def health(self) -> ProviderHealth:
+        return ProviderHealth(
+            provider=self.name,
+            configured=True,
+            reachable=True,
+            model="stub",
+            capabilities=CAPS_DRYRUN,
+            latency_ms=0.0,
+            detail="dry-run (offline; no backend configured)",
         )

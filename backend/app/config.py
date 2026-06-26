@@ -57,11 +57,18 @@ class Settings(BaseSettings):
     # ``dry_run`` ships canned responses without touching the network and is
     # the default for the foundation. Set to ``openai`` / ``openrouter`` /
     # ``lm_studio`` / ``openai_compatible`` to talk to a real backend.
+    # ``vllm`` selects the dedicated self-hosted provider (full capabilities);
+    # ``openai_compatible`` stays the generic catch-all (conservative caps).
     ai_provider: str = "dry_run"
     ai_base_url: str | None = None
     ai_api_key: str | None = None
     ai_model: str = "gpt-4o-mini"
     ai_request_timeout: float = 60.0
+    # Connection-establishment timeout (separate from the read timeout above).
+    ai_connect_timeout: float = 10.0
+    # Bounded retries for SAFE transient failures only (connection error,
+    # timeout, selected 5xx). Never used to re-issue a completed call.
+    ai_max_retries: int = 2
 
     # --- Integration hub ---
     # Local-first by default: external network operations (webhook dispatch,

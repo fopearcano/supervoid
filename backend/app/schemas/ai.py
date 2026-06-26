@@ -40,3 +40,16 @@ class AIProviderInfo(BaseModel):
 class AIProviderListing(BaseModel):
     active: AIProviderInfo
     known: list[str]
+
+
+class AIHealthRead(BaseModel):
+    """Health probe of the configured AI backend. Never carries the API key."""
+
+    provider: str
+    configured: bool
+    reachable: bool
+    is_live: bool  # False when the dry-run provider is in use
+    model: Optional[str] = None
+    latency_ms: Optional[float] = None
+    capabilities: dict[str, bool] = {}
+    detail: Optional[str] = None

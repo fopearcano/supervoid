@@ -14,7 +14,7 @@ the publishing division of **SUPERVOID ENTANGLED**, built so that the future
 | Database | SQLite (local-first), PostgreSQL-ready          |
 | Frontend | React 18, Vite 5, TypeScript, TailwindCSS 3     |
 | Auth     | JWT (PyJWT) + bcrypt, role-based access control  |
-| AI       | Provider-pluggable; `dry_run` default (offline) |
+| AI       | Provider-pluggable (`dry_run` default; `vllm`, OpenAI-compatible); async + streaming + tools + structured output |
 | Theme    | Dark, editorial, archival                       |
 
 ## Repository layout
@@ -431,6 +431,22 @@ export).
 The manuscript AI layer (`/api/ai`, `AIInsight`) is preserved unchanged; on top
 of it sits a governed agent framework where every run, finding and proposed
 action is persisted.
+
+**Model-provider client** (`app/services/ai/providers`): a pluggable
+chat-completion abstraction. The legacy synchronous `chat()` contract is kept
+for the editorial features; alongside it the providers expose an async client
+over a reusable connection pool with streaming, tool definitions / tool choice /
+returned tool calls, structured JSON-schema output, reasoning fields, stop / top_p
+/ top_k / presence + frequency penalties, request-id propagation, cancellation +
+timeout, model listing and health checks. `CompletionResult` additively carries
+finish reason, tool calls, reasoning, request id, latency, usage and provider
+metadata. A dedicated **`vllm`** provider declares the full capability set;
+**`openai_compatible`** stays the generic catch-all with conservative, *declared*
+capabilities (we never assume a backend supports a feature). Retries apply only
+to safe transient failures (connection error, timeout, selected 5xx) and never
+re-issue a completed call. `GET /api/ai/health` reports the configured provider,
+reachability, active model, capabilities and latency — never the API key. No
+OpenAI-compatible SUPERVOID endpoint is exposed yet (that is a later phase).
 
 - **Code-registered** (`app/services/agents`): `AgentDefinition`s (key, name,
   supported entity types, required permissions, allowed tools, mutability,

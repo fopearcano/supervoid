@@ -205,3 +205,33 @@ def test_known_providers_includes_each_documented_backend() -> None:
     assert "openai" in KNOWN_PROVIDERS
     assert "openrouter" in KNOWN_PROVIDERS
     assert "lm_studio" in KNOWN_PROVIDERS
+    assert "vllm" in KNOWN_PROVIDERS
+
+
+def test_registry_builds_vllm_with_full_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ai_provider", "vllm")
+    monkeypatch.setattr(settings, "ai_base_url", "http://vllm:8000/v1")
+    monkeypatch.setattr(settings, "ai_model", "supervoid-brain")
+    monkeypatch.setattr(settings, "ai_api_key", "vk-test")
+    reset_provider_cache()
+    p = get_provider()
+    assert p.name == "vllm"
+    assert getattr(p, "base_url") == "http://vllm:8000/v1"
+    caps = p.capabilities()
+    assert caps.tools and caps.json_schema and caps.top_k and caps.streaming
+
+
+def test_registry_vllm_requires_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ai_provider", "vllm")
+    monkeypatch.setattr(settings, "ai_base_url", None)
+    reset_provider_cache()
+    with pytest.raises(ValueError):
+        get_provider()
