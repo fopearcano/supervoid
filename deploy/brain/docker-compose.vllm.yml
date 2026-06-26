@@ -1,0 +1,112 @@
+# SUPERVOID Brain — dedicated vLLM inference deployment (Phase 1).
+#
+# OpenAI-compatible inference server for the dedicated AI workstation. This file
+# is INDEPENDENT of the main application stack (docker-compose.yml) — it can be
+# brought up on its own on the GPU host.
+#
+#   cp ../../.env.brain.example ../../.env.brain      # then edit
+#   ./scripts/vllm-start.sh                           # uses .env.brain by default
+#   ./scripts/vllm-smoke.sh                           # OpenAI-compatible smoke tests
+#
+# Governance:
+#   * vLLM is RAW, UNGOVERNED inference. It is bound to localhost / the private
+#     `brain` network ONLY. Do NOT publish it on 0.0.0.0 and do NOT place it
+#     behind the internet-facing reverse proxy. In production, the SUPERVOID
+#     Brain Gateway (a later phase) is the only client; LibreChat must talk to
+#     the Gateway, never to vLLM directly. See docs/VLLM_DEPLOYMENT.md.
+#   * The API key is supplied via the VLLM_API_KEY environment variable (read
+#     natively by the vLLM server); it is never placed on the command line.
+
+services:
+  vllm:
+    # Pinned, tested image (NOT `latest`). Override via VLLM_IMAGE and prefer
+    # pinning by digest (vllm/vllm-openai@sha256:...). See docs for re-pinning.
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.20.0}
+    container_name: ${VLLM_CONTAINER_NAME:-supervoid-vllm}
+    restart: unless-stopped
+
+    # Env-driven arg assembly (conditional flags) lives in the entrypoint script.
+    entrypoint: ["/bin/bash", "/opt/brain/vllm-entrypoint.sh"]
+    volumes:
+      - ./vllm-entrypoint.sh:/opt/brain/vllm-entrypoint.sh:ro
+      # Persist the Hugging Face cache so models are downloaded once.
+      - ${VLLM_HF_CACHE:-vllm_hf_cache}:/root/.cache/huggingface
+
+    environment:
+      # --- model + serving identity ---
+      VLLM_MODEL: ${VLLM_MODEL:?set VLLM_MODEL in your env file}
+      VLLM_SERVED_MODEL_NAME: ${VLLM_SERVED_MODEL_NAME:-supervoid-brain}
+      VLLM_HOST: ${VLLM_HOST:-0.0.0.0}
+      VLLM_PORT: ${VLLM_PORT:-8000}
+      # --- capacity / hardware ---
+      VLLM_TENSOR_PARALLEL_SIZE: ${VLLM_TENSOR_PARALLEL_SIZE:-1}
+      VLLM_MAX_MODEL_LEN: ${VLLM_MAX_MODEL_LEN:-32768}
+      VLLM_GPU_MEMORY_UTILIZATION: ${VLLM_GPU_MEMORY_UTILIZATION:-0.90}
+      VLLM_MAX_NUM_SEQS: ${VLLM_MAX_NUM_SEQS:-256}
+      VLLM_DTYPE: ${VLLM_DTYPE:-auto}
+      # --- features ---
+      VLLM_ENABLE_PREFIX_CACHING: ${VLLM_ENABLE_PREFIX_CACHING:-1}
+      VLLM_ENABLE_CHUNKED_PREFILL: ${VLLM_ENABLE_CHUNKED_PREFILL:-1}
+      VLLM_ENABLE_REQUEST_ID_HEADERS: ${VLLM_ENABLE_REQUEST_ID_HEADERS:-1}
+      VLLM_TRUST_REMOTE_CODE: ${VLLM_TRUST_REMOTE_CODE:-0}
+      # --- optional / conditional (empty = omitted) ---
+      VLLM_QUANTIZATION: ${VLLM_QUANTIZATION:-}
+      VLLM_TOOL_CALL_PARSER: ${VLLM_TOOL_CALL_PARSER:-}
+      VLLM_CHAT_TEMPLATE: ${VLLM_CHAT_TEMPLATE:-}
+      VLLM_REASONING_PARSER: ${VLLM_REASONING_PARSER:-}
+      VLLM_GUIDED_DECODING_BACKEND: ${VLLM_GUIDED_DECODING_BACKEND:-}
+      VLLM_EXTRA_ARGS: ${VLLM_EXTRA_ARGS:-}
+      # --- secrets / auth (read natively by vLLM; never on argv) ---
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      HF_HOME: /root/.cache/huggingface
+
+    # PRIVATE by default: bound to loopback only (never 0.0.0.0, never the public
+    # proxy). Other containers reach it in-network as `vllm:${VLLM_PORT}`. To
+    # serve a LAN Gateway on another host, set VLLM_BIND_ADDR to a private LAN IP.
+    ports:
+      - "${VLLM_BIND_ADDR:-127.0.0.1}:${VLLM_PUBLISH_PORT:-${VLLM_PORT:-8000}}:${VLLM_PORT:-8000}"
+
+    # vLLM needs ample shared memory, especially for tensor parallelism.
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+    # GPU reservation (NVIDIA). Requires the NVIDIA Container Toolkit on the host.
+    # On a CPU-only validation host this block simply renders; it is enforced at
+    # run time only. `gpus: all` is an alternative on recent Compose versions.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${VLLM_GPU_COUNT:-all}
+              capabilities: ["gpu"]
+
+    healthcheck:
+      # /health is unauthenticated in vLLM. Use python (always present in the
+      # image) so we don't depend on curl being installed.
+      test:
+        - "CMD-SHELL"
+        - "python3 -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/health').status==200 else sys.exit(1)\""
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      # Generous: large models can take minutes to download + load.
+      start_period: ${VLLM_HEALTH_START_PERIOD:-600s}
+
+    networks:
+      - brain
+
+# A dedicated bridge network. NOT marked `internal` because the model must be
+# downloadable from Hugging Face on first run. Privacy comes from the loopback
+# port binding above, not from network isolation.
+networks:
+  brain:
+    name: ${BRAIN_NETWORK_NAME:-supervoid-brain}
+    driver: bridge
+
+volumes:
+  vllm_hf_cache:
+    name: ${VLLM_HF_CACHE_VOLUME:-supervoid-vllm-hf-cache}

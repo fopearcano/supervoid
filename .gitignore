@@ -21,6 +21,17 @@ frontend/.vite/
 frontend/.env
 frontend/.env.local
 
+# Python bytecode (any package)
+__pycache__/
+*.pyc
+
 # Operations
 .env
 backups/
+
+# SUPERVOID Brain — local env files may hold secrets (VLLM_API_KEY, HF token).
+# Keep the committed *.example templates; ignore everything else.
+.env.brain
+.env.brain.*
+!.env.brain.example
+!**/.env.brain.test.example
