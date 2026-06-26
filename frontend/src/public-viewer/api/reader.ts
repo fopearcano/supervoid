@@ -1,5 +1,6 @@
 import { publicFetch } from './publicClient';
 import type {
+  CatalogueItem,
   PublicHotspot,
   PublicMediaAsset,
   PublishedChapter,
@@ -13,6 +14,9 @@ const enc = encodeURIComponent;
 
 export const listWorks = () =>
   publicFetch<PublishedWorkSummary[]>('/works');
+
+export const listCatalogue = () =>
+  publicFetch<CatalogueItem[]>('/catalogue');
 
 export const getWork = (slug: string) =>
   publicFetch<PublishedWorkDetail>(`/works/${enc(slug)}`);

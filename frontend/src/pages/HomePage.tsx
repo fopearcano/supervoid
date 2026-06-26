@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { SignInModal } from '@/components/SignInModal';
 
-// Community / external links. Placeholders — replace with the real shop, invite
-// and channel URLs. They open in a new tab; "Members" opens the sign-in.
+// External community links (open in a new tab). The Bookshop is an internal
+// public page (/shop); "Members" opens the sign-in.
 const COMMUNITY_LINKS: { label: string; href: string }[] = [
-  { label: 'Bookshop', href: 'https://bookshop.org' },
-  { label: 'Discord', href: 'https://discord.gg/supervoid' },
-  { label: 'Telegram news', href: 'https://t.me/supervoid' },
+  { label: 'Discord', href: 'https://discord.gg/9ERtWkuft' },
 ];
 
 // The scrolling top-bar phrase, repeated.
@@ -48,6 +46,9 @@ export function HomePage() {
       </main>
 
       <footer className="flex flex-wrap items-center justify-center gap-3 px-8 py-10">
+        <a href="/shop" className="button-outline">
+          Bookshop →
+        </a>
         {COMMUNITY_LINKS.map((link) => (
           <a
             key={link.label}

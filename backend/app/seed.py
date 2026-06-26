@@ -1179,6 +1179,12 @@ def _seed_public_reader(session: Session, works: dict[str, Work]) -> None:
     pub.tags = ["graphic novel", "literary", "noir", "craft"]
     pub.music_track_id = theme.id
     pub.video_intro_id = intro_video.id
+    # Listed in the public Bookshop (selling catalogue).
+    pub.for_sale = True
+    pub.price_cents = 2400
+    pub.currency = "EUR"
+    pub.format_label = "Hardcover · 96pp"
+    pub.buy_url = "https://bookshop.org/"
     session.add(pub)
     session.commit()
     session.refresh(pub)

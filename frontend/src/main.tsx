@@ -8,10 +8,12 @@ if (!container) {
 }
 const root = createRoot(container);
 
-// The public Graphic Novel Webviewer lives under /reader/*; everything else is
-// the private admin app. They are mounted as separate, code-split trees so the
-// public bundle never includes the admin interface (and vice versa).
-if (window.location.pathname.startsWith('/reader')) {
+// The public surfaces (Graphic Novel Webviewer at /reader/*, Bookshop at /shop)
+// are one code-split tree; everything else is the private admin app. They are
+// mounted separately so the public bundle never includes the admin interface
+// (and vice versa).
+const publicPath = window.location.pathname;
+if (publicPath.startsWith('/reader') || publicPath.startsWith('/shop')) {
   void import('./public-viewer/PublicViewerApp').then(({ PublicViewerApp }) => {
     root.render(
       <StrictMode>

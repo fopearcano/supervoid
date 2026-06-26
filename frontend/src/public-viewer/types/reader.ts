@@ -135,3 +135,19 @@ export const READER_MODE_LABELS: Record<ReaderMode, string> = {
   scroll: 'Vertical scroll',
   cinematic: 'Cinematic',
 };
+
+export interface CatalogueItem {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  public_synopsis: string | null;
+  cover_image: string | null;
+  author_credit: string | null;
+  artist_credit: string | null;
+  tags: string[];
+  price_cents: number | null;
+  currency: string;
+  buy_url: string | null;
+  format_label: string | null;
+}

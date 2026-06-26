@@ -9,12 +9,14 @@ import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from 'react';
 
 export type Route =
   | { name: 'landing' }
+  | { name: 'shop' }
   | { name: 'work'; slug: string }
   | { name: 'reader'; slug: string; volumeId: string; chapterId: string };
 
 export function parseRoute(pathname: string): Route {
   const seg = pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  // seg[0] is always 'reader' (this app only mounts under /reader).
+  // This app mounts under /reader (the reading room) and /shop (the bookshop).
+  if (seg[0] === 'shop') return { name: 'shop' };
   if (seg.length <= 1) return { name: 'landing' };
   if (seg.length === 2) return { name: 'work', slug: decodeURIComponent(seg[1]) };
   return {
@@ -76,6 +78,7 @@ export function Link({ to, children, onClick, ...rest }: LinkProps) {
 // Route builders so callers never hand-concatenate paths.
 export const readerPaths = {
   landing: () => '/reader',
+  shop: () => '/shop',
   work: (slug: string) => `/reader/${encodeURIComponent(slug)}`,
   read: (slug: string, volumeId: string, chapterId: string) =>
     `/reader/${encodeURIComponent(slug)}/${volumeId}/${chapterId}`,

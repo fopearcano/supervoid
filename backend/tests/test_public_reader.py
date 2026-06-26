@@ -249,3 +249,38 @@ def test_publish_bridge_copies_only_public_metadata(session: Session) -> None:
     # Idempotent per source work.
     pub2 = publish_work_to_public_reader(session, work.id)
     assert pub2.id == pub.id
+
+
+# --- public Bookshop catalogue ---------------------------------------------
+
+
+def test_catalogue_lists_only_published_for_sale(
+    session: Session, anon_client: TestClient
+) -> None:
+    # published + for sale -> appears
+    a = _make_published(session, slug="for-sale-gn", with_children=False)
+    a.for_sale = True
+    a.price_cents = 1500
+    a.currency = "EUR"
+    a.buy_url = "https://example.test/buy"
+    a.format_label = "Paperback · 120pp"
+    # published but NOT for sale -> excluded
+    b = _make_published(session, slug="not-for-sale-gn", with_children=False)
+    b.for_sale = False
+    # draft + for sale -> excluded (public/private isolation holds)
+    c = _make_published(
+        session, slug="draft-for-sale", status=PublishedStatus.DRAFT, with_children=False
+    )
+    c.for_sale = True
+    c.price_cents = 999
+    session.add_all([a, b, c])
+    session.commit()
+
+    items = anon_client.get("/public/catalogue").json()
+    assert {i["slug"] for i in items} == {"for-sale-gn"}
+    item = items[0]
+    assert item["price_cents"] == 1500
+    assert item["currency"] == "EUR"
+    assert item["buy_url"] == "https://example.test/buy"
+    assert item["format_label"] == "Paperback · 120pp"
+    _assert_no_private(items)

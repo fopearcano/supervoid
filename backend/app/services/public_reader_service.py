@@ -209,6 +209,20 @@ def list_published_works(session: Session) -> list[PublishedWorkSummary]:
     return [PublishedWorkSummary.model_validate(w) for w in session.exec(stmt).all()]
 
 
+def list_catalogue(session: Session):
+    """The public Bookshop: PUBLISHED works flagged ``for_sale``. Drafts,
+    unlisted and not-for-sale works are never exposed here."""
+    from app.schemas.public_reader import CatalogueItem
+
+    stmt = (
+        select(PublishedWork)
+        .where(PublishedWork.status == PublishedStatus.PUBLISHED)
+        .where(PublishedWork.for_sale == True)  # noqa: E712
+        .order_by(PublishedWork.publication_date.desc(), PublishedWork.title)
+    )
+    return [CatalogueItem.model_validate(w) for w in session.exec(stmt).all()]
+
+
 def _work_detail_read(session: Session, work: PublishedWork) -> PublishedWorkDetail:
     cache: MediaCache = {}
     return PublishedWorkDetail(

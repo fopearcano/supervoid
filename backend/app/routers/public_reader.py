@@ -11,6 +11,7 @@ from sqlmodel import Session
 
 from app.db import get_session
 from app.schemas.public_reader import (
+    CatalogueItem,
     PublicHotspotRead,
     PublicMediaAssetRead,
     PublishedChapterRead,
@@ -27,6 +28,15 @@ router = APIRouter(prefix="/public", tags=["public-reader"])
 @router.get("/works", response_model=list[PublishedWorkSummary], summary="List published works")
 def list_works(session: Session = Depends(get_session)) -> list[PublishedWorkSummary]:
     return reader.list_published_works(session)
+
+
+@router.get(
+    "/catalogue",
+    response_model=list[CatalogueItem],
+    summary="Public Bookshop — works for sale",
+)
+def list_catalogue(session: Session = Depends(get_session)) -> list[CatalogueItem]:
+    return reader.list_catalogue(session)
 
 
 @router.get("/works/{slug}", response_model=PublishedWorkDetail, summary="Published work detail")

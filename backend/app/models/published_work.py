@@ -41,6 +41,15 @@ class PublishedWork(BaseEntity, table=True):
         default_factory=list, sa_column=Column(JSON, nullable=False)
     )
 
+    # Public Bookshop (selling catalogue). A work appears in /public/catalogue
+    # when it is PUBLISHED and ``for_sale``. ``buy_url`` is the external point of
+    # sale the studio sets; price is stored in minor units + a currency code.
+    for_sale: bool = Field(default=False)
+    price_cents: Optional[int] = Field(default=None, ge=0)
+    currency: str = Field(default="EUR", max_length=3)
+    buy_url: Optional[str] = Field(default=None, max_length=600)
+    format_label: Optional[str] = Field(default=None, max_length=80)
+
     # Optional work-level media (music/intro) — most specific level wins in
     # the reader (page > chapter > volume > work).
     music_track_id: Optional[str] = Field(

@@ -119,6 +119,24 @@ class PublishedWorkSummary(ORMModel):
     tags: list[str] = []
 
 
+class CatalogueItem(ORMModel):
+    """A for-sale entry in the public Bookshop. Public commercial metadata only."""
+
+    id: str
+    slug: str
+    title: str
+    subtitle: Optional[str] = None
+    public_synopsis: Optional[str] = None
+    cover_image: Optional[str] = None
+    author_credit: Optional[str] = None
+    artist_credit: Optional[str] = None
+    tags: list[str] = []
+    price_cents: Optional[int] = None
+    currency: str = "EUR"
+    buy_url: Optional[str] = None
+    format_label: Optional[str] = None
+
+
 class PublishedWorkDetail(PublishedWorkSummary):
     music_track: Optional[PublicMediaAssetRead] = None
     video_intro: Optional[PublicMediaAssetRead] = None

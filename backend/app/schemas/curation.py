@@ -34,6 +34,11 @@ class PublishedWorkCreate(BaseModel):
     author_credit: Optional[str] = Field(default=None, max_length=300)
     artist_credit: Optional[str] = Field(default=None, max_length=300)
     tags: list[str] = Field(default_factory=list)
+    for_sale: bool = False
+    price_cents: Optional[int] = Field(default=None, ge=0)
+    currency: str = Field(default="EUR", max_length=3)
+    buy_url: Optional[str] = Field(default=None, max_length=600)
+    format_label: Optional[str] = Field(default=None, max_length=80)
 
 
 class CreateFromWorkRequest(BaseModel):
@@ -51,6 +56,11 @@ class PublishedWorkUpdate(BaseModel):
     tags: Optional[list[str]] = None
     music_track_id: Optional[str] = None
     video_intro_id: Optional[str] = None
+    for_sale: Optional[bool] = None
+    price_cents: Optional[int] = Field(default=None, ge=0)
+    currency: Optional[str] = Field(default=None, max_length=3)
+    buy_url: Optional[str] = Field(default=None, max_length=600)
+    format_label: Optional[str] = Field(default=None, max_length=80)
 
 
 class PublishedWorkAdminRead(TimestampedRead):
@@ -67,6 +77,11 @@ class PublishedWorkAdminRead(TimestampedRead):
     tags: list[str]
     music_track_id: Optional[str]
     video_intro_id: Optional[str]
+    for_sale: bool
+    price_cents: Optional[int]
+    currency: str
+    buy_url: Optional[str]
+    format_label: Optional[str]
 
 
 # --- lifecycle -------------------------------------------------------------
