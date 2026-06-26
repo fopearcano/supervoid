@@ -50,6 +50,10 @@ export default {
         serif: ['"EB Garamond"', '"Cormorant Garamond"', 'Georgia', 'serif'],
         sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['"JetBrains Mono"', '"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        // Display wordmark (Cinzel) + decorative script (Pinyon) — used for the
+        // SUPERVOID wordmark and the home kicker.
+        display: ['"Cinzel"', '"EB Garamond"', 'Georgia', 'serif'],
+        script: ['"Pinyon Script"', 'cursive'],
       },
       letterSpacing: {
         wider: '0.08em',

@@ -151,7 +151,7 @@ export function AppShell({ children, onNavigate, activeView }: AppShellProps) {
               onClick={() => onNavigate('command')}
               className="flex flex-col items-start text-left transition-opacity hover:opacity-90 focus:outline-none"
             >
-              <span className="font-serif text-[1.4rem] leading-none tracking-tight text-parchment">
+              <span className="font-display font-semibold text-[1.25rem] leading-none tracking-[0.05em] text-parchment">
                 SUPERVOID
               </span>
               <span className="mt-1 font-mono text-[0.58rem] uppercase tracking-widest text-parchment-dim">

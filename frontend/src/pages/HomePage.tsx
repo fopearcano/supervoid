@@ -36,12 +36,13 @@ export function HomePage() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        {/* kicker — classic serif, sitting center-left over the title */}
-        <span className="ml-[18vw] select-none self-start font-serif italic leading-none text-accent text-[clamp(1.25rem,4vw,2.5rem)]">
+        {/* kicker — Pinyon script, sitting center-left over the title */}
+        <span className="ml-[14vw] select-none self-start font-script leading-[0.9] text-accent text-[clamp(1.75rem,5.5vw,3.5rem)]">
           {'I’ve got a mental'}
         </span>
 
-        <h1 className="-mt-1 font-serif leading-[0.85] tracking-tight text-parchment text-[clamp(3.5rem,17vw,13rem)]">
+        {/* wordmark — Cinzel deco caps */}
+        <h1 className="font-display font-bold leading-[0.95] tracking-[0.015em] text-parchment text-[clamp(3rem,14vw,10rem)]">
           SUPER<span className="text-accent">VOID</span>
         </h1>
       </main>
