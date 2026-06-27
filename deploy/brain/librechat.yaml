@@ -1,0 +1,103 @@
+# SUPERVOID Brain — LibreChat configuration.
+#
+# Mounted read-only into the upstream LibreChat image at /app/librechat.yaml.
+# This is the ONLY place SUPERVOID-specific behaviour is defined — we never patch
+# upstream LibreChat source. ${VAR} values are interpolated from the container
+# environment (see .env.librechat.example).
+#
+# Validate before deploying:  python deploy/brain/scripts/validate_librechat_config.py
+
+version: 1.2.8
+cache: true
+
+# Registration is disabled (set ALLOW_REGISTRATION=true ONLY to create the first
+# administrator, then return it to false). No social logins.
+registration:
+  socialLogins: []
+
+# Per-user / per-IP rate limits (belt-and-braces with the env LIMIT_* values and
+# the Brain Gateway's own per-user limits).
+rateLimits:
+  fileUploads:
+    ipMax: 50
+    ipWindowInMinutes: 60
+    userMax: 20
+    userWindowInMinutes: 60
+  conversationsImport:
+    ipMax: 10
+    ipWindowInMinutes: 60
+    userMax: 5
+    userWindowInMinutes: 60
+
+# File limits (governed; the Brain is the source of truth for project data).
+fileConfig:
+  serverFileSizeLimit: 20        # MB, hard ceiling across endpoints
+  avatarSizeLimit: 2
+  endpoints:
+    "SUPERVOID Brain":
+      fileLimit: 5
+      fileSizeLimit: 10          # MB per file
+      totalSizeLimit: 50         # MB per request
+      supportedMimeTypes:
+        - "text/.*"
+        - "application/pdf"
+        - "image/.*"
+
+interface:
+  customWelcome: "SUPERVOID Studio — every answer is grounded and governed by the Brain."
+  modelSelect: true
+  # The Brain owns assistant profiles + state; keep LibreChat's prompt surface thin.
+  presets: false
+  parameters: false
+
+# --- The single governed endpoint -----------------------------------------
+endpoints:
+  custom:
+    - name: "SUPERVOID Brain"
+      # The internal SUPERVOID Brain Gateway — OpenAI-compatible, on the private
+      # network. NEVER point this at vLLM directly.
+      baseURL: "http://${SUPERVOID_BACKEND_HOST}:${SUPERVOID_BACKEND_PORT}/brain/v1"
+      # Each member pastes their own SUPERVOID BrainAccessToken (sk-brain-…) once;
+      # LibreChat encrypts it at rest with CREDS_KEY/CREDS_IV.
+      apiKey: "user_provided"
+      # Restricted to the served SUPERVOID model alias(es). `fetch` also queries
+      # /brain/v1/models (which advertises only the served alias).
+      models:
+        default: ["supervoid-brain"]
+        fetch: true
+      # Conversation titles are generated THROUGH the Brain (no extra provider).
+      titleConvo: true
+      titleModel: "supervoid-brain"
+      modelDisplayLabel: "SUPERVOID Brain"
+      # IMPORTANT: drop NOTHING by default. Only add unsupported sampling params
+      # here AFTER compatibility testing against the served model + Gateway, e.g.
+      #   dropParams: ["frequency_penalty", "presence_penalty"]
+      dropParams: []
+
+# --- The governed SUPERVOID tool layer (MCP, Streamable HTTP) --------------
+mcpServers:
+  supervoid:
+    type: streamable-http
+    # The internal MCP URL. Front it with the signing shim (it adds the service
+    # token + the HMAC over the user-context); see docs/MCP_SERVER.md. Set
+    # SUPERVOID_MCP_URL to the shim's address. NOT publicly accessible.
+    url: "${SUPERVOID_MCP_URL}"
+    # Dynamic per-user identity (the shim signs these; the SUPERVOID backend maps
+    # the email to a SUPERVOID user and re-runs the policy service).
+    headers:
+      X-SUPERVOID-User-Id: "{{LIBRECHAT_USER_ID}}"
+      X-SUPERVOID-User-Email: "{{LIBRECHAT_USER_EMAIL}}"
+      X-SUPERVOID-User-Role: "{{LIBRECHAT_USER_ROLE}}"
+      X-SUPERVOID-Request-Id: "{{LIBRECHAT_REQUEST_ID}}"
+    # Surface the server's governance instructions to the model.
+    serverInstructions: true
+    # Keep the server available in the chat menu for selection.
+    chatMenu: true
+    # Defer the ~36-tool catalogue rather than always loading it into context:
+    # attach SUPERVOID tools to the Studio Director AGENT and enable LibreChat's
+    # on-demand / lazy MCP tool loading where the deployed version supports it
+    # (the tool schemas are deliberately concise to keep this cheap regardless).
+    # See docs/LIBRECHAT_INTEGRATION.md → "Deferred MCP tools".
+    # Init + per-operation timeouts (ms).
+    initTimeout: 15000
+    timeout: 60000

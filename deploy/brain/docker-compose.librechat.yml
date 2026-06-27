@@ -1,0 +1,147 @@
+# SUPERVOID Brain — LibreChat deployment (Phase 5).
+#
+# LibreChat is a SEPARATELY VERSIONED upstream application. We deploy the
+# official, PINNED image — we do NOT vendor LibreChat source into the SUPERVOID
+# frontend and do NOT fork it. All SUPERVOID-specific behaviour lives in the
+# mounted librechat.yaml + environment, never in patched upstream code.
+#
+#   cp .env.librechat.example ../../.env.librechat        # then edit + set secrets
+#   python scripts/validate_librechat_config.py           # validate BEFORE up
+#   docker compose -f docker-compose.librechat.yml --env-file ../../.env.librechat up -d
+#
+# Governance / security boundary:
+#   * LibreChat talks to the SUPERVOID Brain Gateway (/brain/v1) and MCP server
+#     (/mcp) over the PRIVATE `supervoid-brain` network — never to vLLM directly.
+#   * Mongo + Meilisearch publish NO host ports (internal network only).
+#   * LibreChat itself binds to LOOPBACK only; it is reachable exclusively behind
+#     the SUPERVOID reverse proxy (see deploy/brain/nginx/librechat.conf).
+#   * All secrets (JWT/refresh/creds/meili/service-token) come from the env file;
+#     none are committed. See docs/LIBRECHAT_INTEGRATION.md.
+
+services:
+  librechat:
+    # Pinned, tested upstream release (NOT `latest`). Re-pin against the upstream
+    # release notes; prefer pinning by digest in production.
+    image: ${LIBRECHAT_IMAGE:-ghcr.io/danny-avila/librechat:v0.7.8}
+    container_name: ${LIBRECHAT_CONTAINER_NAME:-supervoid-librechat}
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${LIBRECHAT_PORT:-3080}
+      # --- persistence ---
+      MONGO_URI: mongodb://mongodb:27017/LibreChat
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
+      SEARCH: "true"
+      # --- SUPERVOID custom endpoint + MCP config (mounted, read-only) ---
+      CONFIG_PATH: /app/librechat.yaml
+      # Restrict the model picker to our governed custom endpoints only.
+      ENDPOINTS: ${LIBRECHAT_ENDPOINTS:-custom}
+      # --- accounts: registration disabled after admin provisioning ---
+      ALLOW_REGISTRATION: ${LIBRECHAT_ALLOW_REGISTRATION:-false}
+      ALLOW_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_EMAIL_LOGIN:-true}
+      ALLOW_SOCIAL_LOGIN: "false"
+      ALLOW_SOCIAL_REGISTRATION: "false"
+      # --- strong secrets (REQUIRED; from the env file, never committed) ---
+      JWT_SECRET: ${JWT_SECRET:?set a strong JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set a strong JWT_REFRESH_SECRET}
+      # CREDS_KEY/IV encrypt user-provided endpoint keys (the Brain tokens) at rest.
+      CREDS_KEY: ${CREDS_KEY:?set CREDS_KEY (64 hex chars)}
+      CREDS_IV: ${CREDS_IV:?set CREDS_IV (32 hex chars)}
+      # --- the SUPERVOID side, referenced from librechat.yaml via interpolation ---
+      SUPERVOID_BACKEND_HOST: ${SUPERVOID_BACKEND_HOST:-supervoid-backend}
+      SUPERVOID_BACKEND_PORT: ${SUPERVOID_BACKEND_PORT:-8000}
+      SUPERVOID_BRAIN_MODEL: ${SUPERVOID_BRAIN_MODEL:-supervoid-brain}
+      SUPERVOID_MCP_URL: ${SUPERVOID_MCP_URL:-http://supervoid-mcp-sign-proxy:8092/mcp}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?set MCP_SERVICE_TOKEN}
+      # --- file + rate limits (also enforced in librechat.yaml) ---
+      LIMIT_CONCURRENT_MESSAGES: ${LIBRECHAT_LIMIT_CONCURRENT_MESSAGES:-2}
+      LIMIT_MESSAGE_USER: ${LIBRECHAT_LIMIT_MESSAGE_USER:-40}
+      LIMIT_MESSAGE_WINDOW: ${LIBRECHAT_LIMIT_MESSAGE_WINDOW:-60}
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml:ro
+      - librechat_uploads:/app/client/public/uploads
+      - librechat_images:/app/client/public/images
+      - librechat_logs:/app/api/logs
+    # PRIVATE: bound to loopback only. Reachable solely via the SUPERVOID reverse
+    # proxy (which joins the `supervoid-brain` network). NEVER bind to 0.0.0.0.
+    ports:
+      - "${LIBRECHAT_BIND_ADDR:-127.0.0.1}:${LIBRECHAT_PUBLISH_PORT:-3080}:${LIBRECHAT_PORT:-3080}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${LIBRECHAT_PORT:-3080}/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    networks:
+      - brain
+      - librechat-internal
+
+  mongodb:
+    image: ${LIBRECHAT_MONGO_IMAGE:-mongo:7.0}
+    container_name: ${LIBRECHAT_MONGO_CONTAINER:-supervoid-librechat-mongo}
+    restart: unless-stopped
+    command: ["mongod", "--quiet", "--bind_ip_all"]
+    volumes:
+      - librechat_mongo:/data/db
+    # No host port: reachable ONLY on the internal network by LibreChat.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks:
+      - librechat-internal
+
+  meilisearch:
+    image: ${LIBRECHAT_MEILI_IMAGE:-getmeili/meilisearch:v1.12}
+    container_name: ${LIBRECHAT_MEILI_CONTAINER:-supervoid-librechat-meili}
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_ENV: production
+    volumes:
+      - librechat_meili:/meili_data
+    # No host port: internal network only.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7700/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks:
+      - librechat-internal
+
+networks:
+  # The shared private network with the SUPERVOID backend (Brain Gateway + MCP)
+  # and vLLM. Declared external so this stack joins the existing network created
+  # by the main stack / the vLLM compose. The SUPERVOID backend must be attached
+  # to it too (see docs/LIBRECHAT_INTEGRATION.md).
+  brain:
+    name: ${BRAIN_NETWORK_NAME:-supervoid-brain}
+    external: true
+  # LibreChat <-> Mongo/Meilisearch only. `internal: true` => no egress, no
+  # ingress from outside the compose project.
+  librechat-internal:
+    name: ${LIBRECHAT_INTERNAL_NETWORK:-supervoid-librechat-internal}
+    driver: bridge
+    internal: true
+
+volumes:
+  librechat_mongo:
+    name: ${LIBRECHAT_MONGO_VOLUME:-supervoid-librechat-mongo}
+  librechat_meili:
+    name: ${LIBRECHAT_MEILI_VOLUME:-supervoid-librechat-meili}
+  librechat_uploads:
+    name: ${LIBRECHAT_UPLOADS_VOLUME:-supervoid-librechat-uploads}
+  librechat_images:
+    name: ${LIBRECHAT_IMAGES_VOLUME:-supervoid-librechat-images}
+  librechat_logs:
+    name: ${LIBRECHAT_LOGS_VOLUME:-supervoid-librechat-logs}
