@@ -6,6 +6,8 @@ import {
   type BrainCitation,
   type BrainStatus,
 } from '@/api/brain';
+import { fetchWorks } from '@/api/transmedia';
+import type { TransmediaWork } from '@/types/transmedia';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
 
@@ -43,10 +45,17 @@ export function BrainHubPage() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [works, setWorks] = useState<TransmediaWork[]>([]);
+  const [workId, setWorkId] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchBrainStatus().then(setStatus).catch((e) => setError(errMsg(e)));
+  }, []);
+  useEffect(() => {
+    fetchWorks().then((p) => setWorks(p.items)).catch(() => {
+      /* the picker is optional — fall back to studio-wide */
+    });
   }, []);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,7 +72,11 @@ export function BrainHubPage() {
     setMessages((m) => [...m, { role: 'user', content }]);
     setSending(true);
     try {
-      const turn = await sendBrainChat({ content, conversation_id: conversationId });
+      const turn = await sendBrainChat({
+        content,
+        conversation_id: conversationId,
+        work_id: workId || null,
+      });
       setConversationId(turn.conversation_id);
       setMessages((m) => [
         ...m,
@@ -84,6 +97,16 @@ export function BrainHubPage() {
     }
   }
 
+  // Switching project scope starts a fresh conversation (a conversation is bound
+  // to one project) so reads + proposals target the chosen Work.
+  function changeScope(next: string) {
+    if (next === workId) return;
+    setWorkId(next);
+    setConversationId(null);
+    setMessages([]);
+    setError(null);
+  }
+
   return (
     <div className="p-8">
       <Eyebrow>Brain</Eyebrow>
@@ -97,8 +120,23 @@ export function BrainHubPage() {
 
       {/* Native in-app chat (no LibreChat / Brain token required). */}
       <div className="mt-6 max-w-3xl border border-rule">
-        <div className="flex items-center justify-between border-b border-rule px-4 py-2">
-          <Eyebrow>Conversation</Eyebrow>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-2">
+          <div className="flex items-center gap-2">
+            <Eyebrow>Scope</Eyebrow>
+            <select
+              value={workId}
+              onChange={(e) => changeScope(e.target.value)}
+              title="Which project the Brain reads and proposes against"
+              className="max-w-[14rem] border border-rule bg-ink-900 px-2 py-1 font-mono text-[0.62rem] text-parchment outline-none"
+            >
+              <option value="">Studio-wide</option>
+              {works.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             {isDryRun && (
               <Pill tone="signal">dry-run · connect vLLM for real answers</Pill>
