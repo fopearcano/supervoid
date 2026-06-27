@@ -508,6 +508,37 @@ Declared agent permissions are checked through the policy service (admin
 bypasses; project scopes resolve against the target work). The private UI adds
 an **Agent Centre** (registry, run, history, findings inbox, proposals).
 
+## SUPERVOID MCP server
+
+The governed SUPERVOID tool layer is exposed to LibreChat over **Model Context
+Protocol (Streamable HTTP)** — a minimal JSON-RPC server (`app/routers/mcp.py`,
+`app/services/mcp/`) mounted at `/mcp` (outside `/api`), reusing the same service
+layer. It deliberately exposes **no raw CRUD or unrestricted database access**.
+
+**Auth (two layers).** Every request must carry the internal
+`X-SUPERVOID-Service-Token` (the LibreChat↔MCP credential; unset ⇒ the server
+fails closed) AND a **signed user-context** — `X-SUPERVOID-User-{Id,Email,Role}` +
+`X-SUPERVOID-Request-Id`, HMAC-SHA256-signed with the service token. The
+user-context is never trusted without a valid service credential AND signature.
+The SUPERVOID user is resolved from the **email** (the authorisation subject);
+the LibreChat-declared role is informational and never grants access.
+
+**Governance.** Every tool re-runs the **policy service** against the mapped user.
+Tools are annotated by kind — **read-only** (returns only authorised records),
+**proposal-only** (creates a gated `AgentActionProposal` / `DecisionRecord`,
+never a direct mutation), **destructive / external** (also proposal-gated, admin
+approval required), and **approval** (`approve_proposal` / `reject_proposal` /
+`execute_approved_proposal` verify the user's `APPROVE` scope, with an admin gate
+for always-gated actions). MCP proposals execute in *recorded* mode — even after
+approval, the side effect is a deliberate human follow-up. Schemas are concise to
+keep tool descriptions cheap on context, and the server advertises governance
+**instructions** at `initialize`.
+
+The ~36 tools span context/navigation, production, narrative, assets,
+publishing/rights, and agent operations. See
+[`MCP_SERVER.md`](./MCP_SERVER.md) for the tool list, the security headers, and a
+LibreChat Streamable HTTP configuration.
+
 ## SUPERVOID Brain — persistence layer
 
 The durable storage for the persistent, governed conversational Brain

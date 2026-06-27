@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.db import prepare_database
-from app.routers import ALL_ROUTERS, brain_gateway, public_reader
+from app.routers import ALL_ROUTERS, brain_gateway, mcp, public_reader
 from app.utils.logging import configure_logging, get_logger
 from app.utils.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
 
@@ -111,6 +111,12 @@ def create_app() -> FastAPI:
     # /brain (NOT under the private /api prefix); authenticated by a dedicated
     # Brain access token, never the browser JWT or the upstream vLLM key.
     app.include_router(brain_gateway.router)
+
+    # The SUPERVOID MCP server — the governed tool layer for LibreChat (Model
+    # Context Protocol, Streamable HTTP). Mounted at /mcp (NOT under /api);
+    # authenticated by the internal service credential + signed user-context,
+    # and every tool re-runs the policy service. Never exposes raw CRUD.
+    app.include_router(mcp.router)
 
     # Every error response carries the same envelope: a human-readable
     # ``detail`` string plus the ``request_id`` (also on the header) so a

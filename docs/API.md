@@ -149,6 +149,19 @@ the per-route request/response schemas.
   requested, tool result, validated output summary — never chain-of-thought). See
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervised-studio-agent-framework).
 
+### SUPERVOID MCP server (LibreChat tools)
+- **mcp** — the governed tool layer over Model Context Protocol (Streamable
+  HTTP), mounted at `/mcp` (NOT under `/api`): `GET /mcp/health`
+  (unauthenticated liveness) and `POST /mcp` (JSON-RPC: `initialize`,
+  `tools/list`, `tools/call`, `ping`). Auth = internal service token +
+  HMAC-signed user-context headers, mapped to a SUPERVOID user; every tool
+  re-runs the policy service. ~36 tools (context / production / narrative /
+  assets / publishing-rights / agent-ops): read tools return only authorised
+  records, write-like tools create gated proposals, approval tools verify the
+  user's approval scope. No raw CRUD. See
+  [`MCP_SERVER.md`](./MCP_SERVER.md) and
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-mcp-server).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +

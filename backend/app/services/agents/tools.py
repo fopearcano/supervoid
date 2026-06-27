@@ -123,6 +123,37 @@ _register(Tool(
 ))
 
 
+# --- MCP proposal tools (created by the MCP server, never by an agent) ------
+# Registered so the proposal/approval governance reads consistent risk +
+# permission metadata. They have no executor, so execution is *recorded* (a
+# deliberate manual follow-up through the dedicated audited endpoint).
+
+_register(Tool(
+    key="create_production_task",
+    name="Create production task",
+    description="Propose creating a production task.",
+    kind=AgentToolKind.MUTATION,
+    risk_level=AgentRiskLevel.MEDIUM,
+    required_permissions=("manage_production",),
+))
+_register(Tool(
+    key="update_production_task",
+    name="Update production task",
+    description="Propose an update to a production task.",
+    kind=AgentToolKind.MUTATION,
+    risk_level=AgentRiskLevel.LOW,
+    required_permissions=("manage_production",),
+))
+_register(Tool(
+    key="link_asset",
+    name="Link asset",
+    description="Propose linking an asset to a character / location / page.",
+    kind=AgentToolKind.MUTATION,
+    risk_level=AgentRiskLevel.LOW,
+    required_permissions=("upload_assets",),
+))
+
+
 def get_tool(key: str) -> Optional[Tool]:
     return _TOOLS.get(key)
 

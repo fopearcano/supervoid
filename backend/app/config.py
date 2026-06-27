@@ -106,6 +106,15 @@ class Settings(BaseSettings):
     # configured model name from whatever upstream model the provider serves).
     brain_gateway_model: str = "supervoid-brain"
 
+    # --- SUPERVOID MCP server (Prompt 10: governed tools for LibreChat) ---
+    mcp_enabled: bool = True
+    mcp_server_name: str = "supervoid"
+    # The internal LibreChat <-> MCP service credential. LibreChat sends it as the
+    # X-SUPERVOID-Service-Token header AND uses it to HMAC-sign the user-context
+    # headers. Unset => the MCP server fails closed (refuses every request). Set
+    # via the MCP_SERVICE_TOKEN env var in deployment; never commit a real value.
+    mcp_service_token: str | None = None
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.
