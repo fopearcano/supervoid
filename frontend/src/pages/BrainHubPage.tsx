@@ -13,10 +13,18 @@ function errMsg(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Request failed';
 }
 
+interface ChatProposal {
+  tool: string;
+  proposal_id?: string | null;
+  status?: string | null;
+}
+
 interface ChatMsg {
   role: 'user' | 'assistant';
   content: string;
   citations?: BrainCitation[];
+  tools?: string[];
+  proposals?: ChatProposal[];
 }
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -59,7 +67,13 @@ export function BrainHubPage() {
       setConversationId(turn.conversation_id);
       setMessages((m) => [
         ...m,
-        { role: 'assistant', content: turn.content || '(no content)', citations: turn.citations },
+        {
+          role: 'assistant',
+          content: turn.content || '(no content)',
+          citations: turn.citations,
+          tools: turn.tools_used,
+          proposals: turn.proposals,
+        },
       ]);
     } catch (e) {
       const msg = errMsg(e);
@@ -126,6 +140,31 @@ export function BrainHubPage() {
                         className="font-mono text-[0.55rem] text-accent"
                       >
                         {c.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {m.tools && m.tools.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {m.tools.map((t) => (
+                      <span
+                        key={t}
+                        className="border border-rule px-1.5 py-0.5 font-mono text-[0.5rem] uppercase tracking-widest text-parchment-dim"
+                      >
+                        🔧 {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {m.proposals && m.proposals.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {m.proposals.map((p, j) => (
+                      <span
+                        key={p.proposal_id || `${p.tool}-${j}`}
+                        title={p.proposal_id || undefined}
+                        className="border border-signal/50 px-1.5 py-0.5 font-mono text-[0.5rem] uppercase tracking-widest text-signal"
+                      >
+                        🔒 {p.tool} · {p.status || 'pending'} — needs approval
                       </span>
                     ))}
                   </div>

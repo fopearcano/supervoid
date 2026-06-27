@@ -436,3 +436,98 @@ def test_e2e_native_chat_refuses_unauthorised_project(editor_client, admin_user,
 def test_e2e_native_chat_blocked_for_public(anon_client, admin_user, session):
     _seed_world(session, admin_user)
     assert anon_client.post("/api/brain/chat", json={"content": "hi"}).status_code == 401
+
+
+# === 11. native chat invokes governed MCP tools ============================
+class _ScriptedProvider:
+    """A tool-capable provider that replays scripted CompletionResults."""
+
+    name = "scripted"
+
+    def __init__(self, results):
+        self._results = results
+        self._i = 0
+
+    def capabilities(self):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(tools=True)
+
+    async def acomplete(self, _req):
+        r = self._results[min(self._i, len(self._results) - 1)]
+        self._i += 1
+        return r
+
+
+def test_native_chat_advertises_read_and_proposal_tools_only():
+    from app.services.brain import chat as brain_chat
+
+    names = {s["function"]["name"] for s in brain_chat._tool_schemas()}
+    assert {"get_project_state", "propose_task"} <= names          # read + proposal advertised
+    assert "approve_proposal" not in names                          # approval tools are human-only
+    assert "execute_approved_proposal" not in names
+
+
+def test_native_chat_invokes_read_tool(session, admin_user):
+    import asyncio
+    import json as _json
+
+    from app.services.ai.providers import CompletionResult, ToolCall
+    from app.services.brain import chat as brain_chat
+
+    w = _seed_world(session, admin_user)
+    scripted = _ScriptedProvider([
+        CompletionResult(content="", model="m", provider="scripted", tool_calls=[
+            ToolCall(id="c1", name="get_project_state",
+                     arguments=_json.dumps({"work_id": w.work_id}))]),
+        CompletionResult(content="The project is compiled and on track.", model="m", provider="scripted"),
+    ])
+    turn = asyncio.run(brain_chat.run_turn(
+        session, user=admin_user, content="status?", work_id=w.work_id, provider=scripted))
+    assert "get_project_state" in turn.tools_used
+    assert turn.content == "The project is compiled and on track."
+
+
+def test_native_chat_tool_proposes_task_but_does_not_mutate(session, admin_user):
+    import asyncio
+    import json as _json
+
+    from app.services.ai.providers import CompletionResult, ToolCall
+    from app.services.brain import chat as brain_chat
+
+    w = _seed_world(session, admin_user)
+    scripted = _ScriptedProvider([
+        CompletionResult(content="", model="m", provider="scripted", tool_calls=[
+            ToolCall(id="c1", name="propose_task",
+                     arguments=_json.dumps({"work_id": w.work_id, "title": "Letter chapter one"}))]),
+        CompletionResult(content="I proposed that task for approval.", model="m", provider="scripted"),
+    ])
+    tasks_before = session.exec(select(func.count(ProductionItem.id))).one()
+    turn = asyncio.run(brain_chat.run_turn(
+        session, user=admin_user, content="make a task", work_id=w.work_id, provider=scripted))
+    session.commit()
+    assert any(p["tool"] == "propose_task" for p in turn.proposals)
+    assert session.exec(select(func.count(AgentActionProposal.id))).one() >= 1   # a gated proposal
+    assert session.exec(select(func.count(ProductionItem.id))).one() == tasks_before  # NOT created
+
+
+def test_native_chat_tool_permission_is_enforced(session, admin_user):
+    import asyncio
+    import json as _json
+
+    from app.services.ai.providers import CompletionResult, ToolCall
+    from app.services.brain import chat as brain_chat
+
+    outsider = _make_user(session, "toolnoaccess@e2e.test")
+    w = _seed_world(session, admin_user)  # outsider has NO membership
+    scripted = _ScriptedProvider([
+        CompletionResult(content="", model="m", provider="scripted", tool_calls=[
+            ToolCall(id="c1", name="get_project_state",
+                     arguments=_json.dumps({"work_id": w.work_id}))]),
+        CompletionResult(content="I can't access that project.", model="m", provider="scripted"),
+    ])
+    # No work_id param (studio scope) → the TOOL call itself is permission-checked
+    # and refused; the refusal is surfaced to the model, the turn never crashes.
+    turn = asyncio.run(brain_chat.run_turn(
+        session, user=outsider, content="status?", provider=scripted))
+    assert turn.content == "I can't access that project."

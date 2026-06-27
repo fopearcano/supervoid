@@ -165,7 +165,8 @@ async def brain_chat_turn(
     session.commit()
     return BrainChatTurnRead(
         conversation_id=turn.conversation_id, content=turn.content, model=turn.model,
-        state_version=turn.state_version, citations=turn.citations, usage=turn.usage,
+        state_version=turn.state_version, citations=turn.citations, tools_used=turn.tools_used,
+        proposals=turn.proposals, usage=turn.usage,
     )
 
 

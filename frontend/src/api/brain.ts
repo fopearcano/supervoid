@@ -62,12 +62,20 @@ export interface BrainCitation {
   label: string;
 }
 
+export interface BrainProposalRef {
+  tool: string;
+  proposal_id?: string | null;
+  status?: string | null;
+}
+
 export interface BrainChatTurn {
   conversation_id: string;
   content: string;
   model: string;
   state_version: number | null;
   citations: BrainCitation[];
+  tools_used: string[];
+  proposals: BrainProposalRef[];
   usage: Record<string, number>;
 }
 

@@ -405,4 +405,6 @@ class BrainChatTurnRead(BaseModel):
     model: str
     state_version: Optional[int] = None
     citations: list[Any] = []
+    tools_used: list[Any] = []
+    proposals: list[Any] = []
     usage: dict[str, Any] = {}
