@@ -38,12 +38,24 @@ export function BrainHubPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <a href={brainUrl} className="button-accent" target="_self" rel="noopener">
-          🧠 Open the Brain
-        </a>
-        <span className="font-mono text-[0.58rem] uppercase tracking-widest text-parchment-dim">
-          opens LibreChat · separate sign-in
-        </span>
+        {brainUrl ? (
+          <>
+            <a href={brainUrl} className="button-accent" target="_blank" rel="noopener noreferrer">
+              🧠 Open the Brain
+            </a>
+            <span className="font-mono text-[0.58rem] uppercase tracking-widest text-parchment-dim">
+              opens LibreChat · separate sign-in
+            </span>
+          </>
+        ) : (
+          <span className="max-w-2xl font-mono text-[0.62rem] leading-relaxed text-parchment-muted">
+            LibreChat is not configured. Set <span className="text-parchment">LIBRECHAT_PUBLIC_URL</span> and
+            run <span className="text-parchment">deploy/brain</span> to use the chat UI — or talk to the
+            OpenAI-compatible gateway directly at <span className="text-parchment">/brain/v1</span> with a
+            Brain Token. See <span className="text-parchment">docs/LIBRECHAT_INTEGRATION.md</span>. The status
+            below works regardless.
+          </span>
+        )}
       </div>
 
       {error && <p className="mt-4 font-mono text-[0.62rem] text-signal">{error}</p>}

@@ -91,17 +91,12 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     proxy: {
-      // Private admin API.
+      // Private admin API. The SPA talks to the backend ONLY through /api
+      // (apiFetch prefixes it). Bare /brain and /mcp are NOT proxied here: the
+      // OpenAI-compatible gateway (/brain/v1) and MCP (/mcp) are server-to-server
+      // surfaces for LibreChat, and bare /brain/ is the production reverse-proxy
+      // path to the LibreChat UI — never the FastAPI app.
       '/api': {
-        target: API_TARGET,
-        changeOrigin: true,
-      },
-      // The Brain Gateway (OpenAI-compatible) + MCP live outside /api.
-      '/brain': {
-        target: API_TARGET,
-        changeOrigin: true,
-      },
-      '/mcp': {
         target: API_TARGET,
         changeOrigin: true,
       },
