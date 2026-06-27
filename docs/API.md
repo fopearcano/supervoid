@@ -254,6 +254,21 @@ the per-route request/response schemas.
   internal topology are never exposed publicly. See
   [`OBSERVABILITY.md`](./OBSERVABILITY.md).
 
+### Evaluation & model selection
+- **eval harness (Prompt 17)** — a SUPERVOID-specific evaluation system, run
+  **before any fine-tuning**, via the CLI `python scripts/run_eval.py run` (not an
+  HTTP route — it builds a **throwaway** in-memory DB and never touches the real
+  database). A versioned corpus (`eval-v1`, 15 cases) exercises the **real**
+  governed surfaces (MCP tools, retrieval, policy, compiled state) with a per-case
+  principal and scores **deterministic** dimensions — schema validity, tool choice,
+  permissions, citations, approval gates, correctness — with optional model-graded
+  quality as a **secondary** metric only. It benchmarks latency, tokens, retrieval
+  count, stable-prefix size and cache eligibility, and compares candidate models
+  through **configuration** (`ai_provider` / `ai_model`), never code. The report
+  recommends a production default model **only** from a **live** provider's results;
+  a dry-run run validates the harness but is explicitly not a basis for a model
+  decision. See [`EVALUATION.md`](./EVALUATION.md).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +

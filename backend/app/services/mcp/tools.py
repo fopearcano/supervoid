@@ -485,7 +485,7 @@ def propose_canon_change(session, principal, args):
 def _asset_visible(session, principal, asset: Asset) -> bool:
     if _admin(principal) or asset.owner_id == principal.user.id:
         return True
-    if asset.visibility in (AssetVisibility.SHARED_STUDIO, AssetVisibility.PUBLIC):
+    if asset.visibility in (AssetVisibility.INTERNAL, AssetVisibility.PUBLIC_CANDIDATE):
         return True
     if asset.work_id and _can(session, principal, PermissionScope.VIEW_PROJECT, work_id=asset.work_id):
         return True
