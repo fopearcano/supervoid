@@ -10,6 +10,10 @@ export default defineConfig({
     },
   },
   server: {
+    // Bind to all interfaces (0.0.0.0 / ::) so the dev server is reachable from
+    // other devices on the LAN, e.g. http://<your-lan-ip>:5173. The /api and
+    // /public proxies still target the backend on the Vite host (127.0.0.1:8000).
+    host: true,
     port: 5173,
     strictPort: false,
     proxy: {
