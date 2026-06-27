@@ -12,7 +12,7 @@ export function StatusCountsTable({ counts }: StatusCountsTableProps) {
   const max = Math.max(1, ...counts.map((c) => c.count));
 
   return (
-    <table className="w-full border-collapse">
+    <table className="block w-full overflow-x-auto whitespace-nowrap border-collapse sm:table sm:whitespace-normal">
       <tbody>
         {WORKFLOW_STATUSES.map((status) => {
           const value = by_status.get(status) ?? 0;

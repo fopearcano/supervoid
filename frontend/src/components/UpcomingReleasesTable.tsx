@@ -28,7 +28,7 @@ export function UpcomingReleasesTable({
   }
 
   return (
-    <table className="w-full border-collapse">
+    <table className="block w-full overflow-x-auto whitespace-nowrap border-collapse sm:table sm:whitespace-normal">
       <thead>
         <tr className="border-b border-rule">
           <th className="py-2 pr-4 text-left font-mono text-[0.6rem] font-normal uppercase tracking-widest text-parchment-dim">

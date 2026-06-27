@@ -241,7 +241,7 @@ export function BrainStatePage() {
       {tab === 'deltas' && (
         <div className="mt-6">
           <Eyebrow>Recent domain events (newest first)</Eyebrow>
-          <table className="mt-3 w-full border-collapse font-mono text-[0.62rem]">
+          <table className="mt-3 block w-full overflow-x-auto whitespace-nowrap border-collapse font-mono text-[0.62rem] sm:table sm:whitespace-normal">
             <thead>
               <tr className="text-parchment-dim">
                 <th className="border-b border-rule py-1 text-left">seq</th>

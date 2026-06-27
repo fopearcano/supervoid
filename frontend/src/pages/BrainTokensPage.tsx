@@ -198,7 +198,7 @@ export function BrainTokensPage() {
         {tokens.length === 0 ? (
           <p className="mt-3 text-parchment-muted">No tokens yet. Create one to connect LibreChat.</p>
         ) : (
-          <table className="mt-3 w-full border-collapse text-sm">
+          <table className="mt-3 block w-full overflow-x-auto whitespace-nowrap border-collapse text-sm sm:table sm:whitespace-normal">
             <thead>
               <tr className="border-b border-rule text-left font-mono text-[0.56rem] uppercase tracking-widest text-parchment-dim">
                 <th className="py-2 pr-4">Name</th>
