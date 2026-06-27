@@ -41,7 +41,7 @@ from app.services.ai.providers.base import (
     ProviderTimeoutError,
     ProviderUnavailableError,
 )
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, log_event
 from app.utils.middleware import REQUEST_ID_HEADER
 from app.utils.throttle import (
     ConcurrencyExceeded,
@@ -307,6 +307,14 @@ async def chat_completions(
     rid = getattr(request.state, "request_id", "-")
     user, token = principal.user, principal.token
 
+    # Operator switch: new model requests can be disabled / drained for
+    # maintenance (Prompt 16). In-flight requests are unaffected.
+    if not brain.runtime.model_requests_allowed():
+        brain.runtime.note_rejected()
+        return _error(503, "server_error",
+                      "The Brain is in maintenance — new model requests are paused.",
+                      "maintenance", rid=rid, headers={"Retry-After": "5"})
+
     if not _rate.allow(user.id):
         return _error(429, "rate_limit_error", "Rate limit exceeded.", "rate_limited",
                       rid=rid, headers={"Retry-After": str(_rate.retry_after(user.id))})
@@ -322,6 +330,7 @@ async def chat_completions(
         return _error(429, "rate_limit_error", "Too many concurrent requests.",
                       "concurrency_limited", rid=rid, headers={"Retry-After": "1"})
 
+    brain.runtime.acquire_request()  # live active-requests gauge for the Ops view
     slot_handed_off = False
     try:
         try:
@@ -426,8 +435,10 @@ async def chat_completions(
             supervoid_meta, served, rid, turn,
         )
     finally:
-        # Release the slot unless it was handed to the streaming generator.
+        # Release the slot + active-requests gauge unless the streaming generator
+        # took ownership (it releases both in its own finally).
         if not slot_handed_off:
+            brain.runtime.release_request()
             await guard.__aexit__(None, None, None)
 
 
@@ -479,6 +490,13 @@ async def _complete_nonstream(session, provider, req, chat_messages, ctx, conver
                 warmth=turn.warmth.value).as_dict()
         except Exception:
             log.exception("brain-gateway: metrics computation failed · rid=%s", rid)
+    log_event(
+        "model.request", rid=rid, provider=result.provider, model=result.model,
+        stream=False, finish=result.finish_reason,
+        prompt_tokens=usage_out.get("prompt_tokens"),
+        completion_tokens=usage_out.get("completion_tokens"),
+        latency_ms=round(latency_ms, 2), conversation=conversation.id,
+    )
     _persist_assistant(
         session, conversation, content=result.content, model=result.model,
         provider_name=result.provider, usage=usage_out, finish=result.finish_reason,
@@ -657,8 +675,10 @@ async def _stream(provider, caps, req, chat_messages, ctx, refs, supervoid_meta,
                     )
         except Exception:  # never let persistence break the (already-sent) stream
             log.exception("brain-gateway: failed to persist streamed assistant turn")
-        # Release the concurrency slot the caller handed us, exactly once.
+        # Release the concurrency slot + active-requests gauge the caller handed
+        # us, exactly once.
         if guard is not None:
+            brain.runtime.release_request()
             try:
                 await guard.__aexit__(None, None, None)
             except Exception:  # pragma: no cover - release must never raise

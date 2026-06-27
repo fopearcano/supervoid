@@ -74,6 +74,11 @@ def authenticate(session: Session, headers: Mapping[str, str]) -> MCPPrincipal:
     event (committed even though the request will 401). Fails closed."""
     if not settings.mcp_enabled:
         raise MCPAuthError("MCP server is disabled.", code=-32001)
+    # Operator switch (Prompt 16): MCP can be disabled for maintenance at runtime.
+    from app.services.brain import runtime as brain_runtime
+
+    if not brain_runtime.mcp_allowed():
+        raise MCPAuthError("MCP integration is in maintenance.", code=-32001)
     token = settings.mcp_service_token
     if not token:
         # No configured credential => refuse everything (never run open).

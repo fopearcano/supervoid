@@ -659,6 +659,8 @@ from app.services.brain import session  # noqa: E402,F401
 from app.services.brain import handoff  # noqa: E402,F401
 from app.services.brain import memory  # noqa: E402,F401
 from app.services.brain import memory_review  # noqa: E402,F401
+from app.services.brain import runtime  # noqa: E402,F401
+from app.services.brain import ops  # noqa: E402,F401
 from app.services.brain.session_signature import (  # noqa: E402,F401
     PrefixSignature,
     TurnMetrics,

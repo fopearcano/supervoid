@@ -237,6 +237,23 @@ the per-route request/response schemas.
   and suspicious repeated failures. LibreChat self-registration stays disabled.
   See [`IDENTITY.md`](./IDENTITY.md) (incl. the future-OIDC migration path).
 
+### Observability & operational controls
+- **brain ops (Prompt 16)** — the INTERNAL Brain Operations surface (admin-only):
+  `GET /api/brain/ops/status` aggregates vLLM/model health, the gateway runtime
+  gauge (active requests / queue depth), compiler lag, unprocessed/failed
+  BrainEvents, state versions, stale projects, sessions (warmth + prefix hashes),
+  prompt/completion token usage, TTFT + total latency, agent failures, MCP
+  failures, pending proposals and LibreChat health, plus derived **health states**
+  (healthy / degraded / unavailable / stale / maintenance). `GET /api/brain/ops/`
+  `metrics` is a Prometheus-compatible exposition. Operator controls (admin):
+  `controls/model-requests`, `controls/drain`, `controls/mcp`,
+  `controls/maintenance`, `projects/{id}/rebuild|cold|prewarm`, `events/replay`,
+  `tokens/{id}/revoke`. A correlation id flows across LibreChat → Gateway → model
+  → MCP → agent → proposal (structured `log_event` lines), with redaction of
+  tokens / auth headers / passwords / private prompts / contract content. GPU and
+  internal topology are never exposed publicly. See
+  [`OBSERVABILITY.md`](./OBSERVABILITY.md).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +

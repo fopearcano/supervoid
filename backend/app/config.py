@@ -184,6 +184,18 @@ class Settings(BaseSettings):
     security_repeated_failure_threshold: int = 5
     security_repeated_failure_window_seconds: int = 300
 
+    # --- Observability & operational controls (Prompt 16) ---
+    # The model's effective context window, advertised in the Ops view (the
+    # provider's /health does not report it). GPU / internal topology is NEVER
+    # exposed on public endpoints — the Ops surface is admin-only.
+    brain_context_limit: int = 8192
+    # Optional LibreChat health URL (e.g. http://supervoid-librechat:3080/health);
+    # unset → LibreChat health reports "unknown" rather than probing.
+    librechat_health_url: str | None = None
+    librechat_health_timeout: float = 2.0
+    # How many recent assistant turns to sample for latency / TTFT aggregates.
+    brain_ops_latency_window: int = 200
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.

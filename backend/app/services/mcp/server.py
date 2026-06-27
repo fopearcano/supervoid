@@ -95,12 +95,19 @@ def handle_rpc(session: Session, principal, message: dict) -> Optional[dict]:
                 "content": [{"type": "text", "text": f"Unknown tool '{name}'."}],
                 "isError": True,
             })
+        from app.utils.logging import log_event
+
+        rid = getattr(principal, "request_id", None)
         try:
             payload = spec.handler(session, principal, args)
             session.commit()
+            log_event("mcp.tool_call", rid=rid, tool=name,
+                      user=getattr(principal.user, "id", None), is_error=False)
             return _result(msg_id, _tool_content(payload))
         except MCPToolError as exc:
             session.rollback()
+            log_event("mcp.tool_call", rid=rid, tool=name,
+                      user=getattr(principal.user, "id", None), is_error=True, code=exc.code)
             return _result(msg_id, {
                 "content": [{"type": "text", "text": exc.message}],
                 "isError": True,

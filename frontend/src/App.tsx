@@ -22,6 +22,7 @@ import { BrainHubPage } from '@/pages/BrainHubPage';
 import { MemoryReviewPage } from '@/pages/MemoryReviewPage';
 import { BrainAccountPage } from '@/pages/BrainAccountPage';
 import { IdentityAccessPage } from '@/pages/IdentityAccessPage';
+import { BrainOpsPage } from '@/pages/BrainOpsPage';
 import { BrainStatePage } from '@/pages/BrainStatePage';
 import { BrainTokensPage } from '@/pages/BrainTokensPage';
 import { IntegrationsHubPage } from '@/pages/IntegrationsHubPage';
@@ -49,6 +50,7 @@ type View =
   | { name: 'memory-review' }
   | { name: 'brain-account' }
   | { name: 'identity-access' }
+  | { name: 'brain-ops' }
   | { name: 'brain-state' }
   | { name: 'brain-tokens' }
   | { name: 'integrations-hub' }
@@ -127,6 +129,7 @@ function StudioRoot() {
       {view.name === 'memory-review' && <MemoryReviewPage />}
       {view.name === 'brain-account' && <BrainAccountPage />}
       {view.name === 'identity-access' && <IdentityAccessPage />}
+      {view.name === 'brain-ops' && <BrainOpsPage />}
       {view.name === 'brain-state' && <BrainStatePage />}
       {view.name === 'brain-tokens' && <BrainTokensPage />}
       {view.name === 'integrations-hub' && <IntegrationsHubPage />}

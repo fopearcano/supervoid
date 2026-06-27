@@ -1360,6 +1360,17 @@ class SecurityEventSeverity(str, Enum):
     CRITICAL = "critical"    # repeated failures / high-risk
 
 
+# --- Observability & operational controls (Prompt 16) ----------------------
+class BrainHealthState(str, Enum):
+    """Coarse health of a Brain component (and the system overall)."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"          # working, but failures / pressure
+    UNAVAILABLE = "unavailable"    # a hard dependency is down
+    STALE = "stale"               # compiled state is behind
+    MAINTENANCE = "maintenance"    # an operator disabled / is draining it
+
+
 class SafetyApprovalMode(str, Enum):
     """How a safety/approval policy gates an assistant profile's actions."""
 

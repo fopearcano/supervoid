@@ -256,6 +256,29 @@ def sweep_lifecycle(
     return counts
 
 
+def mark_project_cold(
+    session: Session, *, work_id: Optional[str] = None,
+    story_world_id: Optional[str] = None,
+) -> dict:
+    """Operator control (Prompt 16): mark every session for a project COLD so its
+    prefix-cache is treated as evicted (it will be re-primed on the next turn or
+    by prewarm). Messages are never deleted. Commits. Returns a count."""
+    if not (work_id or story_world_id):
+        return {"marked": 0}
+    stmt = select(BrainSession)
+    if work_id:
+        stmt = stmt.where(BrainSession.work_id == work_id)
+    else:
+        stmt = stmt.where(BrainSession.story_world_id == story_world_id)
+    marked = 0
+    for sess in session.exec(stmt).all():
+        sess.warmth = BrainSessionWarmth.COLD
+        session.add(sess)
+        marked += 1
+    session.commit()
+    return {"marked": marked, "work_id": work_id, "story_world_id": story_world_id}
+
+
 # === prewarming ============================================================
 def _project_is_active(session: Session, sess: BrainSession) -> bool:
     """A session's project must not be archived to be prewarmed."""

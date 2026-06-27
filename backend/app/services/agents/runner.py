@@ -475,6 +475,11 @@ def run_agent(
     finally:
         run.completed_at = utcnow()
         session.add(run)
+    from app.utils.logging import log_event
+
+    log_event("agent.run", rid=run.correlation_id, agent=run.agent_key,
+              run_id=run.id, status=getattr(run.status, "value", None),
+              target_type=target_type, target_id=target_id)
     return run
 
 
@@ -553,6 +558,11 @@ def execute_proposal(
         proposal.status = ProposalStatus.FAILED
         proposal.error = str(exc)
     session.add(proposal)
+    from app.utils.logging import get_request_id, log_event
+
+    log_event("proposal.execute", rid=get_request_id(), proposal_id=proposal.id,
+              tool=proposal.tool_key, status=getattr(proposal.status, "value", None),
+              actor=user.id)
     return proposal
 
 

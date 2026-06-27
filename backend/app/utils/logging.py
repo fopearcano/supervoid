@@ -6,10 +6,12 @@ correlation id.
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 import sys
 from contextvars import ContextVar
-from typing import Optional
+from typing import Any, Optional
 
 from app.config import settings
 
@@ -63,3 +65,45 @@ def configure_logging(level: Optional[str] = None) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
+
+
+# === structured, redacted event logging (Prompt 16) ========================
+# Keys whose VALUE must never be logged: credentials, private prompts, and
+# contract-sensitive content. Boundary logs never carry prompt/response bodies
+# in the first place; this is defence-in-depth for any stray field.
+_REDACT_KEY_RE = re.compile(
+    r"(token|secret|password|passwd|authorization|bearer|credential|api[_-]?key|"
+    r"private|prompt|contract|terms)",
+    re.IGNORECASE,
+)
+_REDACTED = "[redacted]"
+_MAX_LOG_VALUE = 200
+
+_ops_logger = logging.getLogger("supervoid.ops")
+
+
+def redact_log(value: Any) -> Any:
+    """Recursively redact secret-/private-/contract-keyed fields and cap long
+    strings, for safe structured logging."""
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, val in value.items():
+            out[str(key)] = _REDACTED if _REDACT_KEY_RE.search(str(key)) else redact_log(val)
+        return out
+    if isinstance(value, (list, tuple)):
+        return [redact_log(v) for v in value]
+    if isinstance(value, str) and len(value) > _MAX_LOG_VALUE:
+        return value[:_MAX_LOG_VALUE] + "…"
+    return value
+
+
+def log_event(event: str, **fields: Any) -> None:
+    """Emit one structured, redacted log line for a correlated boundary (model
+    request, MCP tool call, agent run, proposal execution). The formatter already
+    stamps the timestamp + correlation id (``rid=…``); we never log prompt or
+    response bodies — only ids, counts and timings."""
+    try:
+        payload = json.dumps(redact_log(fields), default=str, sort_keys=True)
+    except Exception:  # noqa: BLE001 - logging must never raise
+        payload = "{}"
+    _ops_logger.info("event=%s %s", event, payload)
