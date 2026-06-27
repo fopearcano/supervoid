@@ -247,3 +247,31 @@ Captured on the audited tree before any Brain work, as the regression baseline:
 Notes:
 - The single warning is pre-existing and unrelated to this work: pydantic flags `StyleAnalysisResult.register` as shadowing a `BaseModel` attribute (`app/services/ai/features/style_analysis.py`).
 - Backend tests run hermetically (in-memory SQLite, `dry_run` provider, no network). Any vLLM/LibreChat smoke tests added later must stay opt-in so this baseline remains reproducible offline.
+---
+
+## End-to-end hardening (Prompt 19)
+
+The SUPERVOID Brain has completed its final integration + hardening pass. A
+full-path end-to-end test exercises the complete governed flow against the offline
+provider: a member creates a Brain token → LibreChat calls the OpenAI-compatible
+Gateway → the Gateway authenticates the member → a project is selected → the
+`ProjectBrainState` is loaded → a stable prefix + state delta are assembled → the
+provider streams → internal evidence is cited (UNTRUSTED-fenced) → an MCP read tool
+is permission-checked → a write proposes a production task → a PENDING
+`AgentActionProposal` appears → a human approves it → execution is audited → a
+`BrainEvent` is emitted → the project state recompiles incrementally → the next
+turn carries only the new delta → public users cannot reach any Brain/MCP/private
+surface.
+
+Also hardened/verified: backup & restore across **every** Brain record,
+migration-chain verification, vLLM- and LibreChat-unavailable fallbacks, the
+stale-compiler warning, token revocation, model-change and prompt-template-change
+invalidation, multi-user isolation, two simultaneous project conversations, and a
+small-team load/isolation check.
+
+See the Brain operations docs:
+[`SUPERVOID_BRAIN_OPERATIONS.md`](./SUPERVOID_BRAIN_OPERATIONS.md) ·
+[`SUPERVOID_BRAIN_SECURITY.md`](./SUPERVOID_BRAIN_SECURITY.md) ·
+[`SUPERVOID_BRAIN_RECOVERY.md`](./SUPERVOID_BRAIN_RECOVERY.md) ·
+[`SUPERVOID_BRAIN_MODEL_EVALUATION.md`](./SUPERVOID_BRAIN_MODEL_EVALUATION.md),
+and the **release-readiness report** in [`ROADMAP.md`](./ROADMAP.md).

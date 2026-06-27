@@ -3,6 +3,87 @@
 A phased plan. The guiding constraints are unchanged from the migration:
 **local-first**, **modular**, no unnecessary services, working system first.
 
+## Release-readiness report (Prompt 19 — end-to-end hardening)
+
+Status at the end of the final integration + hardening pass. The full governed
+Brain path is implemented and covered by an end-to-end test against the offline
+provider; **production requires a live, evaluated vLLM model** (one operational
+change: `ai_provider=vllm`).
+
+### Not mocked — the production gate (all REAL, all tested)
+
+None of the seven safety-critical surfaces are mocked:
+
+| Surface | Status | Where it lives / is tested |
+|---|---|---|
+| Identity mapping | **real** — LibreChat↔SUPERVOID via an admin-managed ACTIVE link; no auto-provision | `services/identity`, `test_identity.py`, `test_mcp_server.py` |
+| Permission enforcement | **real** — policy service (role + membership + ownership + scope) | `services/policy.py`, `test_mcp_server.py`, `test_brain_e2e.py` |
+| State compilation | **real** — deterministic; incremental == full checksum | `services/brain/compiler.py`, `test_brain_compiler.py` |
+| Action approval | **real** — gated `AgentActionProposal` → human approve → audited execute | `services/mcp`, `services/agents`, `test_brain_e2e.py` |
+| MCP authentication | **real** — service token + HMAC-signed user context | `services/mcp/auth.py`, `test_mcp_server.py` |
+| Model health | **real** — `provider.health()`, ops health states, `503` on unavailable | `services/brain/ops.py`, `test_brain_gateway.py`, `test_brain_e2e.py` |
+| Backup / restore | **real** — self-registering; covers every Brain record | `scripts/backup_restore.py`, `test_backup_restore.py` |
+
+The only mock in the default configuration is the **dry-run model + embedding
+provider** (offline testing / air-gapped dev). Production MUST point at a live
+vLLM model selected via the evaluation harness.
+
+### ✅ Production-ready (with a live vLLM)
+The complete governed path is hardened and tested end-to-end: Gateway bearer auth,
+project scoping, stable-prefix + state-delta assembly, streaming, fenced internal
+evidence (prompt-injection defence), MCP read tools with permission filtering,
+gated proposals + human approval + audited execution, `BrainEvent` emission,
+incremental recompile, delta-only next turn, multi-user isolation, simultaneous
+project conversations, token revocation, model- and prompt-template-change
+invalidation, backup/restore + deterministic state rebuild, and a verified
+single-head migration chain. Public users cannot reach any Brain/MCP/private
+surface.
+
+### 🟢 Operational but limited
+- **vLLM inference** — deployment artifacts + provider complete; supply the private
+  GPU host + an evaluated model. Sized for a **small team** (rate limit +
+  concurrency cap; `429` on burst).
+- **LibreChat integration** — pinned compose + config; registration disabled for
+  arbitrary visitors; identity links admin-managed.
+- **Retrieval (pgvector)** — real on PostgreSQL; SQLite uses an in-Python cosine
+  fallback (fine for dev / small scale).
+- **Conversation memory & decision extraction** — real, review-gated; promotion
+  requires human approval.
+
+### 🧪 Dry-run (offline default — NOT a basis for a model decision)
+`ai_provider=dry_run` + `embedding_provider=dry_run` return deterministic canned
+outputs for tests and air-gapped dev. Running the evaluation harness against
+dry-run validates the harness + governed surfaces only; choosing a default model
+requires a live provider.
+
+### 🧪 Experimental (prepared, opt-in, never auto-run)
+- **Fine-tuning data pipeline** (Prompt 18) — gated behind `tuning_enabled`;
+  nothing trains or deploys automatically; an adapter deploys only if it beats the
+  base without weakening permissions or approval.
+- **Model-graded evaluation quality** — secondary metric only; never gates a case.
+- **Prefix-cache prewarming** — off by default.
+
+### 🌱 Future work
+- A full **OIDC/OAuth** identity provider (documented; not built — no insecure
+  custom SSO in the meantime).
+- **Adapter training execution** (the pipeline records parameters + produces
+  versioned datasets; training itself runs on the GPU host out-of-band).
+- Network-level isolation beyond the loopback/private binding; HSM-backed key
+  storage; per-field encryption at rest.
+- Horizontal scale beyond a small team (multi-replica Gateway, external queue).
+- **Live external integration dispatch** (adapter-only / recorded today).
+
+### Verdict
+With a single operational change — a live, evaluated vLLM model on a private GPU
+host — the governed SUPERVOID Brain is **production-ready for the intended private
+small-team studio**. No safety-critical surface is mocked; the dry-run provider is
+the only stand-in and is confined to offline testing.
+
+See [`SUPERVOID_BRAIN_OPERATIONS.md`](./SUPERVOID_BRAIN_OPERATIONS.md),
+[`SUPERVOID_BRAIN_SECURITY.md`](./SUPERVOID_BRAIN_SECURITY.md),
+[`SUPERVOID_BRAIN_RECOVERY.md`](./SUPERVOID_BRAIN_RECOVERY.md),
+[`SUPERVOID_BRAIN_MODEL_EVALUATION.md`](./SUPERVOID_BRAIN_MODEL_EVALUATION.md).
+
 ## Status tiers
 
 Every capability is classified into one of these tiers. The distinction between
