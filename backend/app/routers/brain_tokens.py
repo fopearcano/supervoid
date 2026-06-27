@@ -17,11 +17,22 @@ from app.auth import generate_brain_token, get_current_user, hash_brain_token
 from app.db import get_session
 from app.models import BrainAccessToken, User
 from app.models.base import utcnow
+from app.models.enums import SecurityEventType
 from app.schemas.brain_token import (
     BrainTokenCreate,
     BrainTokenMeta,
     BrainTokenSecret,
 )
+from app.services import security_events as sec
+
+
+def _token_audit(session: Session, user: User, token: BrainAccessToken, event_type) -> None:
+    """Append a benign audit-trail event for a token lifecycle change."""
+    sec.record_security_event(
+        session, event_type=event_type, source="api",
+        supervoid_user_id=user.id, email=user.email, token_id=token.id,
+        reason=token.name,
+    )
 
 router = APIRouter(prefix="/brain-tokens", tags=["brain-tokens"])
 
@@ -74,6 +85,8 @@ def create_token(
         project_restrictions=[r.model_dump() for r in body.project_restrictions],
     )
     session.add(token)
+    session.flush()
+    _token_audit(session, user, token, SecurityEventType.TOKEN_CREATED)
     session.commit()
     session.refresh(token)
     return BrainTokenSecret(token=_meta(token), secret=secret)
@@ -95,6 +108,7 @@ def rotate_token(
     token.token_prefix = secret[:12]
     token.last_used_at = None
     session.add(token)
+    _token_audit(session, user, token, SecurityEventType.TOKEN_ROTATED)
     session.commit()
     session.refresh(token)
     return BrainTokenSecret(token=_meta(token), secret=secret)
@@ -112,4 +126,5 @@ def revoke_token(
     if token.revoked_at is None:
         token.revoked_at = utcnow()
         session.add(token)
+        _token_audit(session, user, token, SecurityEventType.TOKEN_REVOKED)
         session.commit()

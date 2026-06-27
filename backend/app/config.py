@@ -174,6 +174,16 @@ class Settings(BaseSettings):
     # cosine fallback. Force "memory" to disable pgvector even on Postgres.
     retrieval_vector_backend: str = "auto"
 
+    # --- Identity linking & member administration (Prompt 15) ---
+    # The MCP server maps a LibreChat identity to a SUPERVOID user THROUGH an
+    # active admin-managed identity link. With this on (default), an unlinked
+    # LibreChat identity is rejected. Turn off only for a controlled migration.
+    mcp_require_identity_link: bool = True
+    # Suspicious-burst detection: N failures from one principal within the window
+    # raises an additional CRITICAL "repeated_failures" security event.
+    security_repeated_failure_threshold: int = 5
+    security_repeated_failure_window_seconds: int = 300
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.

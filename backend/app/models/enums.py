@@ -1317,6 +1317,49 @@ class RetrievalStage(str, Enum):
     RETURNED = "returned"        # actually handed to the model
 
 
+# --- Identity linking & member administration (Prompt 15) ------------------
+class IdentityLinkStatus(str, Enum):
+    """Lifecycle of a SUPERVOID ↔ LibreChat identity link.
+
+    Only ACTIVE links may authenticate an MCP request. The simpler, robust first
+    version of the identity bridge — NOT a custom OAuth/OIDC provider."""
+
+    PENDING = "pending"      # linked by an admin, not yet verified
+    ACTIVE = "active"        # verified and usable
+    DISABLED = "disabled"    # an admin disabled the link
+    REVOKED = "revoked"      # the link was removed
+
+
+class SecurityEventType(str, Enum):
+    """A recorded security-relevant event (audit + alerting)."""
+
+    # Identity-mapping failures (MCP).
+    SERVICE_AUTH_FAILED = "service_auth_failed"
+    INVALID_SIGNATURE = "invalid_signature"
+    MAPPING_FAILED = "mapping_failed"        # no SUPERVOID user for the email
+    UNLINKED_USER = "unlinked_user"          # no active identity link
+    DISABLED_MEMBER = "disabled_member"      # SUPERVOID user is deactivated
+    PROJECT_DENIED = "project_denied"        # a tool call denied by policy
+    # Token use.
+    REVOKED_TOKEN_USE = "revoked_token_use"
+    EXPIRED_TOKEN_USE = "expired_token_use"
+    # Correlation.
+    REPEATED_FAILURES = "repeated_failures"  # suspicious burst from one principal
+    # Audit trail (benign lifecycle).
+    TOKEN_CREATED = "token_created"
+    TOKEN_ROTATED = "token_rotated"
+    TOKEN_REVOKED = "token_revoked"
+    IDENTITY_LINKED = "identity_linked"
+    IDENTITY_VERIFIED = "identity_verified"
+    IDENTITY_DISABLED = "identity_disabled"
+
+
+class SecurityEventSeverity(str, Enum):
+    INFO = "info"            # audit / lifecycle
+    WARNING = "warning"      # a single failure
+    CRITICAL = "critical"    # repeated failures / high-risk
+
+
 class SafetyApprovalMode(str, Enum):
     """How a safety/approval policy gates an assistant profile's actions."""
 

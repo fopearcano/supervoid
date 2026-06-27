@@ -19,6 +19,8 @@ export type AppView =
   | 'memory-review'
   | 'brain-state'
   | 'brain-tokens'
+  | 'brain-account'
+  | 'identity-access'
   | 'integrations-hub'
   | 'rights-desk'
   | 'contacts'
@@ -95,6 +97,8 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'agent-centre', label: 'Agents' },
       { view: 'brain-state', label: 'Brain State' },
       { view: 'brain-tokens', label: 'Brain Tokens' },
+      { view: 'brain-account', label: 'Brain Account' },
+      { view: 'identity-access', label: 'Identity & Access' },
       { view: 'integrations-hub', label: 'Integrations' },
       { view: 'search', label: 'Search' },
       { view: 'archive', label: 'Archive' },

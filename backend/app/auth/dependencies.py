@@ -92,6 +92,8 @@ def get_brain_principal(
     from app.auth.security import hash_brain_token
     from app.models import BrainAccessToken
     from app.models.base import utcnow
+    from app.models.enums import SecurityEventType
+    from app.services import security_events as sec
 
     row = session.exec(
         select(BrainAccessToken).where(
@@ -105,10 +107,28 @@ def get_brain_principal(
     expires = row.expires_at
     if expires is not None and expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
-    if row.revoked_at is not None or (expires is not None and expires < now):
+    if row.revoked_at is not None:
+        sec.record_security_event(
+            session, event_type=SecurityEventType.REVOKED_TOKEN_USE, source="gateway",
+            supervoid_user_id=row.user_id, token_id=row.id,
+            reason="revoked token presented", commit=True,
+        )
+        raise _CREDENTIALS_EXCEPTION
+    if expires is not None and expires < now:
+        sec.record_security_event(
+            session, event_type=SecurityEventType.EXPIRED_TOKEN_USE, source="gateway",
+            supervoid_user_id=row.user_id, token_id=row.id,
+            reason="expired token presented", commit=True,
+        )
         raise _CREDENTIALS_EXCEPTION
     user = session.get(User, row.user_id)
     if user is None or not user.is_active:
+        if user is not None and not user.is_active:
+            sec.record_security_event(
+                session, event_type=SecurityEventType.DISABLED_MEMBER, source="gateway",
+                supervoid_user_id=user.id, email=user.email, token_id=row.id,
+                reason="disabled member presented a gateway token", commit=True,
+            )
         raise _CREDENTIALS_EXCEPTION
     # get_session() does not auto-commit, so persist last_used explicitly.
     row.last_used_at = now

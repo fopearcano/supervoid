@@ -221,6 +221,22 @@ the per-route request/response schemas.
   keeps SQLite working. The MCP `retrieve_evidence` tool exposes the same,
   permission-filtered, to agents. See [`RETRIEVAL.md`](./RETRIEVAL.md).
 
+### Identity linking & member administration
+- **identity (Prompt 15)** — the operational SUPERVOID ↔ LibreChat identity
+  bridge (the simpler, robust first version — NOT a custom OAuth/OIDC provider).
+  Admin linking workflow: `/api/identity-links` (list / create / verify /
+  disable / edit, admin-only) ties a SUPERVOID user to a LibreChat identity
+  (user id + email, status, linked_at, verified_at). Member self-service:
+  `GET /api/identity-links/me`. The MCP server now resolves a LibreChat identity
+  to a SUPERVOID user THROUGH an active link, rejecting **unlinked** identities
+  and **disabled** members (`mcp_require_identity_link`). Brain access tokens
+  (`/api/brain-tokens`) already support create / reveal-once / rotate / revoke /
+  expiry / project-restrictions / last-use, now with an **audit trail**.
+  Security events: `GET /api/security-events` (admin) records failed mapping,
+  revoked/expired-token use, disabled-member access, project-denied tool calls,
+  and suspicious repeated failures. LibreChat self-registration stays disabled.
+  See [`IDENTITY.md`](./IDENTITY.md) (incl. the future-OIDC migration path).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +

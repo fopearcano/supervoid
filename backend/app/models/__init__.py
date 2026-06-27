@@ -48,6 +48,7 @@ from app.models.retrieval import (
     RetrievalHit,
     RetrievalRun,
 )
+from app.models.identity import LibreChatIdentityLink, SecurityEvent
 from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -155,11 +156,14 @@ from app.models.enums import (  # SUPERVOID Brain (persistence layer)
     BrainStateStatus,
     BrainStateType,
     DecisionStatus,
+    IdentityLinkStatus,
     KnowledgeDocStatus,
     KnowledgeSourceType,
     RetrievalStage,
     RetrievalTrigger,
     SafetyApprovalMode,
+    SecurityEventSeverity,
+    SecurityEventType,
     SessionInvalidationReason,
 )
 from app.models.enums import (  # business layer (rights / CRM / editions)
@@ -293,6 +297,11 @@ __all__ = [
     "KnowledgeDocStatus",
     "RetrievalTrigger",
     "RetrievalStage",
+    "LibreChatIdentityLink",
+    "SecurityEvent",
+    "IdentityLinkStatus",
+    "SecurityEventType",
+    "SecurityEventSeverity",
     "SafetyApprovalMode",
     "SessionInvalidationReason",
     "StudioConstitution",

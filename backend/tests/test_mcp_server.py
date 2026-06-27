@@ -35,12 +35,16 @@ def _configure_mcp(monkeypatch):
 
 def _user(session: Session, email: str, role: UserRole) -> User:
     from app.auth.security import hash_password
+    from app.services import identity as identity_svc
 
     u = User(email=email, full_name=email.split("@")[0], role=role,
              hashed_password=hash_password("pw"))
     session.add(u)
     session.commit()
     session.refresh(u)
+    # MCP now requires an ACTIVE identity link (Prompt 15). Link every test user.
+    identity_svc.link_user(session, supervoid_user_id=u.id, librechat_email=email, verify=True)
+    session.commit()
     return u
 
 

@@ -67,6 +67,18 @@ def _can(session, principal, scope, *, work_id=None, story_world_id=None) -> boo
 
 def _require(session, principal, scope, *, work_id=None, story_world_id=None) -> None:
     if not _can(session, principal, scope, work_id=work_id, story_world_id=story_world_id):
+        # Record a project-denied tool call (committed so it survives the tool's
+        # rollback in the dispatcher).
+        from app.models.enums import SecurityEventType
+        from app.services import security_events as sec
+
+        sec.record_security_event(
+            session, event_type=SecurityEventType.PROJECT_DENIED, source="mcp",
+            supervoid_user_id=principal.user.id, librechat_user_id=principal.librechat_user_id,
+            email=principal.email, request_id=principal.request_id,
+            work_id=work_id, story_world_id=story_world_id,
+            reason=f"{scope.value} required", commit=True,
+        )
         raise MCPToolError(f"Not permitted: {scope.value} required.", code="forbidden")
 
 
