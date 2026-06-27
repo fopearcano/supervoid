@@ -217,7 +217,7 @@ function PanelInspector({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {coord('x')}{coord('y')}{coord('width')}{coord('height')}
       </div>
 

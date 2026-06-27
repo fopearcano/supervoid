@@ -60,7 +60,7 @@ function AlertList({ items, onOpenWork }: { items: AlertItem[]; onOpenWork?: (id
   return (
     <ul>
       {items.map((a, i) => (
-        <li key={`${a.ref_id ?? a.kind}-${i}`} className="flex items-center justify-between gap-3 border-b border-rule py-2">
+        <li key={`${a.ref_id ?? a.kind}-${i}`} className="flex flex-col gap-1 border-b border-rule py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <span className="min-w-0">
             <button
               type="button"
@@ -91,12 +91,12 @@ function TaskList({ tasks, onOpenWork }: { tasks: TaskBrief[]; onOpenWork?: (id:
   return (
     <ul>
       {tasks.map((t) => (
-        <li key={t.id} className="flex items-center justify-between gap-3 border-b border-rule py-2">
+        <li key={t.id} className="flex flex-col gap-1 border-b border-rule py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <button
             type="button"
             disabled={!t.work_id || !onOpenWork}
             onClick={() => t.work_id && onOpenWork?.(t.work_id)}
-            className="truncate text-left text-sm text-parchment-muted hover:text-parchment"
+            className="block min-w-0 truncate text-left text-sm text-parchment-muted hover:text-parchment"
           >
             {t.title ?? 'Untitled task'}
           </button>
@@ -289,7 +289,7 @@ export function CommandCentrePage({ onOpenWork }: { onOpenWork: (workId: string)
                   <li key={w.id} className="border-b border-rule">
                     <button type="button" onClick={() => onOpenWork(w.id)}
                       className="flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left text-sm transition-colors hover:bg-ink-700/40">
-                      <span className="truncate text-parchment-muted">{w.title}</span>
+                      <span className="min-w-0 truncate text-parchment-muted">{w.title}</span>
                       <Pill tone="muted">{iLabel(w.status)}</Pill>
                     </button>
                   </li>
