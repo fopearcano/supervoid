@@ -61,6 +61,8 @@ from app.schemas.brain import (
     BrainHandoffRequest,
     BrainSessionRead,
     BrainStateRevisionRead,
+    BrainChatRequest,
+    BrainChatTurnRead,
     BrainStatusRead,
     CompactionResultRead,
     DecisionDecision,
@@ -91,6 +93,7 @@ from app.schemas.instruction import (
     VersionRef,
 )
 from app.services import brain
+from app.services.brain import chat as brain_chat
 from app.services.brain import instruction as instruction_svc
 from app.services.policy import ensure_can
 
@@ -137,6 +140,33 @@ def create_conversation(
     session.commit()
     session.refresh(conv)
     return BrainConversationRead.model_validate(conv)
+
+
+@router.post("/chat", response_model=BrainChatTurnRead)
+async def brain_chat_turn(
+    body: BrainChatRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainChatTurnRead:
+    """One native in-app chat turn — the same governed Brain turn the Gateway
+    runs, but authenticated by the logged-in user (no Brain token / LibreChat
+    needed). Permission-scoped per role by the assembler + policy."""
+    try:
+        turn = await brain_chat.run_turn(
+            session, user=user, content=body.content, conversation_id=body.conversation_id,
+            work_id=body.work_id, story_world_id=body.story_world_id, profile=body.profile,
+        )
+    except brain_chat.ChatPermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except brain_chat.ChatProviderError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    session.commit()
+    return BrainChatTurnRead(
+        conversation_id=turn.conversation_id, content=turn.content, model=turn.model,
+        state_version=turn.state_version, citations=turn.citations, usage=turn.usage,
+    )
 
 
 @router.get("/conversations", response_model=list[BrainConversationRead])

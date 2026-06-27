@@ -388,3 +388,21 @@ class BrainStatusRead(BaseModel):
     compiler: dict[str, Any] = {}
     pending_proposals: int = 0
     brain_url: str
+
+
+# --- native in-app chat (talks to the Brain Gateway as the session user) ---
+class BrainChatRequest(BaseModel):
+    content: str = Field(min_length=1)
+    conversation_id: Optional[str] = None
+    work_id: Optional[str] = None
+    story_world_id: Optional[str] = None
+    profile: Optional[str] = None
+
+
+class BrainChatTurnRead(BaseModel):
+    conversation_id: str
+    content: str
+    model: str
+    state_version: Optional[int] = None
+    citations: list[Any] = []
+    usage: dict[str, Any] = {}

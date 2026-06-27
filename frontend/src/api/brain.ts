@@ -56,6 +56,29 @@ export const rebuildWorld = (worldId: string, full = false) =>
 export const processOutbox = () => apiPostJson<Record<string, number>>('/brain/outbox/process', {});
 export const reconcileOutbox = () => apiPostJson<Record<string, unknown>>('/brain/outbox/reconcile', {});
 
+// --- native in-app chat (talks to the Brain Gateway as the session user) ---
+export interface BrainCitation {
+  ref: string;
+  label: string;
+}
+
+export interface BrainChatTurn {
+  conversation_id: string;
+  content: string;
+  model: string;
+  state_version: number | null;
+  citations: BrainCitation[];
+  usage: Record<string, number>;
+}
+
+export const sendBrainChat = (body: {
+  content: string;
+  conversation_id?: string | null;
+  work_id?: string | null;
+  story_world_id?: string | null;
+  profile?: string | null;
+}) => apiPostJson<BrainChatTurn>('/brain/chat', body);
+
 // --- private navigation: hand-off + status (Prompt 12) ---------------------
 export interface BrainHandoff {
   handoff_url: string;

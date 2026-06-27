@@ -408,3 +408,31 @@ def test_migration_chain_single_head_and_covers_every_model(tmp_path: Path):
         engine.dispose()
     for table in SQLModel.metadata.tables:               # every model has a table
         assert table in existing, f"migration chain is missing table {table}"
+
+
+# === 10. native in-app chat (no LibreChat, no Brain token) =================
+def test_e2e_native_chat_turn_and_continuation(client, admin_user, session):
+    w = _seed_world(session, admin_user)
+    r1 = client.post("/api/brain/chat",
+                     json={"content": "What's the status of this project?", "work_id": w.work_id})
+    assert r1.status_code == 200, r1.text
+    body = r1.json()
+    assert body["conversation_id"] and isinstance(body["content"], str)
+    assert body["model"]  # the served Brain model name
+    # A second turn on the same conversation continues it (no new conversation).
+    r2 = client.post("/api/brain/chat",
+                     json={"content": "And the blockers?", "conversation_id": body["conversation_id"]})
+    assert r2.status_code == 200
+    assert r2.json()["conversation_id"] == body["conversation_id"]
+
+
+def test_e2e_native_chat_refuses_unauthorised_project(editor_client, admin_user, session):
+    # editor_user (the editor_client) has NO membership on the seeded work.
+    w = _seed_world(session, admin_user)
+    r = editor_client.post("/api/brain/chat", json={"content": "secrets?", "work_id": w.work_id})
+    assert r.status_code == 403
+
+
+def test_e2e_native_chat_blocked_for_public(anon_client, admin_user, session):
+    _seed_world(session, admin_user)
+    assert anon_client.post("/api/brain/chat", json={"content": "hi"}).status_code == 401

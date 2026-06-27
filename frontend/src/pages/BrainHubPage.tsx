@@ -1,11 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { fetchBrainStatus, type BrainStatus } from '@/api/brain';
+import {
+  fetchBrainStatus,
+  sendBrainChat,
+  type BrainCitation,
+  type BrainStatus,
+} from '@/api/brain';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
 
 function errMsg(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Request failed';
+}
+
+interface ChatMsg {
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: BrainCitation[];
 }
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -20,48 +31,152 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
 export function BrainHubPage() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchBrainStatus().then(setStatus).catch((e) => setError(errMsg(e)));
   }, []);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const brainUrl = status?.brain_url || '/brain/';
+  const brainUrl = status?.brain_url || null;
+  const isDryRun = status?.model?.provider === 'dry_run' || status?.model?.provider === 'unset';
+
+  async function send() {
+    const content = input.trim();
+    if (!content || sending) return;
+    setInput('');
+    setError(null);
+    setMessages((m) => [...m, { role: 'user', content }]);
+    setSending(true);
+    try {
+      const turn = await sendBrainChat({ content, conversation_id: conversationId });
+      setConversationId(turn.conversation_id);
+      setMessages((m) => [
+        ...m,
+        { role: 'assistant', content: turn.content || '(no content)', citations: turn.citations },
+      ]);
+    } catch (e) {
+      const msg = errMsg(e);
+      setError(msg);
+      setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${msg}` }]);
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="p-8">
       <Eyebrow>Brain</Eyebrow>
       <h2 className="mt-2 font-serif text-5xl text-parchment">SUPERVOID Brain</h2>
       <p className="mt-2 max-w-2xl text-parchment-muted">
-        The conversational interface to the studio Brain. Open it to chat, or use{' '}
-        <span className="text-parchment">Ask the Brain</span> from any Work, Story World,
-        page, panel, scene, shot, asset, task or rights record to jump in with that context.
+        Chat with the studio Brain. It answers within your permissions, cites internal evidence,
+        and proposes (never auto-executes) governed actions. Use{' '}
+        <span className="text-parchment">Ask the Brain</span> from any Work, page, scene, asset or
+        task to jump in with that context.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        {brainUrl ? (
-          <>
-            <a href={brainUrl} className="button-accent" target="_blank" rel="noopener noreferrer">
-              🧠 Open the Brain
-            </a>
-            <span className="font-mono text-[0.58rem] uppercase tracking-widest text-parchment-dim">
-              opens LibreChat · separate sign-in
+      {/* Native in-app chat (no LibreChat / Brain token required). */}
+      <div className="mt-6 max-w-3xl border border-rule">
+        <div className="flex items-center justify-between border-b border-rule px-4 py-2">
+          <Eyebrow>Conversation</Eyebrow>
+          <div className="flex items-center gap-2">
+            {isDryRun && (
+              <Pill tone="signal">dry-run · connect vLLM for real answers</Pill>
+            )}
+            <span className="font-mono text-[0.55rem] uppercase tracking-widest text-parchment-dim">
+              {status?.model?.gateway_model || status?.model?.model || 'supervoid-brain'}
             </span>
-          </>
-        ) : (
-          <span className="max-w-2xl font-mono text-[0.62rem] leading-relaxed text-parchment-muted">
-            LibreChat is not configured. Set <span className="text-parchment">LIBRECHAT_PUBLIC_URL</span> and
-            run <span className="text-parchment">deploy/brain</span> to use the chat UI — or talk to the
-            OpenAI-compatible gateway directly at <span className="text-parchment">/brain/v1</span> with a
-            Brain Token. See <span className="text-parchment">docs/LIBRECHAT_INTEGRATION.md</span>. The status
-            below works regardless.
-          </span>
-        )}
+          </div>
+        </div>
+
+        <div className="flex h-[26rem] flex-col gap-3 overflow-y-auto px-4 py-4">
+          {messages.length === 0 && (
+            <p className="text-parchment-dim">
+              Ask anything about the studio — “What are today’s priorities?”, “Why did we decide the
+              antagonist’s identity?”, “What’s blocking production?”
+            </p>
+          )}
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={m.role === 'user' ? 'self-end text-right' : 'self-start text-left'}
+            >
+              <div className="mb-0.5 font-mono text-[0.5rem] uppercase tracking-widest text-parchment-dim">
+                {m.role === 'user' ? 'You' : 'Brain'}
+              </div>
+              <div
+                className={
+                  'inline-block max-w-[44rem] whitespace-pre-wrap border border-rule px-3 py-2 text-sm ' +
+                  (m.role === 'user' ? 'text-parchment' : 'text-parchment-muted')
+                }
+              >
+                {m.content}
+                {m.citations && m.citations.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {m.citations.map((c) => (
+                      <span
+                        key={c.ref}
+                        title={c.ref}
+                        className="font-mono text-[0.55rem] text-accent"
+                      >
+                        {c.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {sending && <p className="self-start font-mono text-[0.6rem] text-parchment-dim">Brain is thinking…</p>}
+          <div ref={endRef} />
+        </div>
+
+        <div className="flex items-end gap-2 border-t border-rule p-3">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            rows={2}
+            placeholder="Message the Brain…  (Enter to send · Shift+Enter for a newline)"
+            className="flex-1 resize-none border border-rule bg-transparent px-3 py-2 text-sm text-parchment outline-none placeholder:text-parchment-dim"
+          />
+          <button
+            onClick={() => void send()}
+            disabled={sending || !input.trim()}
+            className="button-accent disabled:opacity-40"
+          >
+            Send
+          </button>
+        </div>
       </div>
+
+      {/* Optional: the LibreChat UI, only when configured. */}
+      {brainUrl && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <a href={brainUrl} className="button-accent" target="_blank" rel="noopener noreferrer">
+            Open in LibreChat ↗
+          </a>
+          <span className="font-mono text-[0.55rem] uppercase tracking-widest text-parchment-dim">
+            full chat UI · separate sign-in
+          </span>
+        </div>
+      )}
 
       {error && <p className="mt-4 font-mono text-[0.62rem] text-signal">{error}</p>}
 
       {status && (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard label="Active project">
             {status.active_project ? (
               <span>
@@ -72,7 +187,7 @@ export function BrainHubPage() {
                 </span>
               </span>
             ) : (
-              <span className="text-parchment-muted">None selected</span>
+              <span className="text-parchment-muted">Studio-wide</span>
             )}
           </StatCard>
 
