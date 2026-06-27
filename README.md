@@ -53,6 +53,7 @@ CRUD-able at `GET/POST /api/integrations/points` and filterable by `type` and
 Further documentation:
 
 - [`docs/SETUP_AND_TEST.md`](docs/SETUP_AND_TEST.md) — fast setup & test mini-guide
+- [`docs/FULL_SYSTEM_SETUP.md`](docs/FULL_SYSTEM_SETUP.md) — run the **whole** system on Docker (app + vLLM + LibreChat + MCP shim)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture & module map
 - [`docs/API.md`](docs/API.md) — HTTP API reference & cross-cutting conventions
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased roadmap with five status tiers (completed / production-ready / experimental / adapter-only / future extraction)

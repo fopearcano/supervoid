@@ -1,0 +1,54 @@
+# SUPERVOID ⇄ Brain integration overlay.
+#
+# Layer this ON TOP of the root docker-compose.yml to join the SUPERVOID app
+# (backend + frontend) to the private `supervoid-brain` network and point the
+# backend at the governed vLLM model server + the MCP service token. Without
+# this overlay the root stack runs standalone (no model, no LibreChat link).
+#
+#   # 1) the shared network must exist first (the vLLM compose creates it, or):
+#   docker network create supervoid-brain
+#   # 2) bring the app up joined to it:
+#   docker compose -f docker-compose.yml \
+#     -f deploy/brain/docker-compose.supervoid.brain.yml up -d --build
+#
+# Reads its values from the root .env (same file the root compose uses). The
+# MCP_SERVICE_TOKEN here MUST byte-for-byte match the one in .env.librechat, and
+# AI_API_KEY here MUST match VLLM_API_KEY in .env.brain. See FULL_SYSTEM_SETUP.md.
+
+services:
+  backend:
+    environment:
+      # --- governed model server (private brain network) -------------------
+      # `vllm` = the dedicated self-hosted provider. In-network vLLM is `vllm`
+      # on its internal port (default 8000); never point this at vLLM publicly.
+      AI_PROVIDER: ${AI_PROVIDER:-vllm}
+      AI_BASE_URL: ${AI_BASE_URL:-http://vllm:8000/v1}
+      AI_MODEL: ${AI_MODEL:-supervoid-brain}
+      # Must equal VLLM_API_KEY (.env.brain). Leave blank only if vLLM has no key.
+      AI_API_KEY: ${VLLM_API_KEY:-}
+      # --- schema on boot: run Alembic against Postgres --------------------
+      DB_INIT_STRATEGY: ${DB_INIT_STRATEGY:-migrate}
+      # --- MCP tool layer --------------------------------------------------
+      MCP_ENABLED: "true"
+      # The shared service credential. MUST match .env.librechat exactly.
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?set MCP_SERVICE_TOKEN in .env (same value as .env.librechat)}
+      MCP_REQUIRE_IDENTITY_LINK: "true"
+      # --- in-app "Open in LibreChat" target (served behind the SPA /brain/) -
+      LIBRECHAT_PUBLIC_URL: ${LIBRECHAT_PUBLIC_URL:-/brain/}
+    networks:
+      - default
+      - brain
+
+  frontend:
+    # nginx proxies /brain/ to supervoid-librechat:3080, so the SPA container
+    # must also be on the brain network for that name to resolve.
+    networks:
+      - default
+      - brain
+
+networks:
+  # Joined, not created here. Create it first (vLLM compose, or
+  # `docker network create supervoid-brain`).
+  brain:
+    name: ${BRAIN_NETWORK_NAME:-supervoid-brain}
+    external: true
