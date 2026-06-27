@@ -115,6 +115,14 @@ class Settings(BaseSettings):
     # via the MCP_SERVICE_TOKEN env var in deployment; never commit a real value.
     mcp_service_token: str | None = None
 
+    # --- Private navigation / LibreChat hand-off (Prompt 12) ---
+    # Where the reverse proxy serves the LibreChat (Brain) UI. The hand-off
+    # landing redirects here after binding the conversation. A path (default) or
+    # an absolute internal subdomain URL.
+    librechat_public_url: str = "/brain/"
+    # Lifetime of a signed hand-off token (seconds). Short by design.
+    brain_handoff_ttl_seconds: int = 120
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.

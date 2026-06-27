@@ -322,3 +322,28 @@ class CompactionResultRead(BaseModel):
     memory_item_id: Optional[str] = None
     retained_message_count: int = 0
     used_llm: bool = False
+
+
+# --- private navigation / hand-off (Prompt 12) -----------------------------
+class BrainHandoffRequest(BaseModel):
+    entity_type: str = Field(max_length=60)
+    entity_id: str = Field(max_length=64)
+    profile: Optional[str] = Field(default=None, max_length=80)
+
+
+class BrainHandoffRead(BaseModel):
+    handoff_url: str
+    conversation_id: Optional[str] = None
+    work_id: Optional[str] = None
+    story_world_id: Optional[str] = None
+    label: Optional[str] = None
+    expires_at: datetime
+
+
+class BrainStatusRead(BaseModel):
+    active_project: Optional[dict[str, Any]] = None
+    state_version: Optional[int] = None
+    model: dict[str, Any] = {}
+    compiler: dict[str, Any] = {}
+    pending_proposals: int = 0
+    brain_url: str

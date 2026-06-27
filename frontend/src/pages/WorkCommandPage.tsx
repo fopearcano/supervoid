@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { fetchWorkCommand } from '@/api/command';
+import { AskBrainButton } from '@/components/AskBrainButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
 import { iLabel } from '@/types/integrations';
@@ -91,7 +92,10 @@ export function WorkCommandPage({ workId, onBack }: { workId: string; onBack: ()
               {iLabel(cmd.division)}{cmd.medium ? ` · ${iLabel(cmd.medium)}` : ''}{cmd.story_world ? ` · ${cmd.story_world}` : ''}
             </p>
           </div>
-          <Pill tone="accent">{iLabel(cmd.status)}</Pill>
+          <div className="flex items-center gap-3">
+            <Pill tone="accent">{iLabel(cmd.status)}</Pill>
+            <AskBrainButton entityType="work" entityId={workId} />
+          </div>
         </div>
       </header>
 

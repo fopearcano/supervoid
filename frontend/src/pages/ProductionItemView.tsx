@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AskBrainButton } from '@/components/AskBrainButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { EditableField } from '@/components/EditableField';
 import { ProductionTimeline } from '@/components/ProductionTimeline';
@@ -159,6 +160,7 @@ export function ProductionItemView({
           <StatusBadge status={manuscript.status} size="sm" />
           <span>Created · {formatDate(item.created_at)}</span>
           <span>Updated · {formatDate(item.updated_at)}</span>
+          <AskBrainButton entityType="manuscript" entityId={manuscript.id} />
         </div>
       </header>
 

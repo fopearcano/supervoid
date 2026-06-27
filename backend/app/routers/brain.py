@@ -53,8 +53,11 @@ from app.schemas.brain import (
     BrainMemoryVerify,
     BrainMessageCreate,
     BrainMessageRead,
+    BrainHandoffRead,
+    BrainHandoffRequest,
     BrainSessionRead,
     BrainStateRevisionRead,
+    BrainStatusRead,
     CompactionResultRead,
     DecisionDecision,
     DecisionRecordCreate,
@@ -996,6 +999,40 @@ def debug_context(
     return brain.debug_context(
         session, conv, user=user, include_evidence=include_evidence
     )
+
+
+# === private navigation / Brain hand-off (Prompt 12) =======================
+@router.post("/handoff", response_model=BrainHandoffRead, status_code=201)
+def create_brain_handoff(
+    body: BrainHandoffRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainHandoffRead:
+    """Context-aware "Ask the Brain": resolve the entity's project scope (with a
+    VIEW_PROJECT check), bind a conversation, and mint a signed, short-lived,
+    single-use hand-off token. The returned URL carries ONLY that opaque token —
+    never any project content."""
+    handoff, token = brain.handoff.create_handoff(
+        session, user, entity_type=body.entity_type, entity_id=body.entity_id,
+        profile=body.profile,
+    )
+    session.commit()
+    return BrainHandoffRead(
+        handoff_url=f"/brain-handoff?token={token}",
+        conversation_id=handoff.conversation_id, work_id=handoff.work_id,
+        story_world_id=handoff.story_world_id, label=handoff.label,
+        expires_at=handoff.expires_at,
+    )
+
+
+@router.get("/status", response_model=BrainStatusRead)
+def brain_status(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainStatusRead:
+    """The private-nav Brain status: active project, state version, model +
+    compiler status, and the count of pending proposals you can act on."""
+    return BrainStatusRead(**brain.handoff.brain_status(session, user))
 
 
 # === stateful sessions & prefix-cache strategy (Prompt 8) ==================

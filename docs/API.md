@@ -149,6 +149,20 @@ the per-route request/response schemas.
   requested, tool result, validated output summary — never chain-of-thought). See
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervised-studio-agent-framework).
 
+### Private navigation / Brain hand-off
+- **brain hand-off** — context-aware "Ask the Brain" (Prompt 12). `POST
+  /api/brain/handoff {entity_type, entity_id}` resolves the entity's project
+  scope (Work / StoryWorld / manuscript / GN page+panel / screen project+scene+
+  shot / asset / production task / rights), enforces `VIEW_PROJECT`, binds a
+  `BrainConversation`, and returns a `handoff_url` carrying ONLY a signed,
+  short-lived, single-use token (no project content). The root-mounted landing
+  `GET /brain-handoff?token=…` consumes the token (once) and 303-redirects to the
+  Brain UI. `GET /api/brain/status` powers the private-nav hub: active project,
+  state version, model status, compiler status, and pending-proposals count. Deep
+  links into a specific LibreChat conversation are intentionally not done (no
+  fork); context is surfaced via the MCP `select_active_project` tool. See
+  [`LIBRECHAT_INTEGRATION.md`](./LIBRECHAT_INTEGRATION.md#private-navigation--ask-the-brain-hand-off).
+
 ### SUPERVOID MCP server (LibreChat tools)
 - **mcp** — the governed tool layer over Model Context Protocol (Streamable
   HTTP), mounted at `/mcp` (NOT under `/api`): `GET /mcp/health`

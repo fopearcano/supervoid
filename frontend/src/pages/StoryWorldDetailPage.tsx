@@ -8,6 +8,7 @@ import {
   patchStorySeries,
   patchStoryWorld,
 } from '@/api/transmedia';
+import { AskBrainButton } from '@/components/AskBrainButton';
 import { CollaboratorsPanel } from '@/components/CollaboratorsPanel';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Pill } from '@/components/Pill';
@@ -101,18 +102,21 @@ export function StoryWorldDetailPage({ worldId, onBack, onOpenWork }: Props) {
               {world.name}
             </h2>
           </div>
-          <select
-            className="field-select"
-            value={world.status}
-            onChange={(e) => changeWorldStatus(e.target.value as StoryWorldStatus)}
-            aria-label="World status"
-          >
-            {WORLD_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {WORLD_STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-3">
+            <select
+              className="field-select"
+              value={world.status}
+              onChange={(e) => changeWorldStatus(e.target.value as StoryWorldStatus)}
+              aria-label="World status"
+            >
+              {WORLD_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {WORLD_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <AskBrainButton entityType="story_world" entityId={world.id} />
+          </div>
         </div>
         {world.description && (
           <p className="mt-4 max-w-prose text-parchment-muted">{world.description}</p>

@@ -13,7 +13,7 @@ Artefacts (under `deploy/brain/`):
 | `docker-compose.librechat.yml` | LibreChat + MongoDB + Meilisearch (pinned, private) |
 | `librechat.yaml` | the SUPERVOID Brain custom endpoint + the MCP server config |
 | `.env.librechat.example` | secrets + pinned image tags + networking |
-| `nginx/librechat.conf` | reverse-proxy location block (`/chat/`) |
+| `nginx/librechat.conf` | reverse-proxy location block (`/brain/`) |
 | `scripts/validate_librechat_config.py` | automated configuration validation |
 | `scripts/librechat-validate.sh` | validator + `docker compose config` wrapper |
 
@@ -22,7 +22,7 @@ Artefacts (under `deploy/brain/`):
 ## Topology & security boundary
 
 ```
-Member browser ──HTTPS──> SUPERVOID reverse proxy ──/chat/──> LibreChat (loopback)
+Member browser ──HTTPS──> SUPERVOID reverse proxy ──/brain/──> LibreChat (loopback)
                                                                   │  (private supervoid-brain network)
                                                                   ├─> SUPERVOID Brain Gateway   /brain/v1   (OpenAI-compatible)
                                                                   └─> SUPERVOID MCP (via signing shim)  /mcp  (governed tools)
@@ -30,7 +30,7 @@ LibreChat ──internal only──> MongoDB + Meilisearch  (no host ports)
 SUPERVOID Brain Gateway ──> vLLM  (private; never reached by LibreChat directly)
 ```
 
-- **Only LibreChat is exposed**, under `/chat/`, and **only behind the SUPERVOID
+- **Only LibreChat is exposed**, under `/brain/`, and **only behind the SUPERVOID
   reverse proxy** (`deploy/brain/nginx/librechat.conf`). LibreChat binds to
   loopback; Mongo and Meilisearch publish no host ports (`internal: true`).
 - The **Brain Gateway (`/brain`) and MCP server (`/mcp`) are never proxied to the
@@ -79,7 +79,7 @@ administrator:
 
 1. Set `LIBRECHAT_ALLOW_REGISTRATION=true` in `.env.librechat` and restart
    LibreChat.
-2. Open `/chat/`, register the administrator account (email login).
+2. Open `/brain/`, register the administrator account (email login).
 3. Set `LIBRECHAT_ALLOW_REGISTRATION=false` again and restart.
 
 Thereafter the administrator provisions members (LibreChat admin UI / CLI). Email
@@ -165,6 +165,49 @@ a Brain concern — the LibreChat agent prompt stays small and stable.
 
 ---
 
+## Private navigation & "Ask the Brain" hand-off
+
+The SUPERVOID studio shows a prominent **SUPERVOID Brain** nav item (System group)
+opening a hub with the current **active project, state version, model status,
+compiler status, and pending-proposals count**, plus an **Open the Brain** button.
+
+Every entity view also carries a context-aware **Ask the Brain** action — on a
+Work, Story World, graphic-novel page or panel, screen project, scene, shot,
+asset, production task, and rights record. Clicking it:
+
+1. calls `POST /api/brain/handoff {entity_type, entity_id}`; the backend resolves
+   the entity's **project scope**, enforces `VIEW_PROJECT`, and **creates/resolves
+   a bound `BrainConversation`**;
+2. mints a **signed, short-lived, single-use** hand-off token (HMAC over
+   `handoff_id:exp`, ~120 s TTL);
+3. redirects the browser to `/brain-handoff?token=…` — which carries **only the
+   opaque token; never any project content**;
+4. the landing endpoint **consumes** the token (once), then 303-redirects to the
+   Brain UI.
+
+### Deep-link limitation (no fork)
+
+Deep-linking into a *specific* LibreChat conversation would require modifying
+upstream LibreChat, so we **do not**. Instead:
+
+- the hand-off opens the **normal Brain UI**;
+- the selected context is the member's most-recent hand-off, made available
+  through the MCP **`select_active_project`** / **`list_my_projects`** tools (and
+  surfaced in the hub's *active project*);
+- the member (or the model) selects it on the first turn.
+
+This keeps LibreChat unforked. If a future LibreChat version supports inbound deep
+links, the landing endpoint can pass the bound conversation through without any
+other change.
+
+### Independent authentication boundaries
+
+Three independent credentials, never mixed: the SUPERVOID **browser JWT** (studio
++ `/api`), the member's **BrainAccessToken** (Brain Gateway), and **LibreChat's
+own** session. The hand-off token is the *only* bridge — single-purpose,
+short-lived, signed, and single-use — and is the sole credential on the redirect
+(which carries no JWT).
+
 ## Deferred MCP tools
 
 The MCP catalogue is ~36 tools. Where the LibreChat version supports it, enable
@@ -207,7 +250,7 @@ LibreChat is upstream and pinned:
 3. Back up Mongo (above).
 4. `./deploy/brain/scripts/librechat-validate.sh --env-file .env.librechat`
 5. `docker compose -f deploy/brain/docker-compose.librechat.yml --env-file .env.librechat up -d`
-6. Verify `GET /chat/api/health` and a SUPERVOID Brain round-trip + one MCP tool
+6. Verify `GET /brain/api/health` and a SUPERVOID Brain round-trip + one MCP tool
    call.
 
 Because no SUPERVOID code lives inside LibreChat, upgrades carry no merge/fork
@@ -232,7 +275,7 @@ risk — only the `librechat.yaml` schema `version` may need a bump (re-validate
 
 ## Security boundary (summary)
 
-- Public ingress is **only** `/chat/` via the SUPERVOID reverse proxy.
+- Public ingress is **only** `/brain/` via the SUPERVOID reverse proxy.
 - `/brain` and `/mcp` are private — never internet-exposed.
 - Mongo + Meilisearch have no host ports.
 - Two-layer MCP auth (service token + signed user-context); SUPERVOID maps the

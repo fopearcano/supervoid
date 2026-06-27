@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.db import prepare_database
-from app.routers import ALL_ROUTERS, brain_gateway, mcp, public_reader
+from app.routers import ALL_ROUTERS, brain_gateway, brain_handoff, mcp, public_reader
 from app.utils.logging import configure_logging, get_logger
 from app.utils.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
 
@@ -117,6 +117,11 @@ def create_app() -> FastAPI:
     # authenticated by the internal service credential + signed user-context,
     # and every tool re-runs the policy service. Never exposes raw CRUD.
     app.include_router(mcp.router)
+
+    # The Brain hand-off landing (Prompt 12) — root-mounted, token-authenticated.
+    # A browser redirect from "Ask the Brain" lands at /brain-handoff, which
+    # consumes the signed token and redirects to the LibreChat (Brain) UI.
+    app.include_router(brain_handoff.router)
 
     # Every error response carries the same envelope: a human-readable
     # ``detail`` string plus the ``request_id`` (also on the header) so a
