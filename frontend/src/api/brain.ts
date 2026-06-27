@@ -93,3 +93,51 @@ export const requestBrainHandoff = (entityType: string, entityId: string, profil
   });
 
 export const fetchBrainStatus = () => apiFetch<BrainStatus>('/brain/status');
+
+// --- conversation memory: review inbox (Prompt 13) -------------------------
+export interface BrainMemoryItem {
+  id: string;
+  scope: 'studio' | 'project' | 'member' | 'conversation';
+  work_id: string | null;
+  story_world_id: string | null;
+  member_user_id: string | null;
+  conversation_id: string | null;
+  kind: string;
+  content: string;
+  structured_data: Record<string, unknown>;
+  confidence: number | null;
+  topic_key: string | null;
+  risk_level: string;
+  auto_accepted: boolean;
+  verification: 'unverified' | 'verified' | 'rejected' | 'superseded' | 'expired';
+  supersedes_id: string | null;
+  created_by_id: string | null;
+  reviewed_by_id: string | null;
+  review_note: string | null;
+  created_at: string;
+}
+
+export const fetchMemoryInbox = (params: { scope?: string; work_id?: string } = {}) => {
+  const usp = new URLSearchParams({ limit: '100' });
+  if (params.scope) usp.set('scope', params.scope);
+  if (params.work_id) usp.set('work_id', params.work_id);
+  return apiFetch<BrainMemoryItem[]>(`/brain/memory/inbox?${usp.toString()}`);
+};
+
+export const acceptMemory = (id: string, note?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/accept`, { note });
+
+export const rejectMemory = (id: string, note?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/reject`, { note });
+
+export const editMemory = (id: string, content: string, note?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/edit`, { content, note });
+
+export const supersedeMemory = (id: string, content: string, note?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/supersede`, { content, note });
+
+export const mergeMemory = (id: string, sourceIds: string[], content?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/merge`, { source_ids: sourceIds, content });
+
+export const expireMemory = (id: string, note?: string) =>
+  apiPostJson<BrainMemoryItem>(`/brain/memory/${id}/expire`, { note });

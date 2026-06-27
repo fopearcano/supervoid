@@ -99,6 +99,18 @@ class BrainEventType:
     AGENT_PROPOSAL_EXECUTED = "agent.proposal_executed"
     # Brain decisions
     DECISION_APPROVED = "decision.approved"
+    DECISION_REJECTED = "decision.rejected"
+    DECISION_SUPERSEDED = "decision.superseded"
+    # Conversation memory & decision extraction (Prompt 13).
+    # ``CONVERSATION_TURN_COMPLETED`` is the memory-analysis job: the consumer
+    # routes it to the analyzer instead of scheduling a recompile (a chat turn
+    # never invalidates compiled domain state). The ``memory.*`` events DO
+    # invalidate compiled state, so a newly verified/retired project- or
+    # studio-scoped memory surfaces on the next compile.
+    CONVERSATION_TURN_COMPLETED = "conversation.turn_completed"
+    MEMORY_VERIFIED = "memory.verified"
+    MEMORY_SUPERSEDED = "memory.superseded"
+    MEMORY_EXPIRED = "memory.expired"
 
 
 _SECRET_RE = re.compile(

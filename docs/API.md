@@ -176,6 +176,29 @@ the per-route request/response schemas.
   [`MCP_SERVER.md`](./MCP_SERVER.md) and
   [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervoid-mcp-server).
 
+### Conversation memory & decision extraction
+- **memory analysis (Prompt 13)** — after every completed Brain response the
+  gateway enqueues a `conversation.turn_completed` job (the outbox); the consumer
+  routes it to the analyzer, which *proposes* durable items: project fact, member
+  preference, procedural lesson, decision, commitment, unresolved question, task
+  suggestion. Casual chat is archived (the messages persist) but never promoted.
+  **Canon / rights / production claims never become inferred memory** — they
+  become a PROPOSED `DecisionRecord` that needs approval. A member preference is
+  auto-accepted (verified without review) ONLY when it concerns the same user, is
+  low-risk, clears `brain_memory_auto_accept_min_confidence`, and neither grants
+  permissions nor alters canon; everything else lands UNVERIFIED in the inbox.
+  Contradictions with verified state are detected, and nothing is ever
+  overwritten — corrections supersede and keep provenance.
+- **memory review inbox** — `GET /api/brain/memory/inbox` (pending items you may
+  review, scoped to your access). Actions, all scope-gated (studio = admin;
+  project = `APPROVE`; member/conversation = owner): `POST /api/brain/memory/{id}/`
+  `accept` · `reject` · `edit` · `supersede` · `merge` · `expire`. `edit` /
+  `supersede` / `merge` return a NEW row that supersedes the original (never an
+  overwrite). Approved decisions + verified memories flow into compiled state via
+  the deterministic builders. Decisions carry an explicit status —
+  proposed / approved / rejected / superseded (`/api/brain/decisions`). See
+  [`CONVERSATION_MEMORY.md`](./CONVERSATION_MEMORY.md).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +

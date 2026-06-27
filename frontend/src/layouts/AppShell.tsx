@@ -16,6 +16,7 @@ export type AppView =
   | 'pictures-studio'
   | 'agent-centre'
   | 'brain-hub'
+  | 'memory-review'
   | 'brain-state'
   | 'brain-tokens'
   | 'integrations-hub'
@@ -90,6 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'System',
     items: [
       { view: 'brain-hub', label: 'SUPERVOID Brain' },
+      { view: 'memory-review', label: 'Memory Review' },
       { view: 'agent-centre', label: 'Agents' },
       { view: 'brain-state', label: 'Brain State' },
       { view: 'brain-tokens', label: 'Brain Tokens' },

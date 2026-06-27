@@ -1252,10 +1252,11 @@ class BrainScope(str, Enum):
 class BrainMemoryKind(str, Enum):
     FACT = "fact"
     PREFERENCE = "preference"
-    PROCEDURE = "procedure"
+    PROCEDURE = "procedure"            # a procedural lesson
     DECISION = "decision"
     UNRESOLVED_QUESTION = "unresolved_question"
     COMMITMENT = "commitment"
+    TASK_SUGGESTION = "task_suggestion"
 
 
 class BrainMemoryVerification(str, Enum):

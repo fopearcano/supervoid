@@ -51,6 +51,10 @@ from app.schemas.brain import (
     BrainMemoryItemRead,
     BrainMemoryItemUpdate,
     BrainMemoryVerify,
+    MemoryEditRequest,
+    MemoryMergeRequest,
+    MemoryReviewAction,
+    MemorySupersedeRequest,
     BrainMessageCreate,
     BrainMessageRead,
     BrainHandoffRead,
@@ -342,6 +346,119 @@ def _load_memory(session: Session, item_id: str) -> BrainMemoryItem:
     if item is None:
         raise HTTPException(status_code=404, detail="Memory item not found")
     return item
+
+
+# === Memory Review inbox (Prompt 13) =======================================
+# NOTE: this fixed path MUST precede ``/memory/{item_id}`` so "inbox" is not
+# captured as an item id.
+@router.get("/memory/inbox", response_model=list[BrainMemoryItemRead])
+def memory_inbox(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    scope: Optional[BrainScope] = Query(default=None),
+    work_id: Optional[str] = Query(default=None),
+    story_world_id: Optional[str] = Query(default=None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+) -> list[BrainMemoryItemRead]:
+    """Pending (UNVERIFIED) memory you may review, filtered to your access so it
+    never leaks another member's or project's proposals."""
+    rows = brain.memory_review.list_inbox(
+        session, user, scope=scope, work_id=work_id, story_world_id=story_world_id,
+        limit=limit, offset=skip,
+    )
+    return [BrainMemoryItemRead.model_validate(m) for m in rows]
+
+
+@router.post("/memory/{item_id}/accept", response_model=BrainMemoryItemRead)
+def accept_memory(
+    item_id: str,
+    body: MemoryReviewAction = MemoryReviewAction(),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    item = brain.memory_review.accept(session, user, _load_memory(session, item_id), note=body.note)
+    session.commit()
+    session.refresh(item)
+    return BrainMemoryItemRead.model_validate(item)
+
+
+@router.post("/memory/{item_id}/reject", response_model=BrainMemoryItemRead)
+def reject_memory(
+    item_id: str,
+    body: MemoryReviewAction = MemoryReviewAction(),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    item = brain.memory_review.reject(session, user, _load_memory(session, item_id), note=body.note)
+    session.commit()
+    session.refresh(item)
+    return BrainMemoryItemRead.model_validate(item)
+
+
+@router.post("/memory/{item_id}/edit", response_model=BrainMemoryItemRead, status_code=201)
+def edit_memory(
+    item_id: str,
+    body: MemoryEditRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    """Correct an item: returns a NEW superseding row (the original is retained
+    as SUPERSEDED, never overwritten)."""
+    new = brain.memory_review.edit(
+        session, user, _load_memory(session, item_id),
+        content=body.content, structured_data=body.structured_data,
+        confidence=body.confidence, topic_key=body.topic_key, note=body.note,
+    )
+    session.commit()
+    session.refresh(new)
+    return BrainMemoryItemRead.model_validate(new)
+
+
+@router.post("/memory/{item_id}/supersede", response_model=BrainMemoryItemRead, status_code=201)
+def supersede_memory(
+    item_id: str,
+    body: MemorySupersedeRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    new = brain.memory_review.supersede(
+        session, user, _load_memory(session, item_id),
+        content=body.content, structured_data=body.structured_data,
+        confidence=body.confidence, topic_key=body.topic_key, note=body.note,
+    )
+    session.commit()
+    session.refresh(new)
+    return BrainMemoryItemRead.model_validate(new)
+
+
+@router.post("/memory/{item_id}/merge", response_model=BrainMemoryItemRead, status_code=201)
+def merge_memory(
+    item_id: str,
+    body: MemoryMergeRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    new = brain.memory_review.merge(
+        session, user, primary_id=item_id, source_ids=body.source_ids,
+        content=body.content, note=body.note,
+    )
+    session.commit()
+    session.refresh(new)
+    return BrainMemoryItemRead.model_validate(new)
+
+
+@router.post("/memory/{item_id}/expire", response_model=BrainMemoryItemRead)
+def expire_memory(
+    item_id: str,
+    body: MemoryReviewAction = MemoryReviewAction(),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> BrainMemoryItemRead:
+    item = brain.memory_review.expire(session, user, _load_memory(session, item_id), note=body.note)
+    session.commit()
+    session.refresh(item)
+    return BrainMemoryItemRead.model_validate(item)
 
 
 @router.get("/memory/{item_id}", response_model=BrainMemoryItemRead)

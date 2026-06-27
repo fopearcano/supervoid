@@ -1214,6 +1214,17 @@ EVENT_SECTION_MAP: dict[str, list[str]] = {
         "studio.strategic_priorities", "project.canon_facts", "project.recent_decisions",
         "project.next_priorities",
     ],
+    # Verified / retired durable memory feeds canon_facts (FACT, DECISION),
+    # unresolved_questions, and next_priorities (COMMITMENT) at project scope,
+    # and strategic_priorities at studio scope.
+    "memory.": [
+        "studio.strategic_priorities", "project.canon_facts",
+        "project.unresolved_questions", "project.next_priorities",
+    ],
+    # A completed conversation turn enqueues the memory-analysis job (handled by
+    # the consumer's analyzer branch); it intentionally invalidates NO compiled
+    # section. Mapped to [] so the coverage invariant stays explicit.
+    "conversation.": [],
 }
 
 # recent_changes is always rebuilt for any scoped event (it is time/sequence based).

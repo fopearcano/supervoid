@@ -233,7 +233,7 @@ def _persist_assistant(
 ) -> None:
     usage = usage or {}
     state_version = ctx.versions.get("studio_state") or ctx.versions.get("project_state")
-    brain.append_message(
+    message = brain.append_message(
         session, conversation, role=BrainMessageRole.ASSISTANT,
         content=content, model=model, provider=provider_name,
         prompt_tokens=usage.get("prompt_tokens"),
@@ -254,6 +254,20 @@ def _persist_assistant(
             "session_metrics": session_metrics,
         },
     )
+    # Prompt 13: after a completed Brain response, enqueue a memory-analysis job.
+    # The event is atomic with the turn and carries NO project scope, so it never
+    # marks compiled state stale — the consumer routes it to the analyzer, which
+    # PROPOSES durable memory into the review inbox (nothing is auto-canon).
+    # Cancelled / empty turns are archived but not analysed.
+    if settings.brain_memory_analysis_enabled and not cancelled and (content or "").strip():
+        brain.emit(
+            session,
+            event_type=brain.BrainEventType.CONVERSATION_TURN_COMPLETED,
+            aggregate_type="brain_message",
+            aggregate_id=message.id,
+            actor_id=conversation.owner_user_id,
+            changes={"conversation_id": conversation.id},
+        )
     session.commit()
 
 

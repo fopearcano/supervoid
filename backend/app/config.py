@@ -123,6 +123,24 @@ class Settings(BaseSettings):
     # Lifetime of a signed hand-off token (seconds). Short by design.
     brain_handoff_ttl_seconds: int = 120
 
+    # --- Conversation memory & decision extraction (Prompt 13) ---
+    # After each completed Brain response a memory-analysis job runs (via the
+    # outbox worker). It PROPOSES durable items into a review inbox; nothing is
+    # promoted to verified memory automatically except a low-risk same-user
+    # preference whose confidence clears the threshold below. Canon / rights /
+    # production claims never become memory — they become PROPOSED decisions
+    # that need approval.
+    brain_memory_analysis_enabled: bool = True
+    # Optional model override for the extraction step (defaults to ``ai_model``).
+    brain_memory_analysis_model: str | None = None
+    # Auto-accept a member preference only at/above this confidence (and only
+    # when low-risk, same-user, non-canon, non-permission, uncontradicted).
+    brain_memory_auto_accept_min_confidence: float = 0.85
+    # Hard cap on proposals minted from a single turn (anti-spam / anti-runaway).
+    brain_memory_max_candidates_per_turn: int = 12
+    # How many recent conversation turns to feed the extraction model.
+    brain_memory_recent_turns: int = 6
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.

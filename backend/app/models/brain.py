@@ -330,6 +330,17 @@ class BrainMemoryItem(BaseEntity, table=True):
     )
     confidence: Optional[float] = Field(default=None, ge=0, le=1)
 
+    # A stable, normalised topic slug used to detect contradictions / duplicates
+    # within a scope (e.g. two facts about the same subject, or a re-stated
+    # preference). Set by the analysis job; nullable for hand-authored items.
+    topic_key: Optional[str] = Field(default=None, max_length=200, index=True)
+    # Coarse risk band ("low" / "medium" / "high"), gating preference
+    # auto-acceptance. Anything touching canon or permissions is never "low".
+    risk_level: str = Field(default="low", max_length=20)
+    # True when the rules engine promoted this item without human review (only
+    # ever for a low-risk same-user preference above the confidence threshold).
+    auto_accepted: bool = Field(default=False)
+
     source_message_id: Optional[str] = Field(
         default=None, foreign_key="brain_messages.id", index=True
     )
@@ -351,6 +362,12 @@ class BrainMemoryItem(BaseEntity, table=True):
     approved_by_id: Optional[str] = Field(
         default=None, index=True
     )
+    # Review provenance (who actioned it in the Memory Review inbox, and any
+    # note). ``approved_by_id`` mirrors ``reviewed_by_id`` on accept/reject for
+    # backward compatibility; superseded/edited rows are never overwritten.
+    reviewed_by_id: Optional[str] = Field(default=None, index=True)
+    reviewed_at: Optional[datetime] = Field(default=None)
+    review_note: Optional[str] = Field(default=None)
 
 
 class DecisionRecord(BaseEntity, table=True):

@@ -88,6 +88,19 @@ def _schedule_recompile(session: Session, event: BrainEvent) -> None:
         _mark_project_stale(session, story_world_id=story_world_id)
 
 
+def _handle_event(session: Session, event: BrainEvent) -> None:
+    """Dispatch one event. Most events schedule a recompile; the memory-analysis
+    job (a completed conversation turn) runs the analyzer instead — a chat turn
+    must never invalidate compiled domain state. The analyzer is imported lazily
+    to avoid an import cycle (it depends on this package)."""
+    if event.event_type == "conversation.turn_completed":
+        from app.services.brain import memory as memory_svc
+
+        memory_svc.analyze_turn(session, event)
+        return
+    _schedule_recompile(session, event)
+
+
 # --- the consumer ----------------------------------------------------------
 def process_pending(
     session: Session, *, batch: Optional[int] = None,
@@ -111,7 +124,7 @@ def process_pending(
     for event in events:
         savepoint = session.begin_nested()
         try:
-            _schedule_recompile(session, event)
+            _handle_event(session, event)
             savepoint.commit()
         except Exception as exc:  # noqa: BLE001 — record + isolate, never crash the batch
             savepoint.rollback()

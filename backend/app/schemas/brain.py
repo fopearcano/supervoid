@@ -219,6 +219,9 @@ class BrainMemoryItemRead(TimestampedRead):
     content: str
     structured_data: dict[str, Any] = {}
     confidence: Optional[float] = None
+    topic_key: Optional[str] = None
+    risk_level: str = "low"
+    auto_accepted: bool = False
     source_message_id: Optional[str] = None
     source_event_id: Optional[str] = None
     verification: BrainMemoryVerification
@@ -226,6 +229,44 @@ class BrainMemoryItemRead(TimestampedRead):
     expires_at: Optional[datetime] = None
     created_by_id: Optional[str] = None
     approved_by_id: Optional[str] = None
+    reviewed_by_id: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_note: Optional[str] = None
+
+
+# --- Memory Review inbox (Prompt 13) ---------------------------------------
+class MemoryReviewAction(BaseModel):
+    """Accept / reject / expire a reviewed memory item (optional note)."""
+
+    note: Optional[str] = None
+
+
+class MemoryEditRequest(BaseModel):
+    """Edit an item — creates a superseding row; the original is never overwritten."""
+
+    content: Optional[str] = None
+    structured_data: Optional[dict[str, Any]] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    topic_key: Optional[str] = None
+    note: Optional[str] = None
+
+
+class MemorySupersedeRequest(BaseModel):
+    """Replace an item with a newer VERIFIED successor."""
+
+    content: str
+    structured_data: Optional[dict[str, Any]] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    topic_key: Optional[str] = None
+    note: Optional[str] = None
+
+
+class MemoryMergeRequest(BaseModel):
+    """Merge several same-scope items into one VERIFIED item."""
+
+    source_ids: list[str]
+    content: Optional[str] = None
+    note: Optional[str] = None
 
 
 # --- decisions -------------------------------------------------------------
