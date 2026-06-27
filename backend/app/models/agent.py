@@ -80,6 +80,10 @@ class AgentRun(BaseEntity, table=True):
         back_populates="run",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
+    traces: list["AgentTrace"] = Relationship(
+        back_populates="run",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
 
 
 class AgentFinding(BaseEntity, table=True):
@@ -154,6 +158,34 @@ class AgentActionProposal(BaseEntity, table=True):
     error: Optional[str] = Field(default=None)
 
     run: "AgentRun" = Relationship(back_populates="proposals")
+
+
+class AgentTrace(BaseEntity, table=True):
+    """A safe, structured record of one step in a model-driven reasoning cycle.
+
+    Captures WHAT was requested and WHAT came back — the tool requested, the tool
+    result, and the validated structured output — but NEVER the model's private
+    chain-of-thought / raw reasoning text. Append-only; ordered by ``sequence``.
+    """
+
+    __tablename__ = "agent_traces"
+
+    __table_args__ = (
+        Index("ix_agent_traces_run_sequence", "run_id", "sequence"),
+    )
+
+    run_id: str = Field(foreign_key="agent_runs.id", index=True)
+    agent_key: str = Field(max_length=120, index=True)
+    sequence: int = Field(default=0)        # global order within the run
+    round: int = Field(default=0)            # which model<->tool round
+    # "model_output" | "tool_requested" | "tool_result" | "note"
+    kind: str = Field(default="note", max_length=40, index=True)
+    tool_key: Optional[str] = Field(default=None, max_length=120)
+    # Redacted, structured payload only (tool input, tool result, or a safe
+    # summary of the validated output). Never raw model reasoning.
+    payload: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+
+    run: "AgentRun" = Relationship(back_populates="traces")
 
 
 class PromptTemplate(BaseEntity, table=True):

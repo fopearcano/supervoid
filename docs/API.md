@@ -137,7 +137,17 @@ the per-route request/response schemas.
   `POST /api/agents/{key}/run`; **runs** (`/api/agent-runs`, detail, `retry`);
   **findings** (`/api/agent-findings`, `resolve`); **proposals**
   (`/api/agent-proposals`, `approve` / `reject` / `execute`); **prompt
-  templates** (versioned).
+  templates** (versioned). The runner is **model-driven** (Prompt 9): the model
+  returns a validated structured `AgentOutput` (result / findings / proposed tool
+  calls / evidence references / confidence / unanswered questions); read-only
+  tools run in a bounded, governed loop while mutation/external intentions become
+  the same gated proposals (approval can never be bypassed). Invalid tool
+  intentions (unknown / not-allowed / unpermitted / unsupported target / direct
+  mutation) are rejected and fail the run with nothing executed; an unavailable /
+  refusing / malformed model degrades to the deterministic validators
+  (`result.model_driven=false`). The run detail includes safe `traces` (tool
+  requested, tool result, validated output summary — never chain-of-thought). See
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md#supervised-studio-agent-framework).
 
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,

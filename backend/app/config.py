@@ -70,6 +70,17 @@ class Settings(BaseSettings):
     # timeout, selected 5xx). Never used to re-issue a completed call.
     ai_max_retries: int = 2
 
+    # --- Supervised agent framework: model-driven runner limits (Prompt 9) ---
+    # Strict bounds on the model-driven reasoning loop. A run can request
+    # read-only tools and feed results back to the model, but never beyond these
+    # ceilings — guarding against runaway loops, context blow-up, and long calls.
+    agent_max_tool_rounds: int = 3          # model<->tool round trips per run
+    agent_max_tool_calls: int = 8           # total read-only tool executions per run
+    agent_max_context_chars: int = 24000    # cap on the accumulated prompt size
+    agent_max_runtime_seconds: float = 30.0  # wall-clock ceiling for one run
+    # Per-model-call timeout passed to the provider (real backends only).
+    agent_model_timeout_seconds: float = 20.0
+
     # --- Brain event outbox ---
     # Consumer retry budget before an event is dead-lettered (FAILED), the
     # batch size per pass, and the background worker's poll interval (seconds).

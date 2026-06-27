@@ -9,6 +9,7 @@ from app.models.agent import (
     AgentActionProposal,
     AgentFinding,
     AgentRun,
+    AgentTrace,
     PromptTemplate,
     PromptTemplateVersion,
 )
@@ -244,6 +245,7 @@ __all__ = [
     "AgentRun",
     "AgentRunStatus",
     "AgentToolKind",
+    "AgentTrace",
     "AIFeature",
     "AIInsight",
     "BrainCheckpoint",

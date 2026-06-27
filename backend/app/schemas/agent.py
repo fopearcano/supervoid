@@ -106,11 +106,22 @@ class AgentProposalRead(TimestampedRead):
     error: Optional[str]
 
 
+class AgentTraceRead(TimestampedRead):
+    run_id: str
+    agent_key: str
+    sequence: int
+    round: int
+    kind: str
+    tool_key: Optional[str]
+    payload: dict
+
+
 class AgentRunDetail(AgentRunRead):
     input_snapshot: dict = Field(default_factory=dict)
     result: dict = Field(default_factory=dict)
     findings: list[AgentFindingRead] = Field(default_factory=list)
     proposals: list[AgentProposalRead] = Field(default_factory=list)
+    traces: list[AgentTraceRead] = Field(default_factory=list)
 
 
 class ProposalRejectRequest(BaseModel):

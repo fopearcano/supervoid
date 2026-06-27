@@ -35,6 +35,7 @@ from app.schemas.agent import (
     AgentProposalRead,
     AgentRunDetail,
     AgentRunRead,
+    AgentTraceRead,
     PromptTemplateCreate,
     PromptTemplateRead,
     PromptVersionCreate,
@@ -77,6 +78,10 @@ def _run_detail(run: AgentRun) -> AgentRunDetail:
     detail = AgentRunDetail.model_validate(run)
     detail.findings = [AgentFindingRead.model_validate(f) for f in run.findings]
     detail.proposals = [AgentProposalRead.model_validate(p) for p in run.proposals]
+    detail.traces = [
+        AgentTraceRead.model_validate(t)
+        for t in sorted(run.traces, key=lambda x: x.sequence)
+    ]
     detail.finding_count = len(run.findings)
     detail.proposal_count = len(run.proposals)
     return detail

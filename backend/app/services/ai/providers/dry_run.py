@@ -62,6 +62,24 @@ _CANNED_PAYLOADS: dict[str, dict] = {
             }
         ]
     },
+    # Model-driven agent runner (Prompt 9): a VALID, conforming AgentOutput so the
+    # full request → parse → validate cycle is exercised offline. Deliberately
+    # emits no findings / tool calls so the deterministic validators remain the
+    # source of findings + proposals in dry-run (governance behaviour unchanged).
+    "AGENT:": {
+        "result": {
+            "synthesis": (
+                "Dry-run agent synthesis placeholder. Connect a real provider "
+                "(vLLM) for grounded, model-driven analysis."
+            ),
+            "method": "deterministic-validators + model-synthesis",
+        },
+        "findings": [],
+        "proposed_tool_calls": [],
+        "evidence_references": [],
+        "confidence": 0.5,
+        "unanswered_questions": [],
+    },
 }
 
 _DEFAULT_PAYLOAD = {

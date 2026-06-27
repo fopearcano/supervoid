@@ -472,6 +472,34 @@ Rules enforced by the runner (`app/services/agents/runner.py`):
 - no secrets in prompts, snapshots, payloads or results (recursive `redact`);
 - retry creates a **new** run (`retry_of_id`) — history is never overwritten.
 
+**Model-driven runner (Prompt 9).** The runner now *semantically* uses the model
+response instead of running a fixed handler. Each run asks the provider for a
+**validated structured `AgentOutput`** — `result`, `findings`, `proposed_tool_calls`,
+`evidence_references`, `confidence`, `unanswered_questions` — requested via a
+JSON-schema `response_format` on a capable backend (vLLM) and parsed + validated
+with Pydantic (`app/services/agents/output.py`). The model handles synthesis,
+prioritisation, semantic comparison, continuity interpretation, explanation and
+proposal generation; the **deterministic handlers are kept** as validators and
+fallback for numerical progress, missing metadata, deadline / licence / dependency
+checks (their findings merge with the model's).
+
+Governance on the model's tool intentions (`app/services/agents/runner.py` →
+`_validate_tool_call`): **reject** unknown tool keys, malformed payloads,
+unsupported target types, tools outside the agent definition, tools outside the
+user's permission (via the policy service), and any direct-mutation attempt by a
+read-only agent — a rejection fails the run with nothing executed or proposed.
+**Read-only** tools execute through a governed internal tool service
+(`tool_service.py`, permission-checked, redacted, bounded) and their results feed
+back to the model in a bounded loop; **mutation / external** intentions are
+converted into the same gated `AgentActionProposal`s as before (always
+`requires_approval=True` — the model can never bypass approval). Strict limits cap
+tool rounds, total tool calls, accumulated context size and wall-clock runtime
+(`agent_max_*` settings). When the model is unavailable, times out, refuses, or
+emits malformed JSON, the run **degrades to the deterministic validators**
+(`result.model_driven=False`, `fallback_reason` recorded) rather than failing.
+Each reasoning cycle is persisted as a safe `AgentTrace` (tool requested, tool
+result, validated output summary) — **never the model's private chain-of-thought**.
+
 Surface (`/api`, private — the whole router is `AUTHED`): `/agents` +
 `/agents/tools` (registry), `POST /agents/{key}/run`, `/agent-runs` (+ detail,
 `/retry`), `/agent-findings` (inbox, `/resolve`), `/agent-proposals`
