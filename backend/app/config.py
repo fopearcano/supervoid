@@ -222,6 +222,30 @@ class Settings(BaseSettings):
     integrations_exchange_subdir: str = "integrations/exchange"
     integrations_request_timeout: float = 30.0
 
+    # --- Optional fine-tuning data pipeline (Prompt 18) ---
+    # PREPARED, never auto-run. Collection requires explicit per-example approval;
+    # an adapter is deployed only when it beats the base on the project evaluation
+    # without weakening permissions or approval behaviour. ``tuning_enabled`` gates
+    # the collection endpoints; nothing trains or deploys automatically.
+    tuning_enabled: bool = False
+    tuning_export_subdir: str = "tuning/datasets"   # under storage_path
+    tuning_val_fraction: float = 0.2
+    tuning_min_examples: int = 10                    # refuse to export a tiny dataset
+    # Default LoRA/PEFT training parameters RECORDED with an adapter (not executed).
+    tuning_default_base_model: str = "supervoid-brain"
+    tuning_lora_rank: int = 16
+    tuning_lora_alpha: int = 32
+    tuning_lora_dropout: float = 0.05
+    tuning_learning_rate: float = 0.0002
+    tuning_epochs: int = 3
+    # vLLM LoRA serving: where adapters are mounted on the GPU host + rank ceiling.
+    tuning_adapter_mount_dir: str = "/opt/brain/adapters"
+    tuning_vllm_max_lora_rank: int = 32
+    # Deploy gate: minimum project-eval pass rate / correctness an adapter must
+    # reach (in addition to beating the base and not weakening permissions/approval).
+    tuning_deploy_min_pass_rate: float = 0.9
+    tuning_deploy_min_correctness: float = 0.9
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -268,6 +268,21 @@ the per-route request/response schemas.
   recommends a production default model **only** from a **live** provider's results;
   a dry-run run validates the harness but is explicitly not a basis for a model
   decision. See [`EVALUATION.md`](./EVALUATION.md).
+- **fine-tuning pipeline (Prompt 18)** — the INTERNAL, admin-only optional
+  LoRA/PEFT data pipeline (`/api/brain/tuning/...`), PREPARED but never auto-run.
+  Collect only explicitly approved BEHAVIOUR examples (nine kinds: strong /
+  corrected responses, tool choice, refusal, production plan, structured proposal,
+  requires-approval, retrieval unnecessary / required); every candidate is
+  sanitised (chain-of-thought stripped, secrets redacted, private contracts /
+  member data excluded unless approved + anonymised). A review workflow gates
+  inclusion; export writes **versioned train/val JSONL split by project + task
+  category**. An **adapter registry** records base model, dataset version, training
+  parameters, licence, project-evaluation results and deployment status; `evaluate`
+  runs the Phase-17 corpus base-vs-adapter. An adapter is deployed **only** when it
+  beats the base without weakening permissions or approval behaviour (HTTP 409
+  otherwise); `vllm-config` emits the LoRA serving config and `rollback` returns to
+  the base model. Collection is gated behind `tuning_enabled`. See
+  [`FINE_TUNING.md`](./FINE_TUNING.md).
 
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,

@@ -247,6 +247,14 @@ from app.models.screen import (
 )
 from app.models.story_series import StorySeries
 from app.models.story_world import StoryWorld
+from app.models.tuning import TuningAdapter, TuningDataset, TuningExample
+from app.models.enums import (  # optional fine-tuning data pipeline (Prompt 18)
+    AdapterStatus,
+    TuningCandidateStatus,
+    TuningDatasetStatus,
+    TuningExampleKind,
+    TuningSourceType,
+)
 from app.models.user import User
 from app.models.work import Work
 from app.models.workflow_event import WorkflowEvent
@@ -472,6 +480,14 @@ __all__ = [
     "StoryWorld",
     "StoryWorldStatus",
     "StreamStatus",
+    "TuningAdapter",
+    "TuningDataset",
+    "TuningExample",
+    "TuningExampleKind",
+    "TuningSourceType",
+    "TuningCandidateStatus",
+    "TuningDatasetStatus",
+    "AdapterStatus",
     "User",
     "UserRole",
     "Work",

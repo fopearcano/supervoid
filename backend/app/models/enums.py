@@ -1378,3 +1378,58 @@ class SafetyApprovalMode(str, Enum):
     REQUIRE_REVIEW = "require_review"    # a reviewer must look before acting
     REQUIRE_APPROVE = "require_approve"  # an approver must sign off
     OWNER_ONLY = "owner_only"            # only the rights/IP owner (or admin) may act
+
+
+# --- Optional fine-tuning data pipeline (Prompt 18) ------------------------
+class TuningExampleKind(str, Enum):
+    """The ONLY behaviour categories a fine-tuning example may teach. The goal is
+    to teach BEHAVIOUR, never current project facts."""
+
+    STRONG_RESPONSE = "strong_response"            # an exemplary assistant answer
+    CORRECTED_RESPONSE = "corrected_response"      # a human-corrected answer
+    TOOL_CHOICE = "tool_choice"                    # the correct MCP tool selection
+    REFUSAL = "refusal"                            # a correct refusal
+    PRODUCTION_PLAN = "production_plan"            # a good production plan
+    STRUCTURED_PROPOSAL = "structured_proposal"    # a good gated proposal
+    REQUIRES_APPROVAL = "requires_approval"        # an action that needs approval
+    RETRIEVAL_UNNECESSARY = "retrieval_unnecessary"  # answer from hot state, no retrieval
+    RETRIEVAL_REQUIRED = "retrieval_required"      # cold retrieval genuinely needed
+
+
+class TuningSourceType(str, Enum):
+    """Where a candidate example was drawn from (provenance)."""
+
+    CONVERSATION = "conversation"
+    AGENT_RUN = "agent_run"
+    PROPOSAL = "proposal"
+    EVAL = "eval"
+    MANUAL = "manual"
+
+
+class TuningCandidateStatus(str, Enum):
+    """Review lifecycle of a dataset candidate. Only EXPLICITLY approved examples
+    are ever exported; nothing is collected automatically."""
+
+    PENDING = "pending"        # awaiting human review
+    APPROVED = "approved"      # approved for inclusion
+    REJECTED = "rejected"      # excluded from datasets
+    EXPORTED = "exported"      # included in an exported, versioned dataset
+
+
+class TuningDatasetStatus(str, Enum):
+    DRAFT = "draft"
+    EXPORTED = "exported"
+    ARCHIVED = "archived"
+
+
+class AdapterStatus(str, Enum):
+    """Lifecycle of a LoRA/PEFT adapter in the registry. An adapter is NEVER
+    deployed unless it beats the base model on the project evaluation without
+    weakening permissions or approval behaviour."""
+
+    REGISTERED = "registered"    # metadata recorded; not yet evaluated
+    EVALUATED = "evaluated"      # project-eval results recorded
+    APPROVED = "approved"        # passed the deploy gate; ready to serve
+    DEPLOYED = "deployed"        # the active served adapter
+    ROLLED_BACK = "rolled_back"  # reverted to base
+    REJECTED = "rejected"        # failed the deploy gate / manually rejected
