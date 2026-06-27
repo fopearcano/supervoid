@@ -4,15 +4,15 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 
-// vLLM owns port 8000 (run as `--host 127.0.0.1 --port 8000`), so the SUPERVOID
-// API runs on 8080 here and the proxy points at it. Everything is wired so a
-// single `npm run dev` brings the whole local stack up against your local vLLM —
-// no env files to edit. Override any value by exporting it before `npm run dev`
+// vLLM runs on :8001 (`--host 127.0.0.1 --port 8001`); the SUPERVOID API keeps
+// its conventional :8000 and the proxy points at it. A single `npm run dev`
+// brings the whole local stack up against your local vLLM — no env files to
+// edit. Override any value by exporting it before `npm run dev`
 // (AI_MODEL / AI_API_KEY / VLLM_API_KEY / SUPERVOID_API_PORT), or set
 // SUPERVOID_NO_BACKEND=1 to run the API yourself.
 const BACKEND_DIR = path.resolve(__dirname, '../backend');
-const API_PORT = Number(process.env.SUPERVOID_API_PORT ?? 8080);
-const VLLM_BASE_URL = 'http://127.0.0.1:8000/v1';
+const API_PORT = Number(process.env.SUPERVOID_API_PORT ?? 8000);
+const VLLM_BASE_URL = 'http://127.0.0.1:8001/v1';
 
 function pythonBin(): string {
   const venv = path.join(BACKEND_DIR, '.venv', 'bin', 'python');
@@ -86,7 +86,7 @@ export default defineConfig({
   server: {
     // Bind to all interfaces (0.0.0.0 / ::) so the dev server is reachable from
     // other devices on the LAN, e.g. http://<your-lan-ip>:5173. The /api and
-    // /public proxies target the SUPERVOID API (NOT vLLM, which owns :8000).
+    // /public proxies target the SUPERVOID API (NOT vLLM, which owns :8001).
     host: true,
     port: 5173,
     strictPort: false,
