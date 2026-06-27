@@ -88,6 +88,29 @@ def _schedule_recompile(session: Session, event: BrainEvent) -> None:
         _mark_project_stale(session, story_world_id=story_world_id)
 
 
+def _schedule_index(session: Session, event: BrainEvent) -> None:
+    """Best-effort cold-index refresh for an indexable aggregate (Prompt 14).
+
+    Isolated in its own SAVEPOINT so an extraction/embedding failure never blocks
+    the recompile scheduling that shares this event. Imported lazily to avoid an
+    import cycle."""
+    if not settings.retrieval_enabled:
+        return
+    from app.services.brain.retrieval.extractors import EVENT_SOURCE_MAP
+
+    source_type = EVENT_SOURCE_MAP.get(event.aggregate_type)
+    if source_type is None:
+        return
+    sp = session.begin_nested()
+    try:
+        from app.services.brain.retrieval import indexer
+
+        indexer.reindex_source(session, source_type, event.aggregate_id)
+        sp.commit()
+    except Exception:  # noqa: BLE001 - indexing is best-effort, never fatal
+        sp.rollback()
+
+
 def _handle_event(session: Session, event: BrainEvent) -> None:
     """Dispatch one event. Most events schedule a recompile; the memory-analysis
     job (a completed conversation turn) runs the analyzer instead — a chat turn
@@ -99,6 +122,7 @@ def _handle_event(session: Session, event: BrainEvent) -> None:
         memory_svc.analyze_turn(session, event)
         return
     _schedule_recompile(session, event)
+    _schedule_index(session, event)
 
 
 # --- the consumer ----------------------------------------------------------

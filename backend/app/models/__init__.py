@@ -41,6 +41,13 @@ from app.models.instruction_layer import (
 )
 from app.models.brain_access_token import BrainAccessToken
 from app.models.brain_handoff import BrainHandoff
+from app.models.retrieval import (
+    EmbeddingRecord,
+    KnowledgeChunk,
+    KnowledgeDocument,
+    RetrievalHit,
+    RetrievalRun,
+)
 from app.models.asset import Asset, AssetLink, AssetVersion
 from app.models.attachment import Attachment
 from app.models.author import Author
@@ -148,6 +155,10 @@ from app.models.enums import (  # SUPERVOID Brain (persistence layer)
     BrainStateStatus,
     BrainStateType,
     DecisionStatus,
+    KnowledgeDocStatus,
+    KnowledgeSourceType,
+    RetrievalStage,
+    RetrievalTrigger,
     SafetyApprovalMode,
     SessionInvalidationReason,
 )
@@ -273,6 +284,15 @@ __all__ = [
     "StudioBrainState",
     "BrainAccessToken",
     "BrainHandoff",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
+    "EmbeddingRecord",
+    "RetrievalRun",
+    "RetrievalHit",
+    "KnowledgeSourceType",
+    "KnowledgeDocStatus",
+    "RetrievalTrigger",
+    "RetrievalStage",
     "SafetyApprovalMode",
     "SessionInvalidationReason",
     "StudioConstitution",

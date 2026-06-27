@@ -1274,6 +1274,49 @@ class DecisionStatus(str, Enum):
     SUPERSEDED = "superseded"
 
 
+# --- Cold-detail retrieval (Prompt 14: pgvector evidence system) -----------
+class KnowledgeSourceType(str, Enum):
+    """The kind of studio content a KnowledgeDocument was extracted from.
+
+    These are the *eligible* materials for the cold evidence index. Binary image
+    data is never indexed — only the text metadata around it (asset_metadata)."""
+
+    MANUSCRIPT = "manuscript"
+    EDITORIAL_NOTE = "editorial_note"
+    DECISION_RATIONALE = "decision_rationale"
+    PROJECT_DOC = "project_doc"               # reviews / written reports
+    KNOWLEDGE_ENTITY = "knowledge_entity"
+    ASSET_METADATA = "asset_metadata"
+    PANEL_DESCRIPTION = "panel_description"
+    SCENE_DESCRIPTION = "scene_description"
+    CONVERSATION_SUMMARY = "conversation_summary"  # approved compaction digests
+    RIGHTS_EXTRACT = "rights_extract"
+    CONTRACT_EXTRACT = "contract_extract"
+
+
+class KnowledgeDocStatus(str, Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"                     # source removed / no longer eligible
+
+
+class RetrievalTrigger(str, Enum):
+    """The only conditions under which cold retrieval may run. It is an
+    exceptional evidence system, never a per-turn reconstruction."""
+
+    HISTORICAL_JUSTIFICATION = "historical_justification"  # user asks "why / when"
+    DETAILED_SOURCE = "detailed_source"                    # a specific source needed
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"        # Brain reports a gap
+    AGENT_REQUEST = "agent_request"                        # an agent needs records
+
+
+class RetrievalStage(str, Enum):
+    """Where a hit sits in the pipeline (diagnostics)."""
+
+    CANDIDATE = "candidate"      # passed structured + permission filter
+    RERANKED = "reranked"        # survived/scored by the reranker
+    RETURNED = "returned"        # actually handed to the model
+
+
 class SafetyApprovalMode(str, Enum):
     """How a safety/approval policy gates an assistant profile's actions."""
 

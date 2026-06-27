@@ -815,3 +815,46 @@ def execute_approved_proposal(session, principal, args):
     agent_svc.execute_proposal(session, p, user=principal.user)
     return {"proposal_id": p.id, "status": p.status.value,
             "execution_result": p.execution_result}
+
+
+# === Cold-detail retrieval (Prompt 14) =====================================
+@tool("retrieve_evidence", title="Retrieve supporting evidence", kind=ToolKind.READ_ONLY,
+      description=(
+          "Search the cold evidence index for specific supporting records "
+          "(manuscripts, decisions, notes, panels, scenes, rights extracts, …). "
+          "Permission-filtered to what you may see. Use ONLY when a detailed "
+          "source or historical justification is needed that is not already in "
+          "the compiled state — not for routine context."),
+      input_schema=obj({
+          "q": STR,
+          "work_id": opt_str("Restrict to a Work"),
+          "story_world_id": opt_str("Restrict to a Story World"),
+          "limit": INT,
+      }, required=["q"]))
+def retrieve_evidence(session, principal, args):
+    from app.models.enums import RetrievalTrigger
+    from app.services.brain.retrieval import search as retrieval_search
+
+    q = (args.get("q") or "").strip()
+    if not q:
+        raise MCPToolError("A query 'q' is required.", code="invalid")
+    limit = min(int(args.get("limit") or 6), 12)
+    # An agent explicitly requiring records; never re-fetch what's already in state.
+    result = retrieval_search.retrieve(
+        session, principal.user, query=q, trigger=RetrievalTrigger.AGENT_REQUEST,
+        work_id=args.get("work_id"), story_world_id=args.get("story_world_id"),
+        top_k=limit, exclude_in_state=True,
+    )
+    return {
+        "query": q,
+        "backend": result.backend,
+        "reranked": result.reranked,
+        "results": [
+            {
+                "citation": h.citation, "source_ref": h.source_ref,
+                "section": h.section_ref, "snippet": h.snippet,
+                "score": round(h.score, 4),
+            }
+            for h in result.hits
+        ],
+    }

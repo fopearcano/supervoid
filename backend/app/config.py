@@ -141,6 +141,39 @@ class Settings(BaseSettings):
     # How many recent conversation turns to feed the extraction model.
     brain_memory_recent_turns: int = 6
 
+    # --- Cold-detail retrieval (Prompt 14: pgvector evidence system) ---
+    # An EXCEPTIONAL evidence layer, not a per-turn reconstruction. Indexing runs
+    # asynchronously off the outbox; retrieval is only invoked under explicit
+    # triggers (historical justification / detailed source / insufficient
+    # evidence / agent request) and never re-fetches what is already in the
+    # compiled state.
+    retrieval_enabled: bool = True
+    # Embedding provider, kept SEPARATE from the conversational model so a small
+    # local embedding model can be served on its own endpoint. "dry_run" is a
+    # deterministic offline embedder (tests + air-gapped dev); set
+    # "openai_compatible" + embedding_base_url for a real TEI/llama.cpp/vLLM
+    # embedding server in production.
+    embedding_provider: str = "dry_run"
+    embedding_model: str = "supervoid-embed-small"
+    embedding_dim: int = 384
+    embedding_base_url: str | None = None
+    embedding_api_key: str | None = None
+    embedding_request_timeout: float = 30.0
+    embedding_batch_size: int = 64
+    # Chunking.
+    retrieval_chunk_chars: int = 1200
+    retrieval_chunk_overlap: int = 150
+    # Search shape.
+    retrieval_candidates: int = 40         # structured/ANN candidate pool size
+    retrieval_top_k: int = 6               # results handed to the model
+    retrieval_min_score: float = 0.0       # drop hits below this blended score
+    retrieval_text_weight: float = 0.4     # FTS weight in the hybrid blend
+    retrieval_vector_weight: float = 0.6   # vector weight in the hybrid blend
+    retrieval_rerank: bool = True          # optional rerank pass
+    # Vector backend: "auto" picks pgvector on PostgreSQL, else the in-process
+    # cosine fallback. Force "memory" to disable pgvector even on Postgres.
+    retrieval_vector_backend: str = "auto"
+
     # --- Brain stateful sessions & prefix-cache strategy (Prompt 8) ---
     # vLLM prefix caching is an optimisation we make ELIGIBLE — never durable
     # memory. These windows drive the hot/warm/cold lifecycle.

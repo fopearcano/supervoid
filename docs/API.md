@@ -199,6 +199,28 @@ the per-route request/response schemas.
   proposed / approved / rejected / superseded (`/api/brain/decisions`). See
   [`CONVERSATION_MEMORY.md`](./CONVERSATION_MEMORY.md).
 
+### Cold-detail retrieval (pgvector evidence)
+- **retrieval (Prompt 14)** — an exceptional, permission-filtered evidence layer
+  over studio detail that does NOT belong in the hot compiled state.
+  `POST /api/brain/retrieval/search {query, trigger, work_id?, story_world_id?,
+  source_types?, exclude_in_state?}` runs HYBRID retrieval (structured filters +
+  full-text + vector similarity + optional rerank), filters every candidate by
+  permission BEFORE returning content (rights/contract extracts need
+  `manage_rights`), and returns stable internal citations
+  (`[source_type:source_id · section]`) + a fenced evidence block. `trigger` is
+  mandatory (historical justification / detailed source / insufficient evidence /
+  agent request) — retrieval is never a per-turn reconstruction. Diagnostics:
+  `GET /runs` + `/runs/{id}` (query, filters, candidates, reranked results,
+  sources used); `GET /documents` and `POST /reindex` (admin; re-embeds only
+  changed content). Eligible material — manuscripts, editorial notes, decision
+  rationale, reviews, knowledge entities, asset **metadata** (never binary),
+  panel + scene descriptions, **approved** conversation summaries, rights +
+  contract extracts — is indexed asynchronously off the outbox. Embeddings use a
+  configurable, separately-served small model (`embedding_provider`). pgvector
+  ANN + `ts_rank` accelerate PostgreSQL; an in-process cosine + keyword fallback
+  keeps SQLite working. The MCP `retrieve_evidence` tool exposes the same,
+  permission-filtered, to agents. See [`RETRIEVAL.md`](./RETRIEVAL.md).
+
 ### Integration hub
 - **integrations** — static contracts (`/api/integrations`, `/ecosystem`,
   `/{key}`); persisted **points** (`/api/integrations/points` CRUD +
