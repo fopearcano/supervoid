@@ -1,0 +1,6 @@
+# SUPERVOID MCP sign-proxy — pinned, minimal runtime deps.
+# Kept in lock-step with the SUPERVOID backend venv so the HMAC + transport
+# behaviour matches what app/services/mcp/auth.py verifies.
+starlette==0.38.6
+httpx==0.27.2
+uvicorn[standard]==0.30.6

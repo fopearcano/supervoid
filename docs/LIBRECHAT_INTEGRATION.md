@@ -113,8 +113,9 @@ rate limits at the Brain Gateway.
 
 When the model calls a SUPERVOID tool, LibreChat sends the member's identity to
 the MCP server as dynamic headers (`X-SUPERVOID-User-Id/Email/Role/Request-Id`).
-The **signing shim** adds the internal service token and an HMAC signature over
-that context; the SUPERVOID backend:
+The **signing shim** (shipped at `deploy/brain/sign-proxy/`, bundled in the
+LibreChat compose as service `mcp-sign-proxy`) adds the internal service token
+and an HMAC signature over that context; the SUPERVOID backend:
 
 1. verifies the service credential **and** the signature (fails closed otherwise);
 2. maps the **email** to a SUPERVOID user (the authorisation subject — the

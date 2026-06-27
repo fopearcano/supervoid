@@ -87,10 +87,23 @@ mcpServers:
       # X-SUPERVOID-User-Sig is added by the signing shim (below).
 ```
 
-### Signing shim (minimal, holds the service token)
+### Signing shim (shipped)
 
 Because the signature binds the exact user-context, compute it at a trusted hop
-in front of `/mcp`. A ~15-line reverse proxy is enough:
+in front of `/mcp`. SUPERVOID **ships this shim** — no need to write your own:
+
+- Code: `deploy/brain/sign-proxy/sign_proxy.py` (+ `Dockerfile`, `requirements.txt`).
+- Bundled in `deploy/brain/docker-compose.librechat.yml` as service
+  `mcp-sign-proxy` (network alias `supervoid-mcp-sign-proxy`, port `8092`), so
+  the default `SUPERVOID_MCP_URL` works out of the box.
+- It normalises the email (`strip().lower()`) **before** signing — matching the
+  backend, which normalises the incoming email before recomputing the expected
+  signature — strips any client-supplied service-token/signature, and streams
+  responses (Streamable HTTP / SSE safe). Parity with the backend verifier is
+  enforced by `backend/tests/test_mcp_sign_proxy.py`.
+
+The reference implementation it is based on (a ~15-line reverse proxy) is below
+for understanding / a hand-rolled deployment:
 
 ```python
 # sign_proxy.py — sits between LibreChat and SUPERVOID /mcp on the private net.

@@ -43,14 +43,27 @@ Everything on `localhost`, so no container networking.
    - Build + run: `npm run frontend && npm run backend`.
 3. **Backend env** (where you run the SUPERVOID API): `MCP_SERVICE_TOKEN=<secret>`,
    `LIBRECHAT_PUBLIC_URL=http://localhost:3080`. Restart the API.
+4. **MCP tools** need the **signing shim** (LibreChat can't compute the HMAC
+   itself). From `deploy/brain/sign-proxy/`:
+   ```bash
+   pip install -r requirements.txt
+   MCP_SERVICE_TOKEN=<secret> MCP_UPSTREAM_URL=http://127.0.0.1:8000/mcp \
+     uvicorn sign_proxy:app --host 127.0.0.1 --port 8092
+   ```
+   Then point LibreChat at it: `SUPERVOID_MCP_URL=http://127.0.0.1:8092/mcp`.
+   (Skip this and chat/grounding still works — only tool-calling needs it.)
 
-LibreChat talks to the gateway at `http://127.0.0.1:8000/brain/v1` and MCP at
-`http://127.0.0.1:8000/mcp` — all loopback.
+LibreChat talks to the gateway at `http://127.0.0.1:8000/brain/v1` (loopback) and
+to MCP **through the shim** at `http://127.0.0.1:8092/mcp`, which forwards to the
+backend's `http://127.0.0.1:8000/mcp`.
 
 ## Path A — Docker (simplest if you accept containers)
 
 `deploy/brain/docker-compose.librechat.yml` bundles LibreChat + Mongo +
-Meilisearch (Mongo/Meili are internal-only; LibreChat publishes `127.0.0.1:3080`).
+Meilisearch + the **MCP signing shim** (Mongo/Meili/shim are internal-only;
+LibreChat publishes `127.0.0.1:3080`). Because the shim is bundled, **MCP
+tool-calling works out of the box** — no extra setup; it signs each request's
+user-context with `MCP_SERVICE_TOKEN` and forwards to the backend's `/mcp`.
 
 ```bash
 cd deploy/brain

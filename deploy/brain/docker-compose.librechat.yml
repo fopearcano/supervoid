@@ -30,6 +30,8 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_started
+      mcp-sign-proxy:
+        condition: service_healthy
     environment:
       HOST: 0.0.0.0
       PORT: ${LIBRECHAT_PORT:-3080}
@@ -81,6 +83,44 @@ services:
     networks:
       - brain
       - librechat-internal
+
+  # The MCP signing shim: the ONLY component that holds the service token AND
+  # computes the per-request HMAC over the user-context. LibreChat points its
+  # mcpServers.url at this (SUPERVOID_MCP_URL); the shim adds the credential +
+  # signature and forwards to the SUPERVOID backend's /mcp on the private net.
+  # Without it, LibreChat cannot authenticate to /mcp and tool-calling is off.
+  mcp-sign-proxy:
+    build:
+      context: ./sign-proxy
+    image: ${MCP_SIGN_PROXY_IMAGE:-supervoid/mcp-sign-proxy:local}
+    container_name: ${MCP_SIGN_PROXY_CONTAINER:-supervoid-mcp-sign-proxy}
+    restart: unless-stopped
+    environment:
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?set MCP_SERVICE_TOKEN}
+      # The shim derives the upstream from these (same values LibreChat uses),
+      # or set MCP_UPSTREAM_URL to override the whole URL.
+      SUPERVOID_BACKEND_HOST: ${SUPERVOID_BACKEND_HOST:-supervoid-backend}
+      SUPERVOID_BACKEND_PORT: ${SUPERVOID_BACKEND_PORT:-8000}
+      MCP_UPSTREAM_URL: ${MCP_UPSTREAM_URL:-}
+    # PRIVATE: no host port. Reachable only on the brain network, as the
+    # `supervoid-mcp-sign-proxy` alias that SUPERVOID_MCP_URL defaults to.
+    expose:
+      - "8092"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import sys,urllib.request;
+          sys.exit(0 if urllib.request.urlopen('http://localhost:8092/healthz',
+          timeout=3).status==200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      brain:
+        aliases:
+          - supervoid-mcp-sign-proxy
 
   mongodb:
     image: ${LIBRECHAT_MONGO_IMAGE:-mongo:7.0}
